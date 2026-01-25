@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import 'react-native-gesture-handler';
-import { StatusBar } from 'react-native';
+import { StatusBar, View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { COLORS } from './src/constants/theme';
@@ -11,8 +11,11 @@ function App() {
       <StatusBar
         barStyle="light-content"
         backgroundColor={COLORS.background}
+        translucent={false}
       />
-      <AppNavigator />
+      <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+        <AppNavigator />
+      </View>
     </SafeAreaProvider>
   );
 }
