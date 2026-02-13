@@ -19,13 +19,14 @@ import Icon from 'react-native-vector-icons/Feather';
 import { Logo, CustomInput, CustomButton } from '../../components/ui';
 import { COLORS } from '../../constants/theme';
 import { AuthStackParamList } from '../../types/navigation';
-import { loginUser } from '../../services/authService';
+import { useAuth } from '../../context/AuthContext';
 
 type LoginScreenProps = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 };
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,15 +40,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
     setLoading(true);
     try {
-      // Call backend API
-      const response = await loginUser({ email, password });
+      // Use auth context to login
+      await login(email, password);
       
-      // Login successful
+      // Login successful - navigation handled automatically by App context
       Alert.alert('Success', 'Login successful!');
-      console.log('User logged in:', response.user);
-      
-      // Navigate to home screen or dashboard
-      // navigation.navigate('Home'); // Uncomment when home screen is ready
     } catch (error: any) {
       // Handle error
       const errorMessage = error?.message || 'Login failed. Please try again.';

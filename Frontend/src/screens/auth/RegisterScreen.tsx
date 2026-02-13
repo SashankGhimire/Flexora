@@ -20,7 +20,7 @@ import Icon from 'react-native-vector-icons/Feather';
 import { Logo, CustomInput, CustomButton } from '../../components/ui';
 import { COLORS } from '../../constants/theme';
 import { AuthStackParamList } from '../../types/navigation';
-import { registerUser } from '../../services/authService';
+import { useAuth } from '../../context/AuthContext';
 
 type RegisterScreenProps = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Register'>;
@@ -29,6 +29,7 @@ type RegisterScreenProps = {
 const GENDER_OPTIONS = ['Male', 'Female', 'Other', 'Prefer not to say'];
 
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
+  const { register } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -66,19 +67,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
 
     setLoading(true);
     try {
-      // Call backend API (only name, email, password are sent to backend)
-      const response = await registerUser({
-        name: fullName,
-        email,
-        password,
-      });
+      // Use auth context to register
+      await register(email, password, fullName);
 
-      // Registration successful
+      // Registration successful - navigation handled automatically by App context
       Alert.alert('Success', 'Account created successfully!');
-      console.log('User registered:', response.user);
-
-      // Navigate to login screen
-      navigation.navigate('Login');
     } catch (error: any) {
       // Handle error
       const errorMessage = error?.message || 'Registration failed. Please try again.';
@@ -120,7 +113,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
               <CustomInput
                 label="Full Name"
                 icon="user-check"
-                placeholder="John Doe"
+                placeholder="Enter your full name"
                 value={fullName}
                 onChangeText={setFullName}
               />
@@ -128,7 +121,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
               <CustomInput
                 label="Email Address"
                 icon="at-sign"
-                placeholder="your.email@example.com"
+                placeholder="Enter your email address"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -172,7 +165,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
                 <CustomInput
                   label="Age"
                   icon="activity"
-                  placeholder="25"
+                  placeholder="Enter Age"
                   value={age}
                   onChangeText={setAge}
                   keyboardType="number-pad"
