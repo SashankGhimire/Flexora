@@ -14,7 +14,7 @@ import Animated, {
   interpolate,
   Extrapolate,
 } from 'react-native-reanimated';
-import Icon from 'react-native-vector-icons/Feather';
+import { SimpleIcon } from './SimpleIcon';
 import { COLORS } from '../../constants/theme';
 
 interface CustomInputProps extends TextInputProps {
@@ -103,7 +103,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
         ]}
       >
         {icon && (
-          <Icon
+          <SimpleIcon
             name={icon}
             size={20}
             color={isFocused ? COLORS.primary : COLORS.placeholder}
@@ -139,7 +139,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
             }}
           >
             <Animated.View style={animatedEyeIconStyle}>
-              <Icon
+              <SimpleIcon
                 name={showPassword ? 'eye' : 'eye-off'}
                 size={24}
                 color={isFocused ? COLORS.primary : COLORS.placeholder}

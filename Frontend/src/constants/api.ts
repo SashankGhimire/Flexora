@@ -20,4 +20,5 @@ export const AUTH_ENDPOINTS = {
   REGISTER: '/auth/register',
   LOGIN: '/auth/login',
   GET_ME: '/auth/me',
+  UPDATE_ME: '/auth/me',
 };

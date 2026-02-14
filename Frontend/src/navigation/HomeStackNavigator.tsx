@@ -1,6 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import Icon from 'react-native-vector-icons/Feather';
+import { SimpleIcon } from '../components/ui';
 import {
   HomeScreen,
   WorkoutScreen,
@@ -15,6 +15,7 @@ const Tab = createBottomTabNavigator<HomeStackParamList>();
 export const HomeStackNavigator: React.FC = () => {
   return (
     <Tab.Navigator
+      id="home-tabs"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
@@ -32,7 +33,7 @@ export const HomeStackNavigator: React.FC = () => {
             iconName = 'circle';
           }
 
-          return <Icon name={iconName} size={size} color={color} />;
+          return <SimpleIcon name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textSecondary,

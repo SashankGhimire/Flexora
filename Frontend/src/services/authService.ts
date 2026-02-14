@@ -107,6 +107,42 @@ export const getCurrentUser = async () => {
 };
 
 /**
+ * Update Current User API Call
+ * Requires valid JWT token
+ * @param {{ name?: string, avatar?: { uri: string, name?: string, type?: string } }} data
+ * @returns {Promise} Response with updated user data
+ */
+export const updateProfile = async (data: {
+  name?: string;
+  avatar?: { uri: string; name?: string; type?: string } | null;
+}) => {
+  try {
+    const formData = new FormData();
+
+    if (data.name) {
+      formData.append('name', data.name);
+    }
+
+    if (data.avatar?.uri) {
+      formData.append('avatar', {
+        uri: data.avatar.uri,
+        name: data.avatar.name || `avatar-${Date.now()}.jpg`,
+        type: data.avatar.type || 'image/jpeg',
+      } as any);
+    }
+
+    const response = await apiClient.put(AUTH_ENDPOINTS.UPDATE_ME, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    throw error.response?.data || error;
+  }
+};
+
+/**
  * Logout
  * Clears token from memory
  */

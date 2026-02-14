@@ -16,8 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/Feather';
-import { Logo, CustomInput, CustomButton } from '../../components/ui';
+import { Logo, CustomInput, CustomButton, SimpleIcon } from '../../components/ui';
 import { COLORS } from '../../constants/theme';
 import { AuthStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';
@@ -156,7 +155,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
                 borderColor: COLORS.border 
               }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                  <Icon name="alert-circle" size={16} color={COLORS.primary} style={{ marginRight: 8 }} />
+                  <SimpleIcon name="alert-circle" size={16} color={COLORS.primary} style={{ marginRight: 8 }} />
                   <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' }}>
                     Optional Information
                   </Text>
@@ -188,7 +187,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
                       borderColor: COLORS.border,
                     }}
                   >
-                    <Icon name="users" size={20} color={COLORS.placeholder} style={{ marginRight: 12 }} />
+                    <SimpleIcon name="users" size={20} color={COLORS.placeholder} style={{ marginRight: 12 }} />
                     <Text style={{ 
                       flex: 1, 
                       color: gender ? 'white' : COLORS.placeholder,
@@ -196,7 +195,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
                     }}>
                       {gender || 'Select'}
                     </Text>
-                    <Icon name="arrow-down" size={20} color={COLORS.placeholder} />
+                    <SimpleIcon name="arrow-down" size={20} color={COLORS.placeholder} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -304,7 +303,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
                   justifyContent: 'center',
                 }}>
                   {gender === option && (
-                    <Icon name="check" size={12} color="white" />
+                    <SimpleIcon name="check" size={12} color="white" />
                   )}
                 </View>
                 <Text style={{ 

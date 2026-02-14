@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Feather';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SimpleIcon } from '../../components/ui';
 import {
   GoalCard,
   SummaryCard,
@@ -18,11 +17,6 @@ import {
 } from '../../components/dashboard';
 import { COLORS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
-import { HomeStackParamList } from '../../types/navigation';
-
-type HomeScreenProps = {
-  navigation: NativeStackNavigationProp<HomeStackParamList, 'Home'>;
-};
 
 // Mock workout data
 const MOCK_DATA = {
@@ -47,9 +41,8 @@ const MOCK_DATA = {
   ],
 };
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
+export const HomeScreen: React.FC = () => {
   const { user, logout } = useAuth();
-  const [refreshing, setRefreshing] = useState(false);
 
   const handleStartWorkout = () => {
     Alert.alert('Start Workout', 'Navigate to workout screen');
@@ -68,12 +61,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     ]);
   };
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    // Simulate API call
-    setTimeout(() => setRefreshing(false), 1500);
-  };
-
   const getCurrentGreeting = (): string => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
@@ -85,16 +72,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         style={styles.container}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
       >
-        {/* Header with greeting and refresh */}
         <View style={styles.header}>
           <View style={styles.greetingSection}>
             <Text style={styles.greeting}>
-              {getCurrentGreeting()}, {user?.name || 'User'}
+              {getCurrentGreeting()}, {user?.name || 'Sasahank'}
             </Text>
-            <Text style={styles.subGreeting}>Let's improve your form today</Text>
+            <Text style={styles.subGreeting}>Let’s improve your form today</Text>
           </View>
 
           <TouchableOpacity
@@ -102,35 +89,70 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             onPress={handleLogout}
             activeOpacity={0.7}
           >
-            <Icon name="log-out" size={20} color={COLORS.error} />
+            <SimpleIcon name="log-out" size={20} color={COLORS.error} />
           </TouchableOpacity>
         </View>
 
-        {/* Daily Goal Card */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroTopRow}>
+            <View>
+              <Text style={styles.heroTitle}>Today’s Focus</Text>
+              <Text style={styles.heroSubtitle}>Core strength + posture</Text>
+            </View>
+            <View style={styles.heroBadge}>
+              <SimpleIcon name="activity" size={14} color={COLORS.primary} />
+              <Text style={styles.heroBadgeText}>30 min</Text>
+            </View>
+          </View>
+          <Text style={styles.heroDescription}>
+            Complete your goal and keep the streak alive.
+          </Text>
+          <TouchableOpacity
+            style={styles.heroButton}
+            onPress={handleStartWorkout}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.heroButtonText}>Start Workout</Text>
+            <SimpleIcon name="arrow-down" size={18} color={COLORS.background} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Daily Goal</Text>
+          <Text style={styles.sectionSubtitle}>Your reps for today</Text>
+        </View>
         <GoalCard
           targetReps={MOCK_DATA.dailyGoal.target}
           currentReps={MOCK_DATA.dailyGoal.current}
           onStartWorkout={handleStartWorkout}
         />
 
-        {/* Posture Accuracy Indicator */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Posture Check</Text>
+          <Text style={styles.sectionSubtitle}>Stay aligned</Text>
+        </View>
         <PostureAccuracy accuracy={MOCK_DATA.postureAccuracy} />
 
-        {/* Today's Summary */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Today’s Summary</Text>
+          <Text style={styles.sectionSubtitle}>Keep the momentum</Text>
+        </View>
         <SummaryCard items={MOCK_DATA.todaySummary} />
 
-        {/* Weekly Progress Chart */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Weekly Progress</Text>
+          <Text style={styles.sectionSubtitle}>Consistency over time</Text>
+        </View>
         <ProgressChart
           data={MOCK_DATA.weeklyProgress}
           title="Weekly Progress"
           maxValue={70}
         />
 
-        {/* Quick Stats Section */}
         <View style={styles.quickStatsContainer}>
           <View style={styles.statCard}>
             <View style={[styles.statIcon, { backgroundColor: `${COLORS.primary}20` }]}>
-              <Icon name="trending-up" size={24} color={COLORS.primary} />
+              <SimpleIcon name="trending-up" size={22} color={COLORS.primary} />
             </View>
             <Text style={styles.statCardLabel}>Consistency</Text>
             <Text style={styles.statCardValue}>85%</Text>
@@ -138,17 +160,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
           <View style={styles.statCard}>
             <View style={[styles.statIcon, { backgroundColor: `${COLORS.primaryLight}20` }]}>
-              <Icon name="award" size={24} color={COLORS.primaryLight} />
+              <SimpleIcon name="award" size={22} color={COLORS.primaryLight} />
             </View>
             <Text style={styles.statCardLabel}>Streak</Text>
             <Text style={styles.statCardValue}>12 days</Text>
           </View>
         </View>
 
-        {/* Motivational Tip */}
         <View style={styles.tipContainer}>
           <View style={styles.tipIconContainer}>
-            <Icon name="lightbulb" size={24} color={COLORS.primary} />
+            <SimpleIcon name="lightbulb" size={22} color={COLORS.primary} />
           </View>
           <View style={styles.tipContent}>
             <Text style={styles.tipTitle}>Pro Tip</Text>
@@ -158,7 +179,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Bottom spacing */}
         <View style={styles.spacing} />
       </ScrollView>
     </SafeAreaView>
@@ -174,19 +194,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  content: {
+    paddingBottom: 24,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    marginTop: 40,
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: 16,
   },
   greetingSection: {
     flex: 1,
   },
   greeting: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
+    letterSpacing: 0.3,
     color: COLORS.text,
     marginBottom: 4,
   },
@@ -194,16 +219,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     fontWeight: '500',
-  },
-  refreshButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: COLORS.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   logoutButton: {
     width: 44,
@@ -214,6 +229,80 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: `${COLORS.error}40`,
+  },
+  heroCard: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  heroTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  heroSubtitle: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+  },
+  heroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: `${COLORS.primary}20`,
+  },
+  heroBadgeText: {
+    fontSize: 12,
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  heroDescription: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  heroButton: {
+    marginTop: 16,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  heroButtonText: {
+    color: COLORS.background,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  sectionHeader: {
+    paddingHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
   quickStatsContainer: {
     flexDirection: 'row',
@@ -236,8 +325,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   statIcon: {
-    width: 50,
-    height: 50,
+    width: 48,
+    height: 48,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',

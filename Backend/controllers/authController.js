@@ -62,6 +62,7 @@ exports.register = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        avatarUrl: user.avatarUrl,
       },
     });
   } catch (error) {
@@ -127,6 +128,7 @@ exports.login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        avatarUrl: user.avatarUrl,
       },
     });
   } catch (error) {
@@ -153,11 +155,59 @@ exports.getMe = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        avatarUrl: user.avatarUrl,
       },
     });
   } catch (error) {
     res.status(500).json({
       message: 'Error retrieving user data',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Update Current User (requires valid JWT token)
+ * PUT /api/auth/me
+ * headers: { Authorization: 'Bearer <token>' }
+ * form-data: { name?, avatar? }
+ */
+exports.updateMe = async (req, res) => {
+  try {
+    const updates = {};
+    const { name } = req.body;
+
+    if (name) {
+      updates.name = name;
+    }
+
+    if (req.file) {
+      updates.avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    }
+
+    const user = await User.findByIdAndUpdate(req.user.id, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found',
+      });
+    }
+
+    res.status(200).json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error updating profile',
       error: error.message,
     });
   }

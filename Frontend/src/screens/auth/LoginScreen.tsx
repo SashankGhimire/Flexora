@@ -15,8 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Icon from 'react-native-vector-icons/Feather';
-import { Logo, CustomInput, CustomButton } from '../../components/ui';
+import { Logo, CustomInput, CustomButton, SimpleIcon } from '../../components/ui';
 import { COLORS } from '../../constants/theme';
 import { AuthStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';

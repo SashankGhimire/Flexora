@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ViewStyle,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/Feather';
+import { SimpleIcon } from '../ui';
 import { COLORS } from '../../constants/theme';
 
 interface SummaryItem {
@@ -34,7 +34,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ items, style }) => {
                 { backgroundColor: `${item.color || COLORS.primary}20` },
               ]}
             >
-              <Icon
+              <SimpleIcon
                 name={item.icon}
                 size={20}
                 color={item.color || COLORS.primary}
