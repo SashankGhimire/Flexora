@@ -5,14 +5,19 @@
 
 import axios from 'axios';
 import type { AxiosError } from 'axios';
-import { API_BASE_URL, AUTH_ENDPOINTS } from '../constants/api';
+import { API_BASE_URL, AUTH_ENDPOINTS, API_CONFIG } from '../constants/api';
 
 // Simple in-memory token storage
 let authToken: string | null = null;
 
-// Create axios instance with base URL
+/**
+ * API Client Configuration
+ * Uses centralized config from constants/api.ts
+ * Works universally across Android emulator, real device, and iOS
+ */
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  timeout: API_CONFIG.TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },

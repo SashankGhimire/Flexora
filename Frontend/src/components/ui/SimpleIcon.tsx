@@ -30,6 +30,9 @@ const ICON_MAP: Record<string, string> = {
   bell: 'bell',
   target: 'target',
   'help-circle': 'help-circle',
+  fire: 'fire',
+  lock: 'lock',
+  cpu: 'cpu',
   
   // Data icons
   clock: 'clock',

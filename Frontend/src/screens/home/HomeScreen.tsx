@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { SimpleIcon } from '../../components/ui';
 import {
   GoalCard,
@@ -17,6 +19,7 @@ import {
 } from '../../components/dashboard';
 import { COLORS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
+import { HomeTabParamList } from '../../types/navigation';
 
 // Mock workout data
 const MOCK_DATA = {
@@ -43,10 +46,10 @@ const MOCK_DATA = {
 
 export const HomeScreen: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigation = useNavigation<BottomTabNavigationProp<HomeTabParamList, 'Home'>>();
 
   const handleStartWorkout = () => {
-    Alert.alert('Start Workout', 'Navigate to workout screen');
-    // navigation.navigate('Workout');
+    navigation.navigate('StartWorkout');
   };
 
   const handleLogout = () => {

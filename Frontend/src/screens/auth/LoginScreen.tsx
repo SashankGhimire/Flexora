@@ -15,7 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Logo, CustomInput, CustomButton, SimpleIcon } from '../../components/ui';
+import { Logo, CustomInput, CustomButton } from '../../components/ui';
 import { COLORS } from '../../constants/theme';
 import { AuthStackParamList } from '../../types/navigation';
 import { useAuth } from '../../context/AuthContext';
@@ -29,13 +29,35 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | undefined>();
+  const [passwordError, setPasswordError] = useState<string | undefined>();
+
+  const validate = () => {
+    let isValid = true;
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
+      setEmailError('Email is required');
+      isValid = false;
+    } else if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
+      setEmailError('Enter a valid email');
+      isValid = false;
+    } else {
+      setEmailError(undefined);
+    }
+
+    if (!password) {
+      setPasswordError('Password is required');
+      isValid = false;
+    } else {
+      setPasswordError(undefined);
+    }
+
+    return isValid;
+  };
 
   const handleLogin = async () => {
-    // Validate input
-    if (!email || !password) {
-      Alert.alert('Validation Error', 'Please provide email and password');
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
     try {
@@ -54,85 +76,86 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     }
   };
 
+  const isDisabled = !email.trim() || !password || loading;
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.background}>
+        <View style={styles.glowTop} />
+        <View style={styles.glowBottom} />
+      </View>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+        style={styles.flex}
       >
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: 'center', paddingVertical: 48 }}>
-            {/* Logo Section */}
-            <Animated.View entering={FadeInUp.duration(600).springify()}>
-              <Logo />
-              <Text style={{ color: COLORS.textSecondary, fontSize: 14, textAlign: 'center', marginTop: 8 }}>
-                Welcome back! Let's continue your fitness journey
-              </Text>
+          <View style={styles.container}>
+            <Animated.View entering={FadeInUp.duration(600).springify()} style={styles.logoBlock}>
+              <Logo size={72} />
+              <Text style={styles.subtitle}>Welcome back to your training</Text>
             </Animated.View>
 
-            {/* Form Section */}
             <Animated.View
               entering={FadeInDown.duration(600).delay(200).springify()}
-              style={{ marginTop: 32 }}
+              style={styles.card}
             >
-              {/* Email Input */}
               <CustomInput
-                label="Email Address"
+                label="Email"
                 icon="at-sign"
-                placeholder="Enter your email"
+                placeholder="your.email@example.com"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  if (emailError) setEmailError(undefined);
+                }}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                error={emailError}
               />
 
-              {/* Password Input */}
               <CustomInput
                 label="Password"
                 icon="shield"
                 placeholder="Enter your password"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  if (passwordError) setPasswordError(undefined);
+                }}
                 isPassword
+                error={passwordError}
               />
 
-              {/* Forgot Password */}
-              <TouchableOpacity style={{ alignSelf: 'flex-end', marginBottom: 24 }}>
-                <Text style={{ color: COLORS.primary, fontSize: 14, fontWeight: '600' }}>
-                  Forgot Password?
-                </Text>
+              <TouchableOpacity style={styles.forgotButton}>
+                <Text style={styles.forgotText}>Forgot Password?</Text>
               </TouchableOpacity>
 
-              {/* Login Button */}
-              <CustomButton
-                title="Log In"
-                onPress={handleLogin}
-                loading={loading}
-              />
+              <View style={styles.buttonShadow}>
+                <CustomButton
+                  title="Log In"
+                  onPress={handleLogin}
+                  loading={loading}
+                  disabled={isDisabled}
+                />
+              </View>
 
-              {/* Sign Up Link */}
-              <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 24 }}>
-                <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>
-                  Don't have an account?{' '}
-                </Text>
+              <View style={styles.signUpRow}>
+                <Text style={styles.signUpText}>Don't have an account? </Text>
                 <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                  <Text style={{ color: COLORS.primary, fontSize: 14, fontWeight: 'bold' }}>
-                    Sign Up
-                  </Text>
+                  <Text style={styles.signUpLink}>Sign Up</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
 
-            {/* Footer */}
             <Animated.View
               entering={FadeInDown.duration(600).delay(400).springify()}
-              style={{ marginTop: 'auto', paddingTop: 32 }}
+              style={styles.footer}
             >
-              <Text style={{ color: COLORS.placeholder, fontSize: 12, textAlign: 'center' }}>
+              <Text style={styles.footerText}>
                 AI-powered fitness tracking with real-time feedback
               </Text>
             </Animated.View>
@@ -142,3 +165,110 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  flex: {
+    flex: 1,
+  },
+  background: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORS.background,
+  },
+  glowTop: {
+    position: 'absolute',
+    top: -140,
+    right: -80,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: `${COLORS.primary}25`,
+    opacity: 0.7,
+  },
+  glowBottom: {
+    position: 'absolute',
+    bottom: -160,
+    left: -90,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: `${COLORS.primary}15`,
+    opacity: 0.6,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 40,
+    justifyContent: 'space-between',
+  },
+  logoBlock: {
+    alignItems: 'center',
+  },
+  subtitle: {
+    marginTop: 8,
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+  card: {
+    marginTop: 20,
+    backgroundColor: COLORS.card,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 22,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.3,
+    shadowRadius: 26,
+    elevation: 6,
+  },
+  forgotButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    marginBottom: 18,
+  },
+  forgotText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  buttonShadow: {
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  signUpRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  signUpText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+  },
+  signUpLink: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  footer: {
+    paddingTop: 24,
+  },
+  footerText: {
+    color: COLORS.placeholder,
+    fontSize: 12,
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+});
