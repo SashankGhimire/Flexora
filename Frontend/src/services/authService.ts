@@ -5,14 +5,14 @@
 
 import axios from 'axios';
 import type { AxiosError } from 'axios';
-import { API_BASE_URL, AUTH_ENDPOINTS, API_CONFIG } from '../constants/api';
+import { API_BASE_URL, AUTH_ENDPOINTS, API_CONFIG } from './api';
 
 // Simple in-memory token storage
 let authToken: string | null = null;
 
 /**
  * API Client Configuration
- * Uses centralized config from constants/api.ts
+ * Uses centralized config from services/api.ts
  * Works universally across Android emulator, real device, and iOS
  */
 const apiClient = axios.create({
@@ -54,8 +54,6 @@ export const registerUser = async (userData: {
     }
     return response.data;
   } catch (error: any) {
-    console.error('Registration API Error:', error);
-    
     // Handle network errors
     if (!error.response) {
       throw {
@@ -84,8 +82,6 @@ export const loginUser = async (credentials: {
     }
     return response.data;
   } catch (error: any) {
-    console.error('Login API Error:', error);
-    
     // Handle network errors
     if (!error.response) {
       throw {

@@ -13,8 +13,8 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Logo, CustomInput, CustomButton } from '../../components/ui';
-import { COLORS } from '../../constants/theme';
-import { AuthStackParamList } from '../../types/navigation';
+import { COLORS } from '../../utils/constants';
+import { AuthStackParamList } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 
 type RegisterScreenProps = {
@@ -106,7 +106,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
     } catch (error: any) {
       const errorMessage = error?.message || 'Registration failed. Please try again.';
       Alert.alert('Registration Error', errorMessage);
-      console.error('Registration error:', error);
     } finally {
       setLoading(false);
     }

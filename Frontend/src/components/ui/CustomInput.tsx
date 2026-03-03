@@ -5,6 +5,7 @@ import {
   Text,
   TouchableOpacity,
   TextInputProps,
+  StyleSheet,
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -15,7 +16,7 @@ import Animated, {
   Extrapolate,
 } from 'react-native-reanimated';
 import { SimpleIcon } from './SimpleIcon';
-import { COLORS } from '../../constants/theme';
+import { COLORS } from '../../utils/constants';
 
 interface CustomInputProps extends TextInputProps {
   label: string;
@@ -63,7 +64,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
         { rotate: `${rotation}deg` },
         { scale },
       ],
-    };
+    } as any;
   });
 
   const handleFocus = () => {
@@ -85,21 +86,14 @@ export const CustomInput: React.FC<CustomInputProps> = ({
   };
 
   return (
-    <View style={{ marginBottom: 16 }}>
-      <Text style={{ color: 'white', fontSize: 14, fontWeight: '500', marginBottom: 8 }}>
+    <View style={styles.container}>
+      <Text style={styles.label}>
         {label}
       </Text>
       <Animated.View
         style={[
           animatedBorderStyle,
-          {
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: COLORS.input,
-            borderRadius: 12,
-            paddingHorizontal: 16,
-            borderWidth: 2,
-          },
+          styles.inputContainer,
         ]}
       >
         {icon && (
@@ -107,7 +101,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
             name={icon}
             size={20}
             color={isFocused ? COLORS.primary : COLORS.placeholder}
-            style={{ marginRight: 12 }}
+            style={styles.leftIcon}
           />
         )}
         <TextInput
@@ -115,30 +109,23 @@ export const CustomInput: React.FC<CustomInputProps> = ({
           secureTextEntry={isPassword && !showPassword}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          style={{
-            flex: 1,
-            color: 'white',
-            paddingVertical: 16,
-            fontSize: 16,
-            outlineStyle: 'none',
-          } as any}
+          style={styles.textInput}
           placeholderTextColor={COLORS.placeholder}
         />
         {isPassword && (
           <TouchableOpacity
             onPress={handlePasswordToggle}
             activeOpacity={0.7}
-            style={{ 
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              backgroundColor: isFocused ? `${COLORS.primary}20` : `${COLORS.placeholder}15`,
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginLeft: 8,
-            }}
+            style={[
+              styles.passwordToggle,
+              {
+                backgroundColor: isFocused
+                  ? `${COLORS.primary}20`
+                  : `${COLORS.placeholder}15`,
+              },
+            ]}
           >
-            <Animated.View style={animatedEyeIconStyle}>
+            <Animated.View style={animatedEyeIconStyle as any}>
               <SimpleIcon
                 name={showPassword ? 'eye' : 'eye-off'}
                 size={24}
@@ -149,10 +136,53 @@ export const CustomInput: React.FC<CustomInputProps> = ({
         )}
       </Animated.View>
       {error && (
-        <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4, marginLeft: 4 }}>
+        <Text style={styles.errorText}>
           {error}
         </Text>
       )}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: 16,
+  },
+  label: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.input,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+  },
+  leftIcon: {
+    marginRight: 12,
+  },
+  textInput: {
+    flex: 1,
+    color: 'white',
+    paddingVertical: 16,
+    fontSize: 16,
+  },
+  passwordToggle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+});

@@ -16,8 +16,8 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Logo, CustomInput, CustomButton } from '../../components/ui';
-import { COLORS } from '../../constants/theme';
-import { AuthStackParamList } from '../../types/navigation';
+import { COLORS } from '../../utils/constants';
+import { AuthStackParamList } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 
 type LoginScreenProps = {
@@ -70,7 +70,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       // Handle error
       const errorMessage = error?.message || 'Login failed. Please try again.';
       Alert.alert('Login Error', errorMessage);
-      console.error('Login error:', error);
     } finally {
       setLoading(false);
     }

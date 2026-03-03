@@ -6,7 +6,22 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-require('dotenv').config();
+const dotenv = require('dotenv');
+
+const envResult = dotenv.config({ path: path.join(__dirname, '.env') });
+if (envResult.error) {
+  dotenv.config();
+}
+
+if (!process.env.JWT_SECRET) {
+  process.env.JWT_SECRET = 'dev_jwt_secret_change_me';
+  console.warn('⚠ JWT_SECRET not found. Using development fallback secret.');
+}
+
+if (!process.env.JWT_EXPIRE) {
+  process.env.JWT_EXPIRE = '7d';
+}
+
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 

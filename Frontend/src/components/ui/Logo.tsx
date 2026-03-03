@@ -1,12 +1,12 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withSpring,
   withRepeat,
   withSequence,
 } from 'react-native-reanimated';
-import { COLORS } from '../../constants/theme';
+import { COLORS } from '../../utils/constants';
 
 interface LogoProps {
   size?: number;
@@ -32,7 +32,7 @@ export const Logo: React.FC<LogoProps> = ({ size = 80 }) => {
   });
 
   return (
-    <View style={{ alignItems: 'center', marginBottom: 24 }}>
+    <View style={styles.container}>
       <Animated.View
         style={[
           animatedStyle,
@@ -40,22 +40,47 @@ export const Logo: React.FC<LogoProps> = ({ size = 80 }) => {
             width: size,
             height: size,
             backgroundColor: COLORS.primary,
-            borderRadius: 20,
-            alignItems: 'center',
-            justifyContent: 'center',
           },
+          styles.iconWrap,
         ]}
       >
-        <Text style={{ fontSize: size * 0.5, color: 'white', fontWeight: 'bold' }}>
+        <Text style={[styles.iconText, { fontSize: size * 0.5 }]}>
           ⚡
         </Text>
       </Animated.View>
-      <Text style={{ color: 'white', fontSize: 28, fontWeight: 'bold', marginTop: 16 }}>
+      <Text style={styles.title}>
         Flexora
       </Text>
-      <Text style={{ color: COLORS.textSecondary, fontSize: 14, marginTop: 4 }}>
+      <Text style={styles.subtitle}>
         Train Smart. Move Better.
       </Text>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  iconWrap: {
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  title: {
+    color: 'white',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginTop: 16,
+  },
+  subtitle: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    marginTop: 4,
+  },
+});

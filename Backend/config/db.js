@@ -5,13 +5,17 @@
 
 const mongoose = require('mongoose');
 
+const FALLBACK_MONGO_URI = 'mongodb://127.0.0.1:27017/flexora';
+
 const connectDB = async () => {
   try {
     // Get MongoDB URI from environment variables
-    const mongoURI = process.env.MONGO_URI;
+    const mongoURI = process.env.MONGO_URI || FALLBACK_MONGO_URI;
 
-    if (!mongoURI) {
-      throw new Error('MONGO_URI environment variable is not defined');
+    if (!process.env.MONGO_URI) {
+      console.warn(
+        `⚠ MONGO_URI not found. Using development fallback: ${FALLBACK_MONGO_URI}`
+      );
     }
 
     // Connect to MongoDB
