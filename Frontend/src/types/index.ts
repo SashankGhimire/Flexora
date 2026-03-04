@@ -3,7 +3,7 @@ export type AuthStackParamList = {
   Register: undefined;
 };
 
-export type ExerciseType = 'squat' | 'pushup' | 'lunge' | 'plank' | 'bicepCurl';
+export type ExerciseType = 'squat' | 'pushup' | 'lunge' | 'jumpingJack' | 'plank' | 'bicepCurl';
 
 export type HomeTabParamList = {
   Home: undefined;
@@ -15,7 +15,7 @@ export type HomeTabParamList = {
 export type HomeStackParamList = {
   HomeTabs: undefined;
   ExerciseSelection: undefined;
-  Workout: { exercise: ExerciseType };
+  Workout: { exerciseType: ExerciseType };
 };
 
 export type RootNavigationParamList = {

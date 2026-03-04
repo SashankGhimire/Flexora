@@ -6,7 +6,6 @@ import { SimpleIcon } from '../components/ui';
 import { LoginScreen, RegisterScreen } from '../screens/auth';
 import {
   DashboardScreen,
-  StartWorkoutScreen,
   ExerciseSelectionScreen,
   PostureScreen,
   ProgressScreen,
@@ -67,18 +66,33 @@ const HomeTabs: React.FC = () => {
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textSecondary,
+        tabBarHideOnKeyboard: true,
         tabBarStyle: {
           backgroundColor: COLORS.card,
-          borderTopColor: COLORS.border,
-          borderTopWidth: 1,
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 60,
+          position: 'absolute',
+          left: 14,
+          right: 14,
+          bottom: 10,
+          borderTopWidth: 0,
+          borderRadius: 16,
+          paddingBottom: 7,
+          paddingTop: 7,
+          height: 64,
+          shadowColor: '#000',
+          shadowOpacity: 0.14,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 6,
+        },
+        tabBarItemStyle: {
+          borderRadius: 10,
+          marginHorizontal: 2,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
-          marginTop: 4,
+          marginTop: 1,
+          marginBottom: 1,
         },
       }}
     >
@@ -92,7 +106,7 @@ const HomeTabs: React.FC = () => {
       />
       <Tab.Screen
         name="StartWorkout"
-        component={StartWorkoutScreen}
+        component={ExerciseSelectionScreen}
         options={{
           tabBarLabel: 'Workout',
           tabBarIcon: StartWorkoutTabIcon,

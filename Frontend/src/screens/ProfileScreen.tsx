@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
+  ScrollView,
   TouchableOpacity,
   TextInput,
   Alert,
@@ -81,7 +82,10 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Profile</Text>
@@ -264,7 +268,7 @@ export const ProfileScreen: React.FC = () => {
           <SimpleIcon name="log-out" size={18} color={COLORS.error} />
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -275,10 +279,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 16,
     paddingTop: 20,
-    paddingBottom: 24,
+    paddingBottom: 32,
     gap: 16,
   },
   header: {
