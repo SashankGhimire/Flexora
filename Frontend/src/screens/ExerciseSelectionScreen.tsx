@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SimpleIcon } from '../components/ui';
@@ -28,7 +29,7 @@ const EXERCISES: ExerciseCard[] = [
     name: 'Squats',
     description: 'Lower body strength and control',
     icon: 'activity',
-    cardBackground: '#28322E',
+    cardBackground: '#1B1B1B',
     cardBorder: '#3E5149',
   },
   {
@@ -36,7 +37,7 @@ const EXERCISES: ExerciseCard[] = [
     name: 'Push Ups',
     description: 'Upper body push movement',
     icon: 'target',
-    cardBackground: '#27312D',
+    cardBackground: '#1B1B1B',
     cardBorder: '#3D4F48',
   },
   {
@@ -44,7 +45,7 @@ const EXERCISES: ExerciseCard[] = [
     name: 'Lunges',
     description: 'Leg balance and coordination',
     icon: 'zap',
-    cardBackground: '#28322E',
+    cardBackground: '#1B1B1B',
     cardBorder: '#3E5149',
   },
   {
@@ -52,7 +53,7 @@ const EXERCISES: ExerciseCard[] = [
     name: 'Jumping Jacks',
     description: 'Full body cardio activation',
     icon: 'users',
-    cardBackground: '#27312D',
+    cardBackground: '#1B1B1B',
     cardBorder: '#3D4F48',
   },
   {
@@ -60,7 +61,7 @@ const EXERCISES: ExerciseCard[] = [
     name: 'Plank',
     description: 'Core endurance hold',
     icon: 'shield',
-    cardBackground: '#28322E',
+    cardBackground: '#1B1B1B',
     cardBorder: '#3E5149',
   },
   {
@@ -68,12 +69,26 @@ const EXERCISES: ExerciseCard[] = [
     name: 'Bicep Curl',
     description: 'Arm flexion and control',
     icon: 'activity',
-    cardBackground: '#27312D',
+    cardBackground: '#1B1B1B',
     cardBorder: '#3D4F48',
   },
 ];
 
 type ExerciseNavProp = NativeStackNavigationProp<HomeStackParamList, 'ExerciseSelection'>;
+
+const CardGradient: React.FC<{ id: string }> = ({ id }) => (
+  <View style={styles.gradientLayer} pointerEvents="none">
+    <Svg width="100%" height="100%" preserveAspectRatio="none">
+      <Defs>
+        <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0" stopColor="#2A2A2A" />
+          <Stop offset="1" stopColor="#121212" />
+        </LinearGradient>
+      </Defs>
+      <Rect x="0" y="0" width="100%" height="100%" rx="20" ry="20" fill={`url(#${id})`} />
+    </Svg>
+  </View>
+);
 
 export const ExerciseSelectionScreen: React.FC = () => {
   const navigation = useNavigation<ExerciseNavProp>();
@@ -104,6 +119,8 @@ export const ExerciseSelectionScreen: React.FC = () => {
             ]}
             onPress={() => navigation.navigate('Workout', { exerciseType: item.key })}
           >
+            <CardGradient id={`exercise-card-gradient-${item.key}`} />
+
             <View style={styles.cardBody}>
               <View style={styles.iconWrap}>
                 <SimpleIcon name={item.icon} size={20} color={COLORS.primaryLight} />
@@ -158,6 +175,7 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     height: 166,
+    overflow: 'hidden',
     borderRadius: 20,
     borderWidth: 1,
     backgroundColor: COLORS.card,
@@ -169,6 +187,9 @@ const styles = StyleSheet.create({
   },
   cardPressed: {
     opacity: 0.8,
+  },
+  gradientLayer: {
+    ...StyleSheet.absoluteFillObject,
   },
   cardBody: {
     flex: 1,

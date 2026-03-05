@@ -18,7 +18,9 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Alert, Activity
 import { useCameraDevice, Camera, useCameraFormat, useFrameProcessor, VisionCameraProxy } from 'react-native-vision-camera';
 import { useSharedValue } from 'react-native-worklets-core';
 import Svg, { Circle } from 'react-native-svg';
-import { analyzeMotion } from '../ai/motionIntelligence';
+import { analyzeMotion, calculateJointAngles, AngleScope } from '../ai/motionIntelligence';
+import { resetRepCounter, updateRepCounter } from '../ai/repCounter';
+import { resetBicepCurlDetector, updateBicepCurl } from '../ai/bicepCurlDetector';
 import { COLORS } from '../utils/constants';
 import { ExerciseType, HomeStackParamList } from '../types';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -34,18 +36,19 @@ const BORDER_RADIUS = 14;
 const DEBUG_MIN_SCORE = 0.25;
 const DEBUG_HAND_THRESHOLD = 0.012;
 const DEBUG_HIP_THRESHOLD = 0.009;
-const DEBUG_LOG_EVERY_N_FRAMES = 10;
 const RAW_DELTA_THRESHOLD = 0.005;
 const UI_UPDATE_EVERY_N_FRAMES = 3;
 const WORKLET_INFERENCE_EVERY_N_FRAMES = 4;
-const JS_POSE_POLL_INTERVAL_MS = 150;
-const MAX_JS_UPDATES_FPS = 10;
+const JS_POSE_POLL_INTERVAL_MS = 90;
+const ANALYSIS_THROTTLE_MS = 180;
 const OVERLAY_MIN_INTERVAL_MS = 100;
 const KEYPOINT_POSITION_EPSILON = 0.002;
 const KEYPOINT_SCORE_EPSILON = 0.02;
 const PERSON_PRESENCE_MIN_SCORE = 0.3;
 const PERSON_PRESENCE_MIN_KEYPOINTS = 4;
 const PERSON_ABSENT_GRACE_FRAMES = 5;
+const MIN_RELIABLE_KEYPOINTS = 10;
+const MIN_RELIABLE_KEYPOINTS_FALLBACK = 7;
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -57,14 +60,21 @@ type PoseKeypoint = {
   score: number;
 };
 
-type DebugMotionSnapshot = {
-  frame: number;
-  leftWristDeltaY: number;
-  rightWristDeltaY: number;
-  hipDeltaY: number;
-  leftWristMovement: 'up' | 'down' | 'stable';
-  rightWristMovement: 'up' | 'down' | 'stable';
-  bodyMovement: 'up' | 'down' | 'stable';
+const createPoseBuffer = (size = 17): PoseKeypoint[] => {
+  const buffer: PoseKeypoint[] = new Array(size);
+  for (let index = 0; index < size; index += 1) {
+    buffer[index] = { x: 0, y: 0, score: 0 };
+  }
+  return buffer;
+};
+
+const EXERCISE_ANGLE_SCOPE: Record<ExerciseType, AngleScope> = {
+  squat: { knees: true, elbows: false },
+  pushup: { elbows: true, knees: false },
+  lunge: { knees: true, elbows: false },
+  jumpingJack: { elbows: false, knees: false },
+  plank: { elbows: false, knees: false },
+  bicepCurl: { elbows: true, knees: false },
 };
 
 type MotionStatus = {
@@ -85,17 +95,22 @@ type ActiveMotionThresholds = {
 };
 
 const PoseOverlay = React.memo(({ keypoints }: { keypoints: PoseKeypoint[] }) => {
-  const circles = useMemo(
-    () =>
-      keypoints
-        .filter((point) => point.score > 0.2)
-        .map((point, index) => ({
-          key: `kp-${index}`,
-          cx: point.x * screenWidth,
-          cy: point.y * screenHeight,
-        })),
-    [keypoints]
-  );
+  const circles = useMemo(() => {
+    const nextCircles: Array<{ key: string; cx: number; cy: number }> = [];
+    for (let index = 0; index < keypoints.length; index += 1) {
+      const point = keypoints[index];
+      if (point.score <= 0.2) {
+        continue;
+      }
+
+      nextCircles.push({
+        key: `kp-${index}`,
+        cx: point.x * screenWidth,
+        cy: point.y * screenHeight,
+      });
+    }
+    return nextCircles;
+  }, [keypoints]);
 
   return (
     <Svg style={styles.poseOverlay} width={screenWidth} height={screenHeight} pointerEvents="none">
@@ -205,12 +220,16 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   const [permission, setPermission] = useState('loading');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isFrontCamera, setIsFrontCamera] = useState(false);
-  const [reps] = useState(0);
+  const [reps, setReps] = useState(0);
+  const [repPhase, setRepPhase] = useState('hold');
   const [accuracy] = useState<number | null>(null);
   const [feedback, setFeedback] = useState('Get Ready');
   const [seconds, setSeconds] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isDetectingContinuous, setIsDetectingContinuous] = useState(false);
+  const [repCount, setRepCount] = useState(0);
+  const [phase, setPhase] = useState<'up' | 'down'>('up');
+  const [elbowAngle, setElbowAngle] = useState(0);
   const [overlayKeypoints, setOverlayKeypoints] = useState<PoseKeypoint[]>([]);
   const [motionStatus, setMotionStatus] = useState<MotionStatus>({
     detected: false,
@@ -227,6 +246,11 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cameraRef = useRef<Camera | null>(null);
   const prevKeypointsRef = useRef<PoseKeypoint[] | null>(null);
+  const repCountRef = useRef(0);
+  const phaseRef = useRef<'up' | 'down'>('up');
+  const elbowAngleRef = useRef(0);
+  const repsRef = useRef(0);
+  const repPhaseRef = useRef('hold');
   const prevManualElbowAvgRef = useRef<number | null>(null);
   const prevRealtimeElbowAvgRef = useRef<number | null>(null);
   const lastFeedbackRef = useRef('Get Ready');
@@ -234,10 +258,11 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   const lastActivityStatusRef = useRef('Auto: no movement|0');
   const motionFrameCountRef = useRef(0);
   const droppedFrameCountRef = useRef(0);
-  const lastJsUpdateAtRef = useRef(0);
+  const lastAnalysisAtRef = useRef(0);
   const lastConsumedPoseVersionRef = useRef(0);
   const lastDetectSummaryRef = useRef('Press Detect Pose to scan 17 points');
   const lastElbowScanSummaryRef = useRef('Elbow scan: waiting');
+  const lastCalibrationStatusRef = useRef('Calibrating motion... 0/30');
   const lastCameraGuideRef = useRef('Camera guide: align full body in frame');
   const calibrationFrameCountRef = useRef(0);
   const calibrationSumsRef = useRef({
@@ -252,8 +277,14 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     rawDeltaThreshold: RAW_DELTA_THRESHOLD,
   });
   const consecutiveAbsentFramesRef = useRef(0);
-  const debugFrameCountRef = useRef(0);
   const lastOverlayUpdateRef = useRef(0);
+  const overlaySnapshotBufferRef = useRef<PoseKeypoint[]>(createPoseBuffer());
+  const analysisSmoothingBufferRef = useRef<PoseKeypoint[]>(createPoseBuffer());
+  const poseBufferPoolRef = useRef<[PoseKeypoint[], PoseKeypoint[]]>([
+    createPoseBuffer(),
+    createPoseBuffer(),
+  ]);
+  const poseBufferIndexRef = useRef(0);
   const workletFrameCounter = useSharedValue(0);
   const sharedPoseKeypoints = useSharedValue<PoseKeypoint[] | null>(null);
   const sharedPoseVersion = useSharedValue(0);
@@ -268,7 +299,28 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   ]);
   const cameraFormat = lowResFormat ?? hdFallbackFormat;
   const motionConfig = useMemo(() => EXERCISE_MOTION_CONFIG[exercise], [exercise]);
-  const detectPosePlugin = VisionCameraProxy.initFrameProcessorPlugin('detectPose', {});
+  const angleScope = useMemo(() => EXERCISE_ANGLE_SCOPE[exercise], [exercise]);
+  const [detectPosePlugin, setDetectPosePlugin] = useState(() =>
+    VisionCameraProxy.initFrameProcessorPlugin('detectPose', {})
+  );
+
+  useEffect(() => {
+    if (!isDetectingContinuous) {
+      return;
+    }
+
+    if (detectPosePlugin != null) {
+      return;
+    }
+
+    const retryId = setTimeout(() => {
+      setDetectPosePlugin(VisionCameraProxy.initFrameProcessorPlugin('detectPose', {}));
+    }, 250);
+
+    return () => {
+      clearTimeout(retryId);
+    };
+  }, [detectPosePlugin, isDetectingContinuous]);
 
   useEffect(() => {
     activeThresholdsRef.current = {
@@ -283,20 +335,60 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
       rightWristAbsDelta: 0,
       hipAbsDelta: 0,
     };
-    setCalibrationStatus('Calibrating motion... 0/30');
+    const resetCalibrationLabel = 'Calibrating motion... 0/30';
+    if (lastCalibrationStatusRef.current !== resetCalibrationLabel) {
+      lastCalibrationStatusRef.current = resetCalibrationLabel;
+      setCalibrationStatus(resetCalibrationLabel);
+    }
   }, [motionConfig]);
 
-  const toPoseKeypoints = useCallback((rawKeypoints: PoseKeypoint[]): PoseKeypoint[] => {
-    return rawKeypoints.map((point) => {
+  useEffect(() => {
+    resetRepCounter(exercise);
+    if (exercise === 'bicepCurl') {
+      resetBicepCurlDetector();
+    }
+    setReps(0);
+    setRepPhase('hold');
+    setRepCount(0);
+    setPhase('up');
+    setElbowAngle(0);
+    repCountRef.current = 0;
+    phaseRef.current = 'up';
+    elbowAngleRef.current = 0;
+    repsRef.current = 0;
+    repPhaseRef.current = 'hold';
+  }, [exercise]);
+
+  const normalizePoseKeypoints = useCallback((rawKeypoints: PoseKeypoint[]): PoseKeypoint[] => {
+    poseBufferIndexRef.current = poseBufferIndexRef.current === 0 ? 1 : 0;
+    const target = poseBufferPoolRef.current[poseBufferIndexRef.current];
+
+    const limit = Math.min(rawKeypoints.length, target.length);
+    for (let index = 0; index < limit; index += 1) {
+      const point = rawKeypoints[index];
       const x = Number(point.x);
       const y = Number(point.y);
       const rawScore = typeof point.score === 'number' ? point.score : 0;
-      const score = Number.isFinite(rawScore) ? rawScore : 0;
-      return { x, y, score };
-    });
+      target[index].x = Number.isFinite(x) ? x : 0;
+      target[index].y = Number.isFinite(y) ? y : 0;
+      target[index].score = Number.isFinite(rawScore) ? rawScore : 0;
+    }
+
+    if (target.length > limit) {
+      for (let index = limit; index < target.length; index += 1) {
+        target[index].x = 0;
+        target[index].y = 0;
+        target[index].score = 0;
+      }
+    }
+
+    return target;
   }, []);
 
-  const isPersonPresent = useCallback((keypoints: PoseKeypoint[]): {
+  const isPersonPresent = useCallback((
+    keypoints: PoseKeypoint[],
+    minScore = PERSON_PRESENCE_MIN_SCORE
+  ): {
     detected: boolean;
     confidentCount: number;
     avgScore: number;
@@ -306,7 +398,7 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     for (let i = 0; i < keypoints.length; i += 1) {
       const s = keypoints[i].score;
       totalScore += s;
-      if (s > PERSON_PRESENCE_MIN_SCORE) {
+      if (s >= minScore) {
         confidentCount += 1;
       }
     }
@@ -353,41 +445,25 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     }
 
     const now = Date.now();
-    const minInterval = 1000 / MAX_JS_UPDATES_FPS;
-    if (now - lastJsUpdateAtRef.current < minInterval) {
+    if (now - lastAnalysisAtRef.current < ANALYSIS_THROTTLE_MS) {
       return;
     }
-    lastJsUpdateAtRef.current = now;
+    lastAnalysisAtRef.current = now;
 
     if (!detectedKeypoints || detectedKeypoints.length < 17) {
       droppedFrameCountRef.current += 1;
       return;
     }
 
-    const currentKeypoints = toPoseKeypoints(detectedKeypoints);
-    for (let index = 0; index < currentKeypoints.length; index += 1) {
-      const point = currentKeypoints[index];
-      if (!Number.isFinite(point.x) || !Number.isFinite(point.y) || !Number.isFinite(point.score)) {
-        droppedFrameCountRef.current += 1;
-        return;
-      }
-    }
+    const currentKeypoints = normalizePoseKeypoints(detectedKeypoints);
 
-    const presence = isPersonPresent(currentKeypoints);
-
-    debugFrameCountRef.current += 1;
-    if (debugFrameCountRef.current % DEBUG_LOG_EVERY_N_FRAMES === 0) {
-      console.log(
-        `[Flexora Pose] frame=${debugFrameCountRef.current}` +
-        ` confidentKPs=${presence.confidentCount}/17` +
-        ` avgScore=${presence.avgScore.toFixed(3)}` +
-        ` personDetected=${presence.detected}` +
-        ` absentStreak=${consecutiveAbsentFramesRef.current}` +
-        ` hasPrev=${prevKeypointsRef.current !== null}`
-      );
-    }
-
-    if (!presence.detected) {
+    const presenceMinScore = Math.max(0.2, motionConfig.minScore);
+    const minimumReliableKeypoints = Math.max(
+      MIN_RELIABLE_KEYPOINTS_FALLBACK,
+      Math.min(MIN_RELIABLE_KEYPOINTS, PERSON_PRESENCE_MIN_KEYPOINTS + 3)
+    );
+    const presence = isPersonPresent(currentKeypoints, presenceMinScore);
+    if (!presence.detected || presence.confidentCount < minimumReliableKeypoints) {
       consecutiveAbsentFramesRef.current += 1;
 
       if (consecutiveAbsentFramesRef.current >= PERSON_ABSENT_GRACE_FRAMES) {
@@ -400,7 +476,10 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
             rightWristAbsDelta: 0,
             hipAbsDelta: 0,
           };
-          setOverlayKeypoints([]);
+          if (lastOverlayUpdateRef.current !== 0) {
+            lastOverlayUpdateRef.current = 0;
+            setOverlayKeypoints([]);
+          }
           if (lastFeedbackRef.current !== 'No person detected') {
             lastFeedbackRef.current = 'No person detected';
             setFeedback('No person detected');
@@ -413,6 +492,14 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
             lastActivityStatusRef.current = 'Auto: no person|0';
             setActivityStatus({ detected: false, label: 'Auto: no person' });
           }
+          if (repsRef.current !== 0) {
+            repsRef.current = 0;
+            setReps(0);
+          }
+          if (repPhaseRef.current !== 'hold') {
+            repPhaseRef.current = 'hold';
+            setRepPhase('hold');
+          }
         }
       }
       droppedFrameCountRef.current += 1;
@@ -420,6 +507,47 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     }
 
     consecutiveAbsentFramesRef.current = 0;
+
+    if (exercise === 'bicepCurl') {
+      const result = updateBicepCurl(currentKeypoints);
+
+      if (result.repCount !== repCountRef.current) {
+        repCountRef.current = result.repCount;
+        setRepCount(result.repCount);
+      }
+
+      if (result.repCount !== repsRef.current) {
+        repsRef.current = result.repCount;
+        setReps(result.repCount);
+      }
+
+      if (result.phase !== phaseRef.current) {
+        phaseRef.current = result.phase;
+        setPhase(result.phase);
+      }
+
+      if (result.phase !== repPhaseRef.current) {
+        repPhaseRef.current = result.phase;
+        setRepPhase(result.phase);
+      }
+
+      const roundedAngle = Math.round(result.elbowAngle);
+      if (roundedAngle !== elbowAngleRef.current) {
+        elbowAngleRef.current = roundedAngle;
+        setElbowAngle(roundedAngle);
+      }
+    } else {
+      const jointAngles = calculateJointAngles(currentKeypoints, motionConfig.minScore, angleScope);
+      const repResult = updateRepCounter(exercise, jointAngles, currentKeypoints);
+      if (repResult.repCount !== repsRef.current) {
+        repsRef.current = repResult.repCount;
+        setReps(repResult.repCount);
+      }
+      if (repResult.phase !== repPhaseRef.current) {
+        repPhaseRef.current = repResult.phase;
+        setRepPhase(repResult.phase);
+      }
+    }
 
     const previous = prevKeypointsRef.current;
     const overlayChanged =
@@ -440,22 +568,43 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
 
     if (overlayChanged && (now - lastOverlayUpdateRef.current >= OVERLAY_MIN_INTERVAL_MS)) {
       lastOverlayUpdateRef.current = now;
-      setOverlayKeypoints(currentKeypoints);
+
+      const overlaySnapshot = overlaySnapshotBufferRef.current;
+      const overlayLength = Math.min(currentKeypoints.length, overlaySnapshot.length);
+      for (let index = 0; index < overlayLength; index += 1) {
+        overlaySnapshot[index].x = currentKeypoints[index].x;
+        overlaySnapshot[index].y = currentKeypoints[index].y;
+        overlaySnapshot[index].score = currentKeypoints[index].score;
+      }
+
+      const nextOverlay: PoseKeypoint[] = new Array(overlayLength);
+      for (let index = 0; index < overlayLength; index += 1) {
+        const point = overlaySnapshot[index];
+        nextOverlay[index] = {
+          x: point.x,
+          y: point.y,
+          score: point.score,
+        };
+      }
+      setOverlayKeypoints(nextOverlay);
     }
 
     if (previous) {
       const currentThresholds = activeThresholdsRef.current;
-      const effectiveThresholds = {
-        minScore: Math.min(currentThresholds.minScore, motionConfig.minScore + 0.03),
-        handThreshold: Math.min(currentThresholds.handThreshold, motionConfig.handThreshold * 1.4),
-        hipThreshold: Math.min(currentThresholds.hipThreshold, motionConfig.hipThreshold * 1.4),
-        rawDeltaThreshold: Math.min(currentThresholds.rawDeltaThreshold, motionConfig.rawDeltaThreshold * 1.4),
-      };
+      const effectiveMinScore = Math.min(currentThresholds.minScore, motionConfig.minScore + 0.03);
+      const effectiveHandThreshold = Math.min(currentThresholds.handThreshold, motionConfig.handThreshold * 1.4);
+      const effectiveHipThreshold = Math.min(currentThresholds.hipThreshold, motionConfig.hipThreshold * 1.4);
+      const effectiveRawDeltaThreshold = Math.min(
+        currentThresholds.rawDeltaThreshold,
+        motionConfig.rawDeltaThreshold * 1.4
+      );
 
       const motion = analyzeMotion(previous, currentKeypoints, {
-        minScore: effectiveThresholds.minScore,
-        handThreshold: effectiveThresholds.handThreshold,
-        hipThreshold: effectiveThresholds.hipThreshold,
+        minScore: effectiveMinScore,
+        handThreshold: effectiveHandThreshold,
+        hipThreshold: effectiveHipThreshold,
+        angleScope,
+        smoothedBuffer: analysisSmoothingBufferRef.current,
       });
 
       const leftWristDeltaY = currentKeypoints[9].y - previous[9].y;
@@ -464,11 +613,11 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
       const currentHipY = (currentKeypoints[11].y + currentKeypoints[12].y) * 0.5;
       const hipDeltaY = currentHipY - prevHipY;
       const hasRawMovement =
-        Math.abs(leftWristDeltaY) > effectiveThresholds.rawDeltaThreshold ||
-        Math.abs(rightWristDeltaY) > effectiveThresholds.rawDeltaThreshold ||
-        Math.abs(hipDeltaY) > effectiveThresholds.rawDeltaThreshold;
+        Math.abs(leftWristDeltaY) > effectiveRawDeltaThreshold ||
+        Math.abs(rightWristDeltaY) > effectiveRawDeltaThreshold ||
+        Math.abs(hipDeltaY) > effectiveRawDeltaThreshold;
       const hasBodyMovement =
-        Math.abs(hipDeltaY) > Math.min(effectiveThresholds.hipThreshold, motionConfig.hipThreshold * 1.2);
+        Math.abs(hipDeltaY) > Math.min(effectiveHipThreshold, motionConfig.hipThreshold * 1.2);
 
       const calibrationFrames = calibrationFrameCountRef.current;
       if (calibrationFrames < 30) {
@@ -478,7 +627,11 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
         calibrationSumsRef.current.hipAbsDelta += Math.abs(hipDeltaY);
 
         if (calibrationFrameCountRef.current % 5 === 0) {
-          setCalibrationStatus(`Calibrating motion... ${calibrationFrameCountRef.current}/30`);
+          const calibrationLabel = `Calibrating motion... ${calibrationFrameCountRef.current}/30`;
+          if (calibrationLabel !== lastCalibrationStatusRef.current) {
+            lastCalibrationStatusRef.current = calibrationLabel;
+            setCalibrationStatus(calibrationLabel);
+          }
         }
 
         if (calibrationFrameCountRef.current === 30) {
@@ -505,7 +658,10 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
               )
             ),
           };
-          setCalibrationStatus('Calibration complete');
+          if (lastCalibrationStatusRef.current !== 'Calibration complete') {
+            lastCalibrationStatusRef.current = 'Calibration complete';
+            setCalibrationStatus('Calibration complete');
+          }
         }
       }
 
@@ -694,7 +850,7 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     }
 
     prevKeypointsRef.current = currentKeypoints;
-  }, [exercise, getCameraGuideText, isDetectingContinuous, isPersonPresent, motionConfig, toPoseKeypoints]);
+  }, [angleScope, exercise, getCameraGuideText, isDetectingContinuous, isPersonPresent, motionConfig, normalizePoseKeypoints]);
 
   // Frame Processor: detect pose and write into shared value only (no runOnJS).
   const frameProcessor = useFrameProcessor((frame) => {
@@ -725,14 +881,12 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
 
       sharedPoseKeypoints.value = detectedResult as PoseKeypoint[];
       sharedPoseVersion.value = sharedPoseVersion.value + 1;
-    } catch (_e) {
+    } catch {
       return;
     }
   }, [
     detectPosePlugin,
     isDetectingContinuous,
-    sharedPoseKeypoints,
-    sharedPoseVersion,
     workletFrameCounter,
   ]);
 
@@ -832,21 +986,37 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     setIsDetectingContinuous((previous) => {
       const next = !previous;
       if (next) {
+        resetRepCounter(exercise);
+        if (exercise === 'bicepCurl') {
+          resetBicepCurlDetector();
+        }
+        setReps(0);
+        setRepPhase('hold');
+        setRepCount(0);
+        setPhase('up');
+        setElbowAngle(0);
+        repCountRef.current = 0;
+        phaseRef.current = 'up';
+        elbowAngleRef.current = 0;
+        repsRef.current = 0;
+        repPhaseRef.current = 'hold';
         prevKeypointsRef.current = null;
         prevRealtimeElbowAvgRef.current = null;
         prevManualElbowAvgRef.current = null;
         motionFrameCountRef.current = 0;
         droppedFrameCountRef.current = 0;
         consecutiveAbsentFramesRef.current = 0;
-        debugFrameCountRef.current = 0;
+        lastAnalysisAtRef.current = 0;
         lastOverlayUpdateRef.current = 0;
         lastConsumedPoseVersionRef.current = 0;
         workletFrameCounter.value = 0;
         sharedPoseVersion.value = 0;
         sharedPoseKeypoints.value = null;
+        setOverlayKeypoints([]);
         setDetectSummary('Starting continuous detection...');
         setElbowScanSummary('Elbow scan: waiting');
       } else {
+        prevKeypointsRef.current = null;
         setDetectSummary('Detection stopped');
       }
       return next;
@@ -911,6 +1081,15 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
       />
 
       <PoseOverlay keypoints={overlayKeypoints} />
+
+      {exercise === 'bicepCurl' && (
+        <View style={styles.bicepOverlay} pointerEvents="none">
+          <Text style={styles.bicepTitle}>BICEP CURL</Text>
+          <Text style={styles.bicepRep}>{repCount}</Text>
+          <Text style={styles.bicepMeta}>Phase: {phase}</Text>
+          <Text style={styles.bicepAngle}>Angle: {elbowAngle}°</Text>
+        </View>
+      )}
 
       <View style={styles.overlay} pointerEvents="box-none">
         <SafeAreaView style={styles.safeArea} pointerEvents="box-none">
@@ -997,6 +1176,7 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
               <Text style={styles.detectStatusTitle}>Detect Result</Text>
               <Text style={styles.detectStatusText}>{detectSummary}</Text>
               <Text style={styles.detectStatusText}>{elbowScanSummary}</Text>
+              <Text style={styles.detectStatusText}>Rep phase: {repPhase}</Text>
               <Text style={styles.detectStatusText}>{calibrationStatus}</Text>
               <Text style={styles.detectStatusText}>{cameraGuide}</Text>
             </View>
@@ -1049,6 +1229,37 @@ const styles = StyleSheet.create({
   },
   poseOverlay: {
     ...StyleSheet.absoluteFillObject,
+  },
+  bicepOverlay: {
+    position: 'absolute',
+    top: 84,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  bicepTitle: {
+    color: COLORS.text,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  bicepRep: {
+    color: ACCENT,
+    fontSize: 54,
+    fontWeight: '900',
+    marginTop: 6,
+  },
+  bicepMeta: {
+    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  bicepAngle: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 2,
   },
   safeArea: {
     flex: 1,

@@ -13,6 +13,11 @@ export type JointAngles = {
   rightKnee: number | null;
 };
 
+export type AngleScope = {
+  elbows?: boolean;
+  knees?: boolean;
+};
+
 export type HandMovement = {
   leftWrist: VerticalMovement;
   rightWrist: VerticalMovement;
@@ -27,6 +32,20 @@ export type MotionAnalysis = {
 const MIN_STABLE_KEYPOINTS = 10;
 const DEFAULT_WRIST_THRESHOLD = 0.01;
 const DEFAULT_HIP_THRESHOLD = 0.008;
+const NO_ANGLES: JointAngles = {
+  leftElbow: null,
+  rightElbow: null,
+  leftKnee: null,
+  rightKnee: null,
+};
+const NO_MOVEMENT_ANALYSIS: MotionAnalysis = {
+  angles: NO_ANGLES,
+  handMovement: {
+    leftWrist: 'stable',
+    rightWrist: 'stable',
+  },
+  bodyVerticalMovement: 'stable',
+};
 
 const MOVENET = {
   LEFT_SHOULDER: 5,
@@ -77,24 +96,44 @@ const isStableFrame = (keypoints: PoseKeypoint[], minScore: number): boolean => 
 
 const smoothKeypoints = (
   previous: PoseKeypoint[],
-  current: PoseKeypoint[]
+  current: PoseKeypoint[],
+  outputBuffer?: PoseKeypoint[]
 ): PoseKeypoint[] => {
-  if (!previous.length) {
+  if (!previous.length && !outputBuffer) {
     return current;
   }
 
-  return current.map((currentPoint, index) => {
-    const previousPoint = previous[index];
-    if (!previousPoint) {
-      return currentPoint;
-    }
+  const target = outputBuffer ?? new Array<PoseKeypoint>(current.length);
 
-    return {
-      x: (previousPoint.x + currentPoint.x) * 0.5,
-      y: (previousPoint.y + currentPoint.y) * 0.5,
-      score: typeof currentPoint.score === 'number' ? currentPoint.score : previousPoint.score,
-    };
-  });
+  for (let index = 0; index < current.length; index += 1) {
+    const currentPoint = current[index];
+    const previousPoint = previous[index];
+    const existingPoint = target[index];
+
+    const nextX = previousPoint ? (previousPoint.x + currentPoint.x) * 0.5 : currentPoint.x;
+    const nextY = previousPoint ? (previousPoint.y + currentPoint.y) * 0.5 : currentPoint.y;
+    const nextScore = previousPoint
+      ? (typeof currentPoint.score === 'number' ? currentPoint.score : previousPoint.score)
+      : currentPoint.score;
+
+    if (existingPoint) {
+      existingPoint.x = nextX;
+      existingPoint.y = nextY;
+      existingPoint.score = nextScore;
+    } else {
+      target[index] = {
+        x: nextX,
+        y: nextY,
+        score: nextScore,
+      };
+    }
+  }
+
+  if (target.length > current.length) {
+    target.length = current.length;
+  }
+
+  return target;
 };
 
 const getVerticalMovement = (
@@ -146,39 +185,58 @@ export const calculateAngle = (
 
 export const calculateJointAngles = (
   keypoints: PoseKeypoint[],
-  minScore = 0.3
+  minScore = 0.3,
+  scope?: AngleScope
 ): JointAngles => {
-  const leftShoulder = getKeypoint(keypoints, MOVENET.LEFT_SHOULDER, minScore);
-  const leftElbow = getKeypoint(keypoints, MOVENET.LEFT_ELBOW, minScore);
-  const leftWrist = getKeypoint(keypoints, MOVENET.LEFT_WRIST, minScore);
+  const includeElbows = scope?.elbows ?? true;
+  const includeKnees = scope?.knees ?? true;
 
-  const rightShoulder = getKeypoint(keypoints, MOVENET.RIGHT_SHOULDER, minScore);
-  const rightElbow = getKeypoint(keypoints, MOVENET.RIGHT_ELBOW, minScore);
-  const rightWrist = getKeypoint(keypoints, MOVENET.RIGHT_WRIST, minScore);
+  let leftShoulder: PoseKeypoint | null = null;
+  let leftElbow: PoseKeypoint | null = null;
+  let leftWrist: PoseKeypoint | null = null;
+  let rightShoulder: PoseKeypoint | null = null;
+  let rightElbow: PoseKeypoint | null = null;
+  let rightWrist: PoseKeypoint | null = null;
+  let leftHip: PoseKeypoint | null = null;
+  let leftKnee: PoseKeypoint | null = null;
+  let leftAnkle: PoseKeypoint | null = null;
+  let rightHip: PoseKeypoint | null = null;
+  let rightKnee: PoseKeypoint | null = null;
+  let rightAnkle: PoseKeypoint | null = null;
 
-  const leftHip = getKeypoint(keypoints, MOVENET.LEFT_HIP, minScore);
-  const leftKnee = getKeypoint(keypoints, MOVENET.LEFT_KNEE, minScore);
-  const leftAnkle = getKeypoint(keypoints, MOVENET.LEFT_ANKLE, minScore);
+  if (includeElbows) {
+    leftShoulder = getKeypoint(keypoints, MOVENET.LEFT_SHOULDER, minScore);
+    leftElbow = getKeypoint(keypoints, MOVENET.LEFT_ELBOW, minScore);
+    leftWrist = getKeypoint(keypoints, MOVENET.LEFT_WRIST, minScore);
+    rightShoulder = getKeypoint(keypoints, MOVENET.RIGHT_SHOULDER, minScore);
+    rightElbow = getKeypoint(keypoints, MOVENET.RIGHT_ELBOW, minScore);
+    rightWrist = getKeypoint(keypoints, MOVENET.RIGHT_WRIST, minScore);
+  }
 
-  const rightHip = getKeypoint(keypoints, MOVENET.RIGHT_HIP, minScore);
-  const rightKnee = getKeypoint(keypoints, MOVENET.RIGHT_KNEE, minScore);
-  const rightAnkle = getKeypoint(keypoints, MOVENET.RIGHT_ANKLE, minScore);
+  if (includeKnees) {
+    leftHip = getKeypoint(keypoints, MOVENET.LEFT_HIP, minScore);
+    leftKnee = getKeypoint(keypoints, MOVENET.LEFT_KNEE, minScore);
+    leftAnkle = getKeypoint(keypoints, MOVENET.LEFT_ANKLE, minScore);
+    rightHip = getKeypoint(keypoints, MOVENET.RIGHT_HIP, minScore);
+    rightKnee = getKeypoint(keypoints, MOVENET.RIGHT_KNEE, minScore);
+    rightAnkle = getKeypoint(keypoints, MOVENET.RIGHT_ANKLE, minScore);
+  }
 
   return {
     leftElbow:
-      leftShoulder && leftElbow && leftWrist
+      includeElbows && leftShoulder && leftElbow && leftWrist
         ? calculateAngle(leftShoulder, leftElbow, leftWrist)
         : null,
     rightElbow:
-      rightShoulder && rightElbow && rightWrist
+      includeElbows && rightShoulder && rightElbow && rightWrist
         ? calculateAngle(rightShoulder, rightElbow, rightWrist)
         : null,
     leftKnee:
-      leftHip && leftKnee && leftAnkle
+      includeKnees && leftHip && leftKnee && leftAnkle
         ? calculateAngle(leftHip, leftKnee, leftAnkle)
         : null,
     rightKnee:
-      rightHip && rightKnee && rightAnkle
+      includeKnees && rightHip && rightKnee && rightAnkle
         ? calculateAngle(rightHip, rightKnee, rightAnkle)
         : null,
   };
@@ -188,15 +246,16 @@ export const detectHandMovement = (
   previous: PoseKeypoint[],
   current: PoseKeypoint[],
   threshold = DEFAULT_WRIST_THRESHOLD,
-  minScore = 0.3
+  minScore = 0.3,
+  smoothedCurrent?: PoseKeypoint[]
 ): HandMovement => {
-  const smoothedCurrent = smoothKeypoints(previous, current);
+  const effectiveCurrent = smoothedCurrent ?? smoothKeypoints(previous, current);
 
   const prevLeftWrist = getKeypoint(previous, MOVENET.LEFT_WRIST, minScore);
-  const currLeftWrist = getKeypoint(smoothedCurrent, MOVENET.LEFT_WRIST, minScore);
+  const currLeftWrist = getKeypoint(effectiveCurrent, MOVENET.LEFT_WRIST, minScore);
 
   const prevRightWrist = getKeypoint(previous, MOVENET.RIGHT_WRIST, minScore);
-  const currRightWrist = getKeypoint(smoothedCurrent, MOVENET.RIGHT_WRIST, minScore);
+  const currRightWrist = getKeypoint(effectiveCurrent, MOVENET.RIGHT_WRIST, minScore);
 
   return {
     leftWrist:
@@ -214,12 +273,13 @@ export const detectBodyVerticalMovement = (
   previous: PoseKeypoint[],
   current: PoseKeypoint[],
   threshold = DEFAULT_HIP_THRESHOLD,
-  minScore = 0.3
+  minScore = 0.3,
+  smoothedCurrent?: PoseKeypoint[]
 ): VerticalMovement => {
-  const smoothedCurrent = smoothKeypoints(previous, current);
+  const effectiveCurrent = smoothedCurrent ?? smoothKeypoints(previous, current);
 
   const prevHipY = getHipCenterY(previous, minScore);
-  const currHipY = getHipCenterY(smoothedCurrent, minScore);
+  const currHipY = getHipCenterY(effectiveCurrent, minScore);
 
   if (prevHipY === null || currHipY === null) return 'stable';
   return getVerticalMovement(prevHipY, currHipY, threshold);
@@ -232,32 +292,22 @@ export const analyzeMotion = (
     minScore?: number;
     handThreshold?: number;
     hipThreshold?: number;
+    angleScope?: AngleScope;
+    smoothedBuffer?: PoseKeypoint[];
   }
 ): MotionAnalysis => {
   const minScore = options?.minScore ?? 0.3;
   const handThreshold = options?.handThreshold ?? DEFAULT_WRIST_THRESHOLD;
   const hipThreshold = options?.hipThreshold ?? DEFAULT_HIP_THRESHOLD;
-  const smoothedCurrent = smoothKeypoints(previous, current);
+  const smoothedCurrent = smoothKeypoints(previous, current, options?.smoothedBuffer);
 
   if (!isStableFrame(smoothedCurrent, minScore)) {
-    return {
-      angles: {
-        leftElbow: null,
-        rightElbow: null,
-        leftKnee: null,
-        rightKnee: null,
-      },
-      handMovement: {
-        leftWrist: 'stable',
-        rightWrist: 'stable',
-      },
-      bodyVerticalMovement: 'stable',
-    };
+    return NO_MOVEMENT_ANALYSIS;
   }
 
   return {
-    angles: calculateJointAngles(smoothedCurrent, minScore),
-    handMovement: detectHandMovement(previous, smoothedCurrent, handThreshold, minScore),
-    bodyVerticalMovement: detectBodyVerticalMovement(previous, smoothedCurrent, hipThreshold, minScore),
+    angles: calculateJointAngles(smoothedCurrent, minScore, options?.angleScope),
+    handMovement: detectHandMovement(previous, smoothedCurrent, handThreshold, minScore, smoothedCurrent),
+    bodyVerticalMovement: detectBodyVerticalMovement(previous, smoothedCurrent, hipThreshold, minScore, smoothedCurrent),
   };
 };

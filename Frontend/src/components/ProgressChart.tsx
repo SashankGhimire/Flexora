@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-} from 'react-native';
+import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { COLORS } from '../utils/constants';
 
 interface ProgressChartData {
@@ -44,10 +39,7 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({
 
               <View style={styles.barBackground}>
                 <View
-                  style={[
-                    styles.barFill,
-                    { height: `${heightPercentage}%` },
-                  ]}
+                  style={[styles.barFill, { height: `${heightPercentage}%` }]}
                 />
               </View>
 
