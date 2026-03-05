@@ -20,7 +20,11 @@ import { useSharedValue } from 'react-native-worklets-core';
 import Svg, { Circle } from 'react-native-svg';
 import { analyzeMotion, calculateJointAngles, AngleScope } from '../ai/motionIntelligence';
 import { resetRepCounter, updateRepCounter } from '../ai/repCounter';
-import { resetBicepCurlDetector, updateBicepCurl } from '../ai/bicepCurlDetector';
+import { BicepViewMode, resetBicepCurlDetector, updateBicepCurl } from '../ai/bicepCurlDetector';
+import { resetJumpingJackDetector, updateJumpingJack } from '../ai/jumpingJackDetector';
+import { resetLungeDetector, updateLunge } from '../ai/lungeDetector';
+import { resetPushupDetector, updatePushup } from '../ai/pushupDetector';
+import { resetSquatDetector, SquatViewMode, updateSquat } from '../ai/squatDetector';
 import { COLORS } from '../utils/constants';
 import { ExerciseType, HomeStackParamList } from '../types';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -42,6 +46,7 @@ const WORKLET_INFERENCE_EVERY_N_FRAMES = 4;
 const JS_POSE_POLL_INTERVAL_MS = 90;
 const ANALYSIS_THROTTLE_MS = 180;
 const OVERLAY_MIN_INTERVAL_MS = 100;
+const SMOOTHING_WINDOW_SIZE = 5;
 const KEYPOINT_POSITION_EPSILON = 0.002;
 const KEYPOINT_SCORE_EPSILON = 0.02;
 const PERSON_PRESENCE_MIN_SCORE = 0.3;
@@ -49,6 +54,7 @@ const PERSON_PRESENCE_MIN_KEYPOINTS = 4;
 const PERSON_ABSENT_GRACE_FRAMES = 5;
 const MIN_RELIABLE_KEYPOINTS = 10;
 const MIN_RELIABLE_KEYPOINTS_FALLBACK = 7;
+const MIN_UPPER_BODY_SCORE = 0.2;
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -222,14 +228,38 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   const [isFrontCamera, setIsFrontCamera] = useState(false);
   const [reps, setReps] = useState(0);
   const [repPhase, setRepPhase] = useState('hold');
-  const [accuracy] = useState<number | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
   const [feedback, setFeedback] = useState('Get Ready');
   const [seconds, setSeconds] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isDetectingContinuous, setIsDetectingContinuous] = useState(false);
+  const [bicepViewMode, setBicepViewMode] = useState<BicepViewMode>('side');
+  const [squatViewMode, setSquatViewMode] = useState<SquatViewMode>('side');
   const [repCount, setRepCount] = useState(0);
   const [phase, setPhase] = useState<'up' | 'down'>('up');
   const [elbowAngle, setElbowAngle] = useState(0);
+  const [rom, setRom] = useState(0);
+  const [repSpeed, setRepSpeed] = useState(0);
+  const [maxAngle, setMaxAngle] = useState(0);
+  const [minAngle, setMinAngle] = useState(0);
+  const [squatRepCount, setSquatRepCount] = useState(0);
+  const [squatPhase, setSquatPhase] = useState<'up' | 'down'>('up');
+  const [squatKneeAngle, setSquatKneeAngle] = useState(0);
+  const [squatRom, setSquatRom] = useState(0);
+  const [squatAccuracy, setSquatAccuracy] = useState(0);
+  const [lungeRepCount, setLungeRepCount] = useState(0);
+  const [lungePhase, setLungePhase] = useState<'up' | 'down'>('up');
+  const [lungeLeftKneeAngle, setLungeLeftKneeAngle] = useState(180);
+  const [lungeRightKneeAngle, setLungeRightKneeAngle] = useState(180);
+  const [lungeHipDrop, setLungeHipDrop] = useState(0);
+  const [jumpingJackRepCount, setJumpingJackRepCount] = useState(0);
+  const [jumpingJackPhase, setJumpingJackPhase] = useState<'open' | 'close'>('close');
+  const [jumpingJackAnkleDistance, setJumpingJackAnkleDistance] = useState(0);
+  const [pushupRepCount, setPushupRepCount] = useState(0);
+  const [pushupPhase, setPushupPhase] = useState<'up' | 'down'>('up');
+  const [pushupLeftElbowAngle, setPushupLeftElbowAngle] = useState(180);
+  const [pushupRightElbowAngle, setPushupRightElbowAngle] = useState(180);
+  const [pushupAvgElbowAngle, setPushupAvgElbowAngle] = useState(180);
   const [overlayKeypoints, setOverlayKeypoints] = useState<PoseKeypoint[]>([]);
   const [motionStatus, setMotionStatus] = useState<MotionStatus>({
     detected: false,
@@ -249,6 +279,68 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   const repCountRef = useRef(0);
   const phaseRef = useRef<'up' | 'down'>('up');
   const elbowAngleRef = useRef(0);
+  const romRef = useRef(0);
+  const repSpeedRef = useRef(0);
+  const accuracyRef = useRef(0);
+  const maxAngleRef = useRef(0);
+  const minAngleRef = useRef(0);
+  const bicepUiSnapshotRef = useRef({
+    elbowAngle: 0,
+    rom: 0,
+    repSpeed: 0,
+    accuracy: 0,
+    maxAngle: 0,
+    minAngle: 0,
+  });
+  const bicepUiTickRef = useRef(0);
+  const squatRepCountRef = useRef(0);
+  const squatPhaseRef = useRef<'up' | 'down'>('up');
+  const squatKneeAngleRef = useRef(0);
+  const squatRomRef = useRef(0);
+  const squatAccuracyRef = useRef(0);
+  const squatUiTickRef = useRef(0);
+  const squatUiSnapshotRef = useRef({
+    repCount: 0,
+    phase: 'up' as 'up' | 'down',
+    kneeAngle: 0,
+    rom: 0,
+    accuracy: 0,
+  });
+  const lungeRepCountRef = useRef(0);
+  const lungePhaseRef = useRef<'up' | 'down'>('up');
+  const lungeLeftKneeAngleRef = useRef(180);
+  const lungeRightKneeAngleRef = useRef(180);
+  const lungeHipDropRef = useRef(0);
+  const lungeUiTickRef = useRef(0);
+  const lungeUiSnapshotRef = useRef({
+    repCount: 0,
+    phase: 'up' as 'up' | 'down',
+    leftKneeAngle: 180,
+    rightKneeAngle: 180,
+    hipDrop: 0,
+  });
+  const jumpingJackRepCountRef = useRef(0);
+  const jumpingJackPhaseRef = useRef<'open' | 'close'>('close');
+  const jumpingJackAnkleDistanceRef = useRef(0);
+  const jumpingJackUiTickRef = useRef(0);
+  const jumpingJackUiSnapshotRef = useRef({
+    repCount: 0,
+    phase: 'close' as 'open' | 'close',
+    ankleDistance: 0,
+  });
+  const pushupRepCountRef = useRef(0);
+  const pushupPhaseRef = useRef<'up' | 'down'>('up');
+  const pushupLeftElbowAngleRef = useRef(180);
+  const pushupRightElbowAngleRef = useRef(180);
+  const pushupAvgElbowAngleRef = useRef(180);
+  const pushupUiTickRef = useRef(0);
+  const pushupUiSnapshotRef = useRef({
+    repCount: 0,
+    phase: 'up' as 'up' | 'down',
+    leftElbowAngle: 180,
+    rightElbowAngle: 180,
+    avgElbowAngle: 180,
+  });
   const repsRef = useRef(0);
   const repPhaseRef = useRef('hold');
   const prevManualElbowAvgRef = useRef<number | null>(null);
@@ -280,6 +372,14 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   const lastOverlayUpdateRef = useRef(0);
   const overlaySnapshotBufferRef = useRef<PoseKeypoint[]>(createPoseBuffer());
   const analysisSmoothingBufferRef = useRef<PoseKeypoint[]>(createPoseBuffer());
+  const smoothedPoseBufferPoolRef = useRef<[PoseKeypoint[], PoseKeypoint[]]>([
+    createPoseBuffer(),
+    createPoseBuffer(),
+  ]);
+  const smoothedPoseBufferIndexRef = useRef(0);
+  const keypointHistoryBufferRef = useRef<PoseKeypoint[][]>([]);
+  const kneeAngleBufferRef = useRef<number[]>([]);
+  const elbowAngleBufferRef = useRef<number[]>([]);
   const poseBufferPoolRef = useRef<[PoseKeypoint[], PoseKeypoint[]]>([
     createPoseBuffer(),
     createPoseBuffer(),
@@ -347,17 +447,176 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     if (exercise === 'bicepCurl') {
       resetBicepCurlDetector();
     }
+    if (exercise === 'jumpingJack') {
+      resetJumpingJackDetector();
+    }
+    if (exercise === 'lunge') {
+      resetLungeDetector();
+    }
+    if (exercise === 'pushup') {
+      resetPushupDetector();
+    }
+    if (exercise === 'squat') {
+      resetSquatDetector();
+    }
     setReps(0);
     setRepPhase('hold');
     setRepCount(0);
     setPhase('up');
     setElbowAngle(0);
+    setRom(0);
+    setRepSpeed(0);
+    setAccuracy(null);
+    setMaxAngle(0);
+    setMinAngle(0);
+    setSquatRepCount(0);
+    setSquatPhase('up');
+    setSquatKneeAngle(0);
+    setSquatRom(0);
+    setSquatAccuracy(0);
+    setLungeRepCount(0);
+    setLungePhase('up');
+    setLungeLeftKneeAngle(180);
+    setLungeRightKneeAngle(180);
+    setLungeHipDrop(0);
+    setJumpingJackRepCount(0);
+    setJumpingJackPhase('close');
+    setJumpingJackAnkleDistance(0);
+    setPushupRepCount(0);
+    setPushupPhase('up');
+    setPushupLeftElbowAngle(180);
+    setPushupRightElbowAngle(180);
+    setPushupAvgElbowAngle(180);
     repCountRef.current = 0;
     phaseRef.current = 'up';
     elbowAngleRef.current = 0;
+    romRef.current = 0;
+    repSpeedRef.current = 0;
+    accuracyRef.current = 0;
+    maxAngleRef.current = 0;
+    minAngleRef.current = 0;
+    bicepUiSnapshotRef.current = {
+      elbowAngle: 0,
+      rom: 0,
+      repSpeed: 0,
+      accuracy: 0,
+      maxAngle: 0,
+      minAngle: 0,
+    };
+    bicepUiTickRef.current = 0;
+    squatRepCountRef.current = 0;
+    squatPhaseRef.current = 'up';
+    squatKneeAngleRef.current = 0;
+    squatRomRef.current = 0;
+    squatAccuracyRef.current = 0;
+    squatUiTickRef.current = 0;
+    squatUiSnapshotRef.current = {
+      repCount: 0,
+      phase: 'up',
+      kneeAngle: 0,
+      rom: 0,
+      accuracy: 0,
+    };
+    lungeRepCountRef.current = 0;
+    lungePhaseRef.current = 'up';
+    lungeLeftKneeAngleRef.current = 180;
+    lungeRightKneeAngleRef.current = 180;
+    lungeHipDropRef.current = 0;
+    lungeUiTickRef.current = 0;
+    lungeUiSnapshotRef.current = {
+      repCount: 0,
+      phase: 'up',
+      leftKneeAngle: 180,
+      rightKneeAngle: 180,
+      hipDrop: 0,
+    };
+    jumpingJackRepCountRef.current = 0;
+    jumpingJackPhaseRef.current = 'close';
+    jumpingJackAnkleDistanceRef.current = 0;
+    jumpingJackUiTickRef.current = 0;
+    jumpingJackUiSnapshotRef.current = {
+      repCount: 0,
+      phase: 'close',
+      ankleDistance: 0,
+    };
+    pushupRepCountRef.current = 0;
+    pushupPhaseRef.current = 'up';
+    pushupLeftElbowAngleRef.current = 180;
+    pushupRightElbowAngleRef.current = 180;
+    pushupAvgElbowAngleRef.current = 180;
+    pushupUiTickRef.current = 0;
+    pushupUiSnapshotRef.current = {
+      repCount: 0,
+      phase: 'up',
+      leftElbowAngle: 180,
+      rightElbowAngle: 180,
+      avgElbowAngle: 180,
+    };
     repsRef.current = 0;
     repPhaseRef.current = 'hold';
+    keypointHistoryBufferRef.current = [];
+    kneeAngleBufferRef.current = [];
+    elbowAngleBufferRef.current = [];
   }, [exercise]);
+
+  const smoothAngle = useCallback((angle: number, buffer: number[]): number => {
+    buffer.push(angle);
+
+    if (buffer.length > SMOOTHING_WINDOW_SIZE) {
+      buffer.shift();
+    }
+
+    let sum = 0;
+    for (let index = 0; index < buffer.length; index += 1) {
+      sum += buffer[index];
+    }
+
+    return buffer.length > 0 ? sum / buffer.length : angle;
+  }, []);
+
+  const smoothKeypoints = useCallback((keypoints: PoseKeypoint[]): PoseKeypoint[] => {
+    const history = keypointHistoryBufferRef.current;
+    const snapshot: PoseKeypoint[] = new Array(keypoints.length);
+
+    for (let index = 0; index < keypoints.length; index += 1) {
+      const point = keypoints[index];
+      snapshot[index] = {
+        x: point.x,
+        y: point.y,
+        score: point.score,
+      };
+    }
+
+    history.push(snapshot);
+    if (history.length > SMOOTHING_WINDOW_SIZE) {
+      history.shift();
+    }
+
+    smoothedPoseBufferIndexRef.current = smoothedPoseBufferIndexRef.current === 0 ? 1 : 0;
+    const smoothed = smoothedPoseBufferPoolRef.current[smoothedPoseBufferIndexRef.current];
+    const sampleCount = history.length;
+
+    for (let pointIndex = 0; pointIndex < smoothed.length; pointIndex += 1) {
+      let sumX = 0;
+      let sumY = 0;
+
+      for (let frameIndex = 0; frameIndex < sampleCount; frameIndex += 1) {
+        const framePoint = history[frameIndex][pointIndex];
+        if (!framePoint) {
+          continue;
+        }
+        sumX += framePoint.x;
+        sumY += framePoint.y;
+      }
+
+      const divisor = sampleCount > 0 ? sampleCount : 1;
+      smoothed[pointIndex].x = sumX / divisor;
+      smoothed[pointIndex].y = sumY / divisor;
+      smoothed[pointIndex].score = keypoints[pointIndex]?.score ?? 0;
+    }
+
+    return smoothed;
+  }, []);
 
   const normalizePoseKeypoints = useCallback((rawKeypoints: PoseKeypoint[]): PoseKeypoint[] => {
     poseBufferIndexRef.current = poseBufferIndexRef.current === 0 ? 1 : 0;
@@ -439,6 +698,17 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     return 'Camera guide: angle looks good';
   }, []);
 
+  const hasReliableBicepPose = useCallback((points: PoseKeypoint[]): boolean => {
+    const hasPoint = (index: number, minScore = MIN_UPPER_BODY_SCORE) => {
+      const point = points[index];
+      return !!point && point.score >= minScore;
+    };
+
+    const leftArmReady = hasPoint(5) && hasPoint(7) && hasPoint(9);
+    const rightArmReady = hasPoint(6) && hasPoint(8) && hasPoint(10);
+    return leftArmReady || rightArmReady;
+  }, []);
+
   const updatePose = useCallback((detectedKeypoints: PoseKeypoint[]) => {
     if (!isDetectingContinuous) {
       return;
@@ -456,6 +726,7 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     }
 
     const currentKeypoints = normalizePoseKeypoints(detectedKeypoints);
+    const smoothedKeypoints = smoothKeypoints(currentKeypoints);
 
     const presenceMinScore = Math.max(0.2, motionConfig.minScore);
     const minimumReliableKeypoints = Math.max(
@@ -463,7 +734,11 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
       Math.min(MIN_RELIABLE_KEYPOINTS, PERSON_PRESENCE_MIN_KEYPOINTS + 3)
     );
     const presence = isPersonPresent(currentKeypoints, presenceMinScore);
-    if (!presence.detected || presence.confidentCount < minimumReliableKeypoints) {
+    const hasReliablePose = exercise === 'bicepCurl'
+      ? hasReliableBicepPose(currentKeypoints)
+      : presence.detected && presence.confidentCount >= minimumReliableKeypoints;
+
+    if (!hasReliablePose) {
       consecutiveAbsentFramesRef.current += 1;
 
       if (consecutiveAbsentFramesRef.current >= PERSON_ABSENT_GRACE_FRAMES) {
@@ -509,7 +784,22 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     consecutiveAbsentFramesRef.current = 0;
 
     if (exercise === 'bicepCurl') {
-      const result = updateBicepCurl(currentKeypoints);
+      const bicepAngles = calculateJointAngles(
+        smoothedKeypoints,
+        motionConfig.minScore,
+        EXERCISE_ANGLE_SCOPE.bicepCurl
+      );
+      const rawElbowAngle =
+        bicepAngles.leftElbow !== null && bicepAngles.rightElbow !== null
+          ? (bicepAngles.leftElbow + bicepAngles.rightElbow) * 0.5
+          : bicepAngles.leftElbow ?? bicepAngles.rightElbow;
+      const smoothedElbowAngle =
+        rawElbowAngle !== null
+          ? smoothAngle(rawElbowAngle, elbowAngleBufferRef.current)
+          : null;
+
+      const result = updateBicepCurl(smoothedKeypoints, { viewMode: bicepViewMode });
+      bicepUiTickRef.current += 1;
 
       if (result.repCount !== repCountRef.current) {
         repCountRef.current = result.repCount;
@@ -531,14 +821,325 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
         setRepPhase(result.phase);
       }
 
-      const roundedAngle = Math.round(result.elbowAngle);
+      const roundedAngle = Math.round(smoothedElbowAngle ?? result.elbowAngle);
       if (roundedAngle !== elbowAngleRef.current) {
         elbowAngleRef.current = roundedAngle;
-        setElbowAngle(roundedAngle);
+      }
+
+      const roundedRom = Math.round(result.rom);
+      if (roundedRom !== romRef.current) {
+        romRef.current = roundedRom;
+      }
+
+      const roundedSpeed = Math.round(result.repSpeed * 10) / 10;
+      if (roundedSpeed !== repSpeedRef.current) {
+        repSpeedRef.current = roundedSpeed;
+      }
+
+      const roundedAccuracy = Math.round(result.accuracy);
+      if (roundedAccuracy !== accuracyRef.current) {
+        accuracyRef.current = roundedAccuracy;
+      }
+
+      const roundedMaxAngle = Math.round(result.maxAngle);
+      if (roundedMaxAngle !== maxAngleRef.current) {
+        maxAngleRef.current = roundedMaxAngle;
+      }
+
+      const roundedMinAngle = Math.round(result.minAngle);
+      if (roundedMinAngle !== minAngleRef.current) {
+        minAngleRef.current = roundedMinAngle;
+      }
+
+      if (result.speedFeedback !== lastFeedbackRef.current) {
+        lastFeedbackRef.current = result.speedFeedback;
+        setFeedback(result.speedFeedback);
+      }
+
+      if (bicepUiTickRef.current % UI_UPDATE_EVERY_N_FRAMES === 0) {
+        if (elbowAngleRef.current !== bicepUiSnapshotRef.current.elbowAngle) {
+          bicepUiSnapshotRef.current.elbowAngle = elbowAngleRef.current;
+          setElbowAngle(elbowAngleRef.current);
+        }
+        if (romRef.current !== bicepUiSnapshotRef.current.rom) {
+          bicepUiSnapshotRef.current.rom = romRef.current;
+          setRom(romRef.current);
+        }
+        if (repSpeedRef.current !== bicepUiSnapshotRef.current.repSpeed) {
+          bicepUiSnapshotRef.current.repSpeed = repSpeedRef.current;
+          setRepSpeed(repSpeedRef.current);
+        }
+        const nextAccuracy = accuracyRef.current;
+        if (nextAccuracy !== bicepUiSnapshotRef.current.accuracy) {
+          bicepUiSnapshotRef.current.accuracy = nextAccuracy;
+          setAccuracy(nextAccuracy);
+        }
+        if (maxAngleRef.current !== bicepUiSnapshotRef.current.maxAngle) {
+          bicepUiSnapshotRef.current.maxAngle = maxAngleRef.current;
+          setMaxAngle(maxAngleRef.current);
+        }
+        if (minAngleRef.current !== bicepUiSnapshotRef.current.minAngle) {
+          bicepUiSnapshotRef.current.minAngle = minAngleRef.current;
+          setMinAngle(minAngleRef.current);
+        }
+      }
+    } else if (exercise === 'squat') {
+      const squatAngles = calculateJointAngles(
+        smoothedKeypoints,
+        motionConfig.minScore,
+        EXERCISE_ANGLE_SCOPE.squat
+      );
+      const rawKneeAngle =
+        squatAngles.leftKnee !== null && squatAngles.rightKnee !== null
+          ? Math.min(squatAngles.leftKnee, squatAngles.rightKnee)
+          : squatAngles.leftKnee ?? squatAngles.rightKnee;
+      const smoothedKneeAngle =
+        rawKneeAngle !== null
+          ? smoothAngle(rawKneeAngle, kneeAngleBufferRef.current)
+          : null;
+
+      const result = updateSquat(smoothedKeypoints, { viewMode: squatViewMode });
+      squatUiTickRef.current += 1;
+
+      if (result.repCount !== squatRepCountRef.current) {
+        squatRepCountRef.current = result.repCount;
+      }
+
+      if (result.phase !== squatPhaseRef.current) {
+        squatPhaseRef.current = result.phase;
+      }
+
+      const roundedKneeAngle = Math.round(smoothedKneeAngle ?? result.kneeAngle);
+      if (roundedKneeAngle !== squatKneeAngleRef.current) {
+        squatKneeAngleRef.current = roundedKneeAngle;
+      }
+
+      const roundedRom = Math.round(result.rom);
+      if (roundedRom !== squatRomRef.current) {
+        squatRomRef.current = roundedRom;
+      }
+
+      const roundedAccuracy = Math.round(result.accuracy);
+      if (roundedAccuracy !== squatAccuracyRef.current) {
+        squatAccuracyRef.current = roundedAccuracy;
+      }
+
+      if (result.repCount !== repsRef.current) {
+        repsRef.current = result.repCount;
+        setReps(result.repCount);
+      }
+
+      if (result.phase !== repPhaseRef.current) {
+        repPhaseRef.current = result.phase;
+        setRepPhase(result.phase);
+      }
+
+      if (squatUiTickRef.current % UI_UPDATE_EVERY_N_FRAMES === 0) {
+        if (squatRepCountRef.current !== squatUiSnapshotRef.current.repCount) {
+          squatUiSnapshotRef.current.repCount = squatRepCountRef.current;
+          setSquatRepCount(squatRepCountRef.current);
+        }
+        if (squatPhaseRef.current !== squatUiSnapshotRef.current.phase) {
+          squatUiSnapshotRef.current.phase = squatPhaseRef.current;
+          setSquatPhase(squatPhaseRef.current);
+        }
+        if (squatKneeAngleRef.current !== squatUiSnapshotRef.current.kneeAngle) {
+          squatUiSnapshotRef.current.kneeAngle = squatKneeAngleRef.current;
+          setSquatKneeAngle(squatKneeAngleRef.current);
+        }
+        if (squatRomRef.current !== squatUiSnapshotRef.current.rom) {
+          squatUiSnapshotRef.current.rom = squatRomRef.current;
+          setSquatRom(squatRomRef.current);
+        }
+        if (squatAccuracyRef.current !== squatUiSnapshotRef.current.accuracy) {
+          squatUiSnapshotRef.current.accuracy = squatAccuracyRef.current;
+          setSquatAccuracy(squatAccuracyRef.current);
+          setAccuracy(squatAccuracyRef.current);
+        }
+      }
+    } else if (exercise === 'jumpingJack') {
+      const result = updateJumpingJack(smoothedKeypoints);
+      jumpingJackUiTickRef.current += 1;
+
+      if (result.repCount !== jumpingJackRepCountRef.current) {
+        jumpingJackRepCountRef.current = result.repCount;
+      }
+
+      if (result.phase !== jumpingJackPhaseRef.current) {
+        jumpingJackPhaseRef.current = result.phase;
+      }
+
+      const roundedAnkleDistance = Math.round(result.ankleDistance * 1000) / 1000;
+      if (roundedAnkleDistance !== jumpingJackAnkleDistanceRef.current) {
+        jumpingJackAnkleDistanceRef.current = roundedAnkleDistance;
+      }
+
+      if (result.repCount !== repsRef.current) {
+        repsRef.current = result.repCount;
+        setReps(result.repCount);
+      }
+
+      if (result.phase !== repPhaseRef.current) {
+        repPhaseRef.current = result.phase;
+        setRepPhase(result.phase);
+      }
+
+      if (jumpingJackUiTickRef.current % UI_UPDATE_EVERY_N_FRAMES === 0) {
+        if (jumpingJackRepCountRef.current !== jumpingJackUiSnapshotRef.current.repCount) {
+          jumpingJackUiSnapshotRef.current.repCount = jumpingJackRepCountRef.current;
+          setJumpingJackRepCount(jumpingJackRepCountRef.current);
+        }
+
+        if (jumpingJackPhaseRef.current !== jumpingJackUiSnapshotRef.current.phase) {
+          jumpingJackUiSnapshotRef.current.phase = jumpingJackPhaseRef.current;
+          setJumpingJackPhase(jumpingJackPhaseRef.current);
+        }
+
+        if (jumpingJackAnkleDistanceRef.current !== jumpingJackUiSnapshotRef.current.ankleDistance) {
+          jumpingJackUiSnapshotRef.current.ankleDistance = jumpingJackAnkleDistanceRef.current;
+          setJumpingJackAnkleDistance(jumpingJackAnkleDistanceRef.current);
+        }
+      }
+    } else if (exercise === 'pushup') {
+      const result = updatePushup(smoothedKeypoints);
+      pushupUiTickRef.current += 1;
+
+      if (result.repCount !== pushupRepCountRef.current) {
+        pushupRepCountRef.current = result.repCount;
+      }
+
+      if (result.phase !== pushupPhaseRef.current) {
+        pushupPhaseRef.current = result.phase;
+      }
+
+      const roundedLeft = Math.round(result.leftElbowAngle);
+      if (roundedLeft !== pushupLeftElbowAngleRef.current) {
+        pushupLeftElbowAngleRef.current = roundedLeft;
+      }
+
+      const roundedRight = Math.round(result.rightElbowAngle);
+      if (roundedRight !== pushupRightElbowAngleRef.current) {
+        pushupRightElbowAngleRef.current = roundedRight;
+      }
+
+      const roundedAvg = Math.round(result.avgElbowAngle);
+      if (roundedAvg !== pushupAvgElbowAngleRef.current) {
+        pushupAvgElbowAngleRef.current = roundedAvg;
+      }
+
+      if (result.repCount !== repsRef.current) {
+        repsRef.current = result.repCount;
+        setReps(result.repCount);
+      }
+
+      if (result.phase !== repPhaseRef.current) {
+        repPhaseRef.current = result.phase;
+        setRepPhase(result.phase);
+      }
+
+      if (pushupUiTickRef.current % UI_UPDATE_EVERY_N_FRAMES === 0) {
+        if (pushupRepCountRef.current !== pushupUiSnapshotRef.current.repCount) {
+          pushupUiSnapshotRef.current.repCount = pushupRepCountRef.current;
+          setPushupRepCount(pushupRepCountRef.current);
+        }
+        if (pushupPhaseRef.current !== pushupUiSnapshotRef.current.phase) {
+          pushupUiSnapshotRef.current.phase = pushupPhaseRef.current;
+          setPushupPhase(pushupPhaseRef.current);
+        }
+        if (pushupLeftElbowAngleRef.current !== pushupUiSnapshotRef.current.leftElbowAngle) {
+          pushupUiSnapshotRef.current.leftElbowAngle = pushupLeftElbowAngleRef.current;
+          setPushupLeftElbowAngle(pushupLeftElbowAngleRef.current);
+        }
+        if (pushupRightElbowAngleRef.current !== pushupUiSnapshotRef.current.rightElbowAngle) {
+          pushupUiSnapshotRef.current.rightElbowAngle = pushupRightElbowAngleRef.current;
+          setPushupRightElbowAngle(pushupRightElbowAngleRef.current);
+        }
+        if (pushupAvgElbowAngleRef.current !== pushupUiSnapshotRef.current.avgElbowAngle) {
+          pushupUiSnapshotRef.current.avgElbowAngle = pushupAvgElbowAngleRef.current;
+          setPushupAvgElbowAngle(pushupAvgElbowAngleRef.current);
+        }
+      }
+    } else if (exercise === 'lunge') {
+      const result = updateLunge(smoothedKeypoints);
+      lungeUiTickRef.current += 1;
+
+      if (result.repCount !== lungeRepCountRef.current) {
+        lungeRepCountRef.current = result.repCount;
+      }
+
+      if (result.phase !== lungePhaseRef.current) {
+        lungePhaseRef.current = result.phase;
+      }
+
+      const roundedLeftKnee = Math.round(result.leftKneeAngle);
+      if (roundedLeftKnee !== lungeLeftKneeAngleRef.current) {
+        lungeLeftKneeAngleRef.current = roundedLeftKnee;
+      }
+
+      const roundedRightKnee = Math.round(result.rightKneeAngle);
+      if (roundedRightKnee !== lungeRightKneeAngleRef.current) {
+        lungeRightKneeAngleRef.current = roundedRightKnee;
+      }
+
+      const roundedHipDrop = Math.round(result.hipDrop * 1000) / 1000;
+      if (roundedHipDrop !== lungeHipDropRef.current) {
+        lungeHipDropRef.current = roundedHipDrop;
+      }
+
+      if (result.repCount !== repsRef.current) {
+        repsRef.current = result.repCount;
+        setReps(result.repCount);
+      }
+
+      if (result.phase !== repPhaseRef.current) {
+        repPhaseRef.current = result.phase;
+        setRepPhase(result.phase);
+      }
+
+      if (lungeUiTickRef.current % UI_UPDATE_EVERY_N_FRAMES === 0) {
+        if (lungeRepCountRef.current !== lungeUiSnapshotRef.current.repCount) {
+          lungeUiSnapshotRef.current.repCount = lungeRepCountRef.current;
+          setLungeRepCount(lungeRepCountRef.current);
+        }
+        if (lungePhaseRef.current !== lungeUiSnapshotRef.current.phase) {
+          lungeUiSnapshotRef.current.phase = lungePhaseRef.current;
+          setLungePhase(lungePhaseRef.current);
+        }
+        if (lungeLeftKneeAngleRef.current !== lungeUiSnapshotRef.current.leftKneeAngle) {
+          lungeUiSnapshotRef.current.leftKneeAngle = lungeLeftKneeAngleRef.current;
+          setLungeLeftKneeAngle(lungeLeftKneeAngleRef.current);
+        }
+        if (lungeRightKneeAngleRef.current !== lungeUiSnapshotRef.current.rightKneeAngle) {
+          lungeUiSnapshotRef.current.rightKneeAngle = lungeRightKneeAngleRef.current;
+          setLungeRightKneeAngle(lungeRightKneeAngleRef.current);
+        }
+        if (lungeHipDropRef.current !== lungeUiSnapshotRef.current.hipDrop) {
+          lungeUiSnapshotRef.current.hipDrop = lungeHipDropRef.current;
+          setLungeHipDrop(lungeHipDropRef.current);
+        }
       }
     } else {
-      const jointAngles = calculateJointAngles(currentKeypoints, motionConfig.minScore, angleScope);
-      const repResult = updateRepCounter(exercise, jointAngles, currentKeypoints);
+      const jointAngles = calculateJointAngles(smoothedKeypoints, motionConfig.minScore, angleScope);
+      const smoothedJointAngles = {
+        ...jointAngles,
+        leftKnee:
+          jointAngles.leftKnee !== null
+            ? smoothAngle(jointAngles.leftKnee, kneeAngleBufferRef.current)
+            : null,
+        rightKnee:
+          jointAngles.rightKnee !== null
+            ? smoothAngle(jointAngles.rightKnee, kneeAngleBufferRef.current)
+            : null,
+        leftElbow:
+          jointAngles.leftElbow !== null
+            ? smoothAngle(jointAngles.leftElbow, elbowAngleBufferRef.current)
+            : null,
+        rightElbow:
+          jointAngles.rightElbow !== null
+            ? smoothAngle(jointAngles.rightElbow, elbowAngleBufferRef.current)
+            : null,
+      };
+      const repResult = updateRepCounter(exercise, smoothedJointAngles, smoothedKeypoints);
       if (repResult.repCount !== repsRef.current) {
         repsRef.current = repResult.repCount;
         setReps(repResult.repCount);
@@ -553,7 +1154,7 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     const overlayChanged =
       !previous ||
       previous.length !== currentKeypoints.length ||
-      currentKeypoints.some((point, index) => {
+      smoothedKeypoints.some((point, index) => {
         const prevPoint = previous[index];
         if (!prevPoint) {
           return true;
@@ -570,11 +1171,11 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
       lastOverlayUpdateRef.current = now;
 
       const overlaySnapshot = overlaySnapshotBufferRef.current;
-      const overlayLength = Math.min(currentKeypoints.length, overlaySnapshot.length);
+      const overlayLength = Math.min(smoothedKeypoints.length, overlaySnapshot.length);
       for (let index = 0; index < overlayLength; index += 1) {
-        overlaySnapshot[index].x = currentKeypoints[index].x;
-        overlaySnapshot[index].y = currentKeypoints[index].y;
-        overlaySnapshot[index].score = currentKeypoints[index].score;
+        overlaySnapshot[index].x = smoothedKeypoints[index].x;
+        overlaySnapshot[index].y = smoothedKeypoints[index].y;
+        overlaySnapshot[index].score = smoothedKeypoints[index].score;
       }
 
       const nextOverlay: PoseKeypoint[] = new Array(overlayLength);
@@ -850,7 +1451,20 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     }
 
     prevKeypointsRef.current = currentKeypoints;
-  }, [angleScope, exercise, getCameraGuideText, isDetectingContinuous, isPersonPresent, motionConfig, normalizePoseKeypoints]);
+  }, [
+    angleScope,
+    bicepViewMode,
+    exercise,
+    getCameraGuideText,
+    hasReliableBicepPose,
+    isDetectingContinuous,
+    isPersonPresent,
+    motionConfig,
+    normalizePoseKeypoints,
+    smoothAngle,
+    smoothKeypoints,
+    squatViewMode,
+  ]);
 
   // Frame Processor: detect pose and write into shared value only (no runOnJS).
   const frameProcessor = useFrameProcessor((frame) => {
@@ -949,6 +1563,18 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
 
   // Memoized exercise title
   const exerciseTitle = useMemo(() => EXERCISE_LABELS[exercise], [exercise]);
+  const bicepAccuracy = accuracy ?? 0;
+  const bicepFormQuality = useMemo(() => {
+    if (bicepAccuracy > 85) {
+      return 'GOOD';
+    }
+
+    if (bicepAccuracy >= 70) {
+      return 'OK';
+    }
+
+    return 'IMPROVE';
+  }, [bicepAccuracy]);
 
   // Utility functions
   const formatTime = (totalSeconds: number): string => {
@@ -990,14 +1616,111 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
         if (exercise === 'bicepCurl') {
           resetBicepCurlDetector();
         }
+        if (exercise === 'jumpingJack') {
+          resetJumpingJackDetector();
+        }
+        if (exercise === 'lunge') {
+          resetLungeDetector();
+        }
+        if (exercise === 'pushup') {
+          resetPushupDetector();
+        }
+        if (exercise === 'squat') {
+          resetSquatDetector();
+        }
         setReps(0);
         setRepPhase('hold');
         setRepCount(0);
         setPhase('up');
         setElbowAngle(0);
+        setRom(0);
+        setRepSpeed(0);
+        setAccuracy(null);
+        setMaxAngle(0);
+        setMinAngle(0);
+        setSquatRepCount(0);
+        setSquatPhase('up');
+        setSquatKneeAngle(0);
+        setSquatRom(0);
+        setSquatAccuracy(0);
+        setLungeRepCount(0);
+        setLungePhase('up');
+        setLungeLeftKneeAngle(180);
+        setLungeRightKneeAngle(180);
+        setLungeHipDrop(0);
+        setJumpingJackRepCount(0);
+        setJumpingJackPhase('close');
+        setJumpingJackAnkleDistance(0);
+        setPushupRepCount(0);
+        setPushupPhase('up');
+        setPushupLeftElbowAngle(180);
+        setPushupRightElbowAngle(180);
+        setPushupAvgElbowAngle(180);
         repCountRef.current = 0;
         phaseRef.current = 'up';
         elbowAngleRef.current = 0;
+        romRef.current = 0;
+        repSpeedRef.current = 0;
+        accuracyRef.current = 0;
+        maxAngleRef.current = 0;
+        minAngleRef.current = 0;
+        bicepUiSnapshotRef.current = {
+          elbowAngle: 0,
+          rom: 0,
+          repSpeed: 0,
+          accuracy: 0,
+          maxAngle: 0,
+          minAngle: 0,
+        };
+        bicepUiTickRef.current = 0;
+        squatRepCountRef.current = 0;
+        squatPhaseRef.current = 'up';
+        squatKneeAngleRef.current = 0;
+        squatRomRef.current = 0;
+        squatAccuracyRef.current = 0;
+        squatUiTickRef.current = 0;
+        squatUiSnapshotRef.current = {
+          repCount: 0,
+          phase: 'up',
+          kneeAngle: 0,
+          rom: 0,
+          accuracy: 0,
+        };
+        lungeRepCountRef.current = 0;
+        lungePhaseRef.current = 'up';
+        lungeLeftKneeAngleRef.current = 180;
+        lungeRightKneeAngleRef.current = 180;
+        lungeHipDropRef.current = 0;
+        lungeUiTickRef.current = 0;
+        lungeUiSnapshotRef.current = {
+          repCount: 0,
+          phase: 'up',
+          leftKneeAngle: 180,
+          rightKneeAngle: 180,
+          hipDrop: 0,
+        };
+        jumpingJackRepCountRef.current = 0;
+        jumpingJackPhaseRef.current = 'close';
+        jumpingJackAnkleDistanceRef.current = 0;
+        jumpingJackUiTickRef.current = 0;
+        jumpingJackUiSnapshotRef.current = {
+          repCount: 0,
+          phase: 'close',
+          ankleDistance: 0,
+        };
+        pushupRepCountRef.current = 0;
+        pushupPhaseRef.current = 'up';
+        pushupLeftElbowAngleRef.current = 180;
+        pushupRightElbowAngleRef.current = 180;
+        pushupAvgElbowAngleRef.current = 180;
+        pushupUiTickRef.current = 0;
+        pushupUiSnapshotRef.current = {
+          repCount: 0,
+          phase: 'up',
+          leftElbowAngle: 180,
+          rightElbowAngle: 180,
+          avgElbowAngle: 180,
+        };
         repsRef.current = 0;
         repPhaseRef.current = 'hold';
         prevKeypointsRef.current = null;
@@ -1012,11 +1735,17 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
         workletFrameCounter.value = 0;
         sharedPoseVersion.value = 0;
         sharedPoseKeypoints.value = null;
+        keypointHistoryBufferRef.current = [];
+        kneeAngleBufferRef.current = [];
+        elbowAngleBufferRef.current = [];
         setOverlayKeypoints([]);
         setDetectSummary('Starting continuous detection...');
         setElbowScanSummary('Elbow scan: waiting');
       } else {
         prevKeypointsRef.current = null;
+        keypointHistoryBufferRef.current = [];
+        kneeAngleBufferRef.current = [];
+        elbowAngleBufferRef.current = [];
         setDetectSummary('Detection stopped');
       }
       return next;
@@ -1084,10 +1813,100 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
 
       {exercise === 'bicepCurl' && (
         <View style={styles.bicepOverlay} pointerEvents="none">
+          <View style={styles.viewModeSwitchRow}>
+            <TouchableOpacity
+              style={[styles.viewModeButton, bicepViewMode === 'front' && styles.viewModeButtonActive]}
+              onPress={() => setBicepViewMode('front')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.viewModeText, bicepViewMode === 'front' && styles.viewModeTextActive]}>Front</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewModeButton, bicepViewMode === 'side' && styles.viewModeButtonActive]}
+              onPress={() => setBicepViewMode('side')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.viewModeText, bicepViewMode === 'side' && styles.viewModeTextActive]}>Side</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.bicepTitle}>BICEP CURL</Text>
-          <Text style={styles.bicepRep}>{repCount}</Text>
-          <Text style={styles.bicepMeta}>Phase: {phase}</Text>
+          <Text style={styles.bicepRep}>Reps: {repCount}</Text>
+          <Text style={styles.bicepMeta}>Phase: {phase.toUpperCase()}</Text>
           <Text style={styles.bicepAngle}>Angle: {elbowAngle}°</Text>
+          <Text style={styles.bicepMetric}>ROM: {rom}°</Text>
+          <Text style={styles.bicepMetric}>Speed: {repSpeed.toFixed(1)}s</Text>
+          <Text style={styles.bicepMetric}>Accuracy: {bicepAccuracy}%</Text>
+          <Text style={styles.bicepMetric}>Max/Min: {maxAngle}° / {minAngle}°</Text>
+          <Text
+            style={[
+              styles.bicepForm,
+              bicepFormQuality === 'GOOD'
+                ? styles.bicepFormGood
+                : bicepFormQuality === 'OK'
+                  ? styles.bicepFormOk
+                  : styles.bicepFormImprove,
+            ]}
+          >
+            Form: {bicepFormQuality}
+          </Text>
+        </View>
+      )}
+
+      {exercise === 'squat' && (
+        <View style={styles.squatOverlay} pointerEvents="none">
+          <View style={styles.viewModeSwitchRow}>
+            <TouchableOpacity
+              style={[styles.viewModeButton, squatViewMode === 'front' && styles.viewModeButtonActive]}
+              onPress={() => setSquatViewMode('front')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.viewModeText, squatViewMode === 'front' && styles.viewModeTextActive]}>Front</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewModeButton, squatViewMode === 'side' && styles.viewModeButtonActive]}
+              onPress={() => setSquatViewMode('side')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.viewModeText, squatViewMode === 'side' && styles.viewModeTextActive]}>Side</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.squatTitle}>SQUATS</Text>
+          <Text style={styles.squatRep}>Reps: {squatRepCount}</Text>
+          <Text style={styles.squatMetric}>Phase: {squatPhase.toUpperCase()}</Text>
+          <Text style={styles.squatMetric}>Knee Angle: {squatKneeAngle}°</Text>
+          <Text style={styles.squatMetric}>ROM: {squatRom}°</Text>
+          <Text style={styles.squatMetric}>Accuracy: {squatAccuracy}%</Text>
+        </View>
+      )}
+
+      {exercise === 'jumpingJack' && (
+        <View style={styles.jumpingJackOverlay} pointerEvents="none">
+          <Text style={styles.jumpingJackTitle}>JUMPING JACKS</Text>
+          <Text style={styles.jumpingJackRep}>Reps: {jumpingJackRepCount}</Text>
+          <Text style={styles.jumpingJackMetric}>Phase: {jumpingJackPhase.toUpperCase()}</Text>
+          <Text style={styles.jumpingJackMetric}>Ankle Distance: {jumpingJackAnkleDistance.toFixed(3)}</Text>
+        </View>
+      )}
+
+      {exercise === 'pushup' && (
+        <View style={styles.pushupOverlay} pointerEvents="none">
+          <Text style={styles.pushupTitle}>PUSH-UPS</Text>
+          <Text style={styles.pushupRep}>Reps: {pushupRepCount}</Text>
+          <Text style={styles.pushupMetric}>Phase: {pushupPhase.toUpperCase()}</Text>
+          <Text style={styles.pushupMetric}>Left Elbow: {pushupLeftElbowAngle}°</Text>
+          <Text style={styles.pushupMetric}>Right Elbow: {pushupRightElbowAngle}°</Text>
+          <Text style={styles.pushupMetric}>Avg Elbow: {pushupAvgElbowAngle}°</Text>
+        </View>
+      )}
+
+      {exercise === 'lunge' && (
+        <View style={styles.lungeOverlay} pointerEvents="none">
+          <Text style={styles.lungeTitle}>LUNGES</Text>
+          <Text style={styles.lungeRep}>Reps: {lungeRepCount}</Text>
+          <Text style={styles.lungeMetric}>Phase: {lungePhase.toUpperCase()}</Text>
+          <Text style={styles.lungeMetric}>Left Knee: {lungeLeftKneeAngle}°</Text>
+          <Text style={styles.lungeMetric}>Right Knee: {lungeRightKneeAngle}°</Text>
+          <Text style={styles.lungeMetric}>Hip Drop: {lungeHipDrop.toFixed(3)}</Text>
         </View>
       )}
 
@@ -1237,6 +2056,31 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
   },
+  viewModeSwitchRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  viewModeButton: {
+    borderWidth: 1,
+    borderColor: `${ACCENT}66`,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  viewModeButtonActive: {
+    backgroundColor: `${ACCENT}33`,
+    borderColor: `${ACCENT}AA`,
+  },
+  viewModeText: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  viewModeTextActive: {
+    color: ACCENT,
+  },
   bicepTitle: {
     color: COLORS.text,
     fontSize: 28,
@@ -1245,7 +2089,7 @@ const styles = StyleSheet.create({
   },
   bicepRep: {
     color: ACCENT,
-    fontSize: 54,
+    fontSize: 40,
     fontWeight: '900',
     marginTop: 6,
   },
@@ -1259,6 +2103,126 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: 13,
     fontWeight: '600',
+    marginTop: 2,
+  },
+  bicepMetric: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  bicepForm: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  bicepFormGood: {
+    color: '#22C55E',
+  },
+  bicepFormOk: {
+    color: '#FACC15',
+  },
+  bicepFormImprove: {
+    color: '#EF4444',
+  },
+  squatOverlay: {
+    position: 'absolute',
+    top: 84,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  lungeOverlay: {
+    position: 'absolute',
+    top: 84,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  lungeTitle: {
+    color: COLORS.text,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  lungeRep: {
+    color: ACCENT,
+    fontSize: 40,
+    fontWeight: '900',
+    marginTop: 6,
+  },
+  lungeMetric: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  jumpingJackOverlay: {
+    position: 'absolute',
+    top: 84,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  pushupOverlay: {
+    position: 'absolute',
+    top: 84,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  pushupTitle: {
+    color: COLORS.text,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  pushupRep: {
+    color: ACCENT,
+    fontSize: 40,
+    fontWeight: '900',
+    marginTop: 6,
+  },
+  pushupMetric: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  jumpingJackTitle: {
+    color: COLORS.text,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  jumpingJackRep: {
+    color: ACCENT,
+    fontSize: 40,
+    fontWeight: '900',
+    marginTop: 6,
+  },
+  jumpingJackMetric: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  squatTitle: {
+    color: COLORS.text,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  squatRep: {
+    color: ACCENT,
+    fontSize: 40,
+    fontWeight: '900',
+    marginTop: 6,
+  },
+  squatMetric: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '700',
     marginTop: 2,
   },
   safeArea: {
