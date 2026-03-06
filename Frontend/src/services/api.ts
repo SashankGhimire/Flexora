@@ -15,6 +15,12 @@ export const AUTH_ENDPOINTS = {
   UPDATE_ME: '/auth/me',
 };
 
+export const ONBOARDING_ENDPOINTS = {
+  CREATE: '/onboarding',
+  GET_BY_USER: (userId: string) => `/onboarding/${userId}`,
+  UPDATE: '/onboarding/update',
+};
+
 export const API_CONFIG = {
   BASE_URL: API_BASE_URL,
   TIMEOUT: 10000,

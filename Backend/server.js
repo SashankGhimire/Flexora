@@ -24,6 +24,7 @@ if (!process.env.JWT_EXPIRE) {
 
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
+const onboardingRoutes = require('./routes/onboardingRoutes');
 
 // Initialize Express app
 const app = express();
@@ -41,6 +42,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 
 // Basic route for testing server
 app.get('/', (req, res) => {

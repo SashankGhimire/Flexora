@@ -1,0 +1,93 @@
+[
+  {
+    "id": "abs-beginner",
+    "name": "Abs Beginner",
+    "focus": "Abs",
+    "durationMinutes": 10,
+    "exerciseIds": [
+      "jumping-jacks",
+      "crunches",
+      "russian-twist",
+      "mountain-climbers",
+      "plank-hold"
+    ]
+  },
+  {
+    "id": "arm-beginner",
+    "name": "Arm Beginner",
+    "focus": "Arm",
+    "durationMinutes": 10,
+    "exerciseIds": [
+      "arm-circles",
+      "tricep-dips",
+      "incline-pushups",
+      "shoulder-taps",
+      "pushups"
+    ]
+  },
+  {
+    "id": "chest-beginner",
+    "name": "Chest Beginner",
+    "focus": "Chest",
+    "durationMinutes": 10,
+    "exerciseIds": [
+      "jumping-jacks",
+      "incline-pushups",
+      "pushups",
+      "shoulder-taps",
+      "plank-hold"
+    ]
+  },
+  {
+    "id": "leg-beginner",
+    "name": "Leg Beginner",
+    "focus": "Leg",
+    "durationMinutes": 10,
+    "exerciseIds": [
+      "high-knees",
+      "bodyweight-squats",
+      "reverse-lunges",
+      "glute-bridge",
+      "mountain-climbers"
+    ]
+  },
+  {
+    "id": "full-body-beginner",
+    "name": "Full Body Beginner",
+    "focus": "Full Body",
+    "durationMinutes": 10,
+    "exerciseIds": [
+      "jumping-jacks",
+      "bodyweight-squats",
+      "incline-pushups",
+      "mountain-climbers",
+      "plank-hold"
+    ]
+  },
+  {
+    "id": "shoulder-beginner",
+    "name": "Shoulder Beginner",
+    "focus": "Shoulder",
+    "durationMinutes": 10,
+    "exerciseIds": [
+      "arm-circles",
+      "shoulder-taps",
+      "incline-pushups",
+      "tricep-dips",
+      "plank-hold"
+    ]
+  },
+  {
+    "id": "back-beginner",
+    "name": "Back Beginner",
+    "focus": "Back",
+    "durationMinutes": 10,
+    "exerciseIds": [
+      "glute-bridge",
+      "reverse-lunges",
+      "shoulder-taps",
+      "mountain-climbers",
+      "plank-hold"
+    ]
+  }
+]

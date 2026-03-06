@@ -1,0 +1,212 @@
+[
+  {
+    "id": "jumping-jacks",
+    "name": "Jumping Jacks",
+    "type": "timer",
+    "duration": 20,
+    "reps": null,
+    "animation": "jumping_jacks.json",
+    "focus": ["legs", "cardio"],
+    "instructions": "Jump feet apart while raising both arms overhead, then return to start.",
+    "mistakes": [
+      "Landing too hard",
+      "Not raising arms fully",
+      "Leaning forward"
+    ]
+  },
+  {
+    "id": "crunches",
+    "name": "Crunches",
+    "type": "reps",
+    "duration": null,
+    "reps": 16,
+    "animation": "crunches.json",
+    "focus": ["abs", "core"],
+    "instructions": "Lift shoulder blades off the floor while keeping lower back controlled.",
+    "mistakes": [
+      "Pulling the neck",
+      "Using momentum",
+      "Holding breath"
+    ]
+  },
+  {
+    "id": "russian-twist",
+    "name": "Russian Twist",
+    "type": "reps",
+    "duration": null,
+    "reps": 20,
+    "animation": "russian_twist.json",
+    "focus": ["obliques", "core"],
+    "instructions": "Rotate your torso side-to-side with chest lifted and core braced.",
+    "mistakes": [
+      "Rounding the back",
+      "Moving only arms",
+      "Twisting too fast"
+    ]
+  },
+  {
+    "id": "mountain-climbers",
+    "name": "Mountain Climbers",
+    "type": "timer",
+    "duration": 30,
+    "reps": null,
+    "animation": "mountain_climbers.json",
+    "focus": ["core", "cardio"],
+    "instructions": "Drive knees toward chest in a plank position at a controlled pace.",
+    "mistakes": [
+      "Hips too high",
+      "Shoulders behind wrists",
+      "Short knee drive"
+    ]
+  },
+  {
+    "id": "plank-hold",
+    "name": "Plank",
+    "type": "timer",
+    "duration": 30,
+    "reps": null,
+    "animation": "plank.json",
+    "focus": ["core", "shoulders"],
+    "instructions": "Keep body in a straight line and squeeze core and glutes.",
+    "mistakes": [
+      "Sagging hips",
+      "Hips too high",
+      "Looking forward too much"
+    ]
+  },
+  {
+    "id": "arm-circles",
+    "name": "Arm Circles",
+    "type": "timer",
+    "duration": 30,
+    "reps": null,
+    "animation": "arm_circles.json",
+    "focus": ["shoulders", "arms"],
+    "instructions": "Extend arms to the side and make controlled circles.",
+    "mistakes": [
+      "Shrugging shoulders",
+      "Bent elbows",
+      "Moving too quickly"
+    ]
+  },
+  {
+    "id": "tricep-dips",
+    "name": "Tricep Dips",
+    "type": "reps",
+    "duration": null,
+    "reps": 12,
+    "animation": "tricep_dips.json",
+    "focus": ["triceps", "shoulders"],
+    "instructions": "Lower under control with elbows pointing backward.",
+    "mistakes": [
+      "Shoulders too elevated",
+      "Half range of motion",
+      "Elbows flaring out"
+    ]
+  },
+  {
+    "id": "incline-pushups",
+    "name": "Incline Pushups",
+    "type": "reps",
+    "duration": null,
+    "reps": 12,
+    "animation": "incline_pushups.json",
+    "focus": ["chest", "triceps"],
+    "instructions": "Maintain straight body line and lower chest toward support.",
+    "mistakes": [
+      "Hips dropping",
+      "Flaring elbows too wide",
+      "Neck strain"
+    ]
+  },
+  {
+    "id": "bodyweight-squats",
+    "name": "Bodyweight Squats",
+    "type": "reps",
+    "duration": null,
+    "reps": 16,
+    "animation": "bodyweight_squats.json",
+    "focus": ["legs", "glutes"],
+    "instructions": "Sit hips back and keep knees tracking over toes.",
+    "mistakes": [
+      "Knees collapsing inward",
+      "Heels lifting",
+      "Not reaching depth"
+    ]
+  },
+  {
+    "id": "reverse-lunges",
+    "name": "Reverse Lunges",
+    "type": "reps",
+    "duration": null,
+    "reps": 12,
+    "animation": "reverse_lunges.json",
+    "focus": ["legs", "glutes"],
+    "instructions": "Step back softly and lower with upright torso.",
+    "mistakes": [
+      "Front knee drifting inward",
+      "Torso leaning forward",
+      "Rushing reps"
+    ]
+  },
+  {
+    "id": "high-knees",
+    "name": "High Knees",
+    "type": "timer",
+    "duration": 25,
+    "reps": null,
+    "animation": "high_knees.json",
+    "focus": ["cardio", "legs"],
+    "instructions": "Drive knees up quickly while keeping core engaged.",
+    "mistakes": [
+      "Leaning back",
+      "Low knee height",
+      "Heavy landing"
+    ]
+  },
+  {
+    "id": "pushups",
+    "name": "Pushups",
+    "type": "reps",
+    "duration": null,
+    "reps": 10,
+    "animation": "pushups.json",
+    "focus": ["chest", "triceps"],
+    "instructions": "Lower chest with control and press up while maintaining plank.",
+    "mistakes": [
+      "Hips sagging",
+      "Partial reps",
+      "Elbows too flared"
+    ]
+  },
+  {
+    "id": "glute-bridge",
+    "name": "Glute Bridge",
+    "type": "reps",
+    "duration": null,
+    "reps": 16,
+    "animation": "glute_bridge.json",
+    "focus": ["glutes", "hamstrings"],
+    "instructions": "Drive through heels and squeeze glutes at the top.",
+    "mistakes": [
+      "Overarching lower back",
+      "Pushing through toes",
+      "Not pausing at top"
+    ]
+  },
+  {
+    "id": "shoulder-taps",
+    "name": "Shoulder Taps",
+    "type": "reps",
+    "duration": null,
+    "reps": 20,
+    "animation": "shoulder_taps.json",
+    "focus": ["core", "shoulders"],
+    "instructions": "Tap opposite shoulder from plank with hips steady.",
+    "mistakes": [
+      "Hip swaying",
+      "Hands too narrow",
+      "Rushed tempo"
+    ]
+  }
+]

@@ -1,9 +1,9 @@
 export const Colors = {
-  background: '#111315',
-  card: '#1C1F22',
-  primary: '#22C55E',
-  secondary: '#4ADE80',
+  background: '#0D0F12',
+  card: '#171B20',
+  primary: '#34D399',
+  secondary: '#6EE7B7',
   textPrimary: '#F9FAFB',
-  textSecondary: '#9CA3AF',
-  border: '#2A2E33',
+  textSecondary: '#A8B0BB',
+  border: '#272D35',
 } as const;

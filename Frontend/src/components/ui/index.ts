@@ -7,4 +7,3 @@ export { Button } from './Button';
 export { PrimaryButton } from './PrimaryButton';
 export { SectionHeader } from './SectionHeader';
 export { StatCard } from './StatCard';
-export { WorkoutCard } from './WorkoutCard';

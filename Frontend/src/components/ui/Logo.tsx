@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -13,6 +13,21 @@ interface LogoProps {
 }
 
 export const Logo: React.FC<LogoProps> = ({ size = 80 }) => {
+  const dynamicIconStyle = useMemo(() => ({
+    width: size,
+    height: size,
+    backgroundColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 6,
+  }), [size]);
+
+  const dynamicTextStyle = useMemo(() => ({
+    fontSize: size * 0.5,
+  }), [size]);
+
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -36,20 +51,11 @@ export const Logo: React.FC<LogoProps> = ({ size = 80 }) => {
       <Animated.View
         style={[
           animatedStyle,
-          {
-            width: size,
-            height: size,
-            backgroundColor: COLORS.primary,
-            shadowColor: COLORS.primary,
-            shadowOpacity: 0.28,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 0 },
-            elevation: 6,
-          },
+          dynamicIconStyle,
           styles.iconWrap,
         ]}
       >
-        <Text style={[styles.iconText, { fontSize: size * 0.5 }]}>
+        <Text style={[styles.iconText, dynamicTextStyle]}>
           ⚡
         </Text>
       </Animated.View>

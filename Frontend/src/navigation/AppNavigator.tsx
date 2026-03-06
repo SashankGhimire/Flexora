@@ -10,13 +10,29 @@ import {
   PostureScreen,
   ProgressScreen,
   ProfileScreen,
+  WorkoutCompleteScreen,
+  WorkoutProgramScreen,
+  WorkoutSessionScreen,
 } from '../screens';
+import {
+  ActivityScreen,
+  AgeScreen,
+  BMIScreen,
+  GenderScreen,
+  GoalScreen,
+  HeightScreen,
+  PreferenceScreen,
+  WeeklyGoalScreen,
+  WelcomeScreen,
+  WeightScreen,
+} from '../screens/onboarding';
 import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../utils/constants';
 import {
   AuthStackParamList,
   HomeStackParamList,
   HomeTabParamList,
+  OnboardingStackParamList,
   RootNavigationParamList,
 } from '../types';
 
@@ -24,6 +40,7 @@ const Stack = createNativeStackNavigator<RootNavigationParamList>();
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const Tab = createBottomTabNavigator<HomeTabParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
+const OnboardingStack = createNativeStackNavigator<OnboardingStackParamList>();
 
 const HomeTabIcon = ({ color, size }: { color: string; size: number }) => (
   <SimpleIcon name="home" size={size} color={color} />
@@ -146,12 +163,39 @@ export const HomeStackNavigator: React.FC = () => {
       <HomeStack.Screen name="HomeTabs" component={HomeTabs} />
       <HomeStack.Screen name="ExerciseSelection" component={ExerciseSelectionScreen} />
       <HomeStack.Screen name="Workout" component={PostureScreen} />
+      <HomeStack.Screen name="WorkoutProgram" component={WorkoutProgramScreen} />
+      <HomeStack.Screen name="WorkoutSession" component={WorkoutSessionScreen} />
+      <HomeStack.Screen name="WorkoutComplete" component={WorkoutCompleteScreen} />
     </HomeStack.Navigator>
   );
 };
 
+const OnboardingStackScreen: React.FC = () => {
+  return (
+    <OnboardingStack.Navigator
+      id="onboarding-stack"
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: COLORS.background },
+      }}
+      initialRouteName="Welcome"
+    >
+      <OnboardingStack.Screen name="Welcome" component={WelcomeScreen} />
+      <OnboardingStack.Screen name="Goal" component={GoalScreen} />
+      <OnboardingStack.Screen name="Gender" component={GenderScreen} />
+      <OnboardingStack.Screen name="Age" component={AgeScreen} />
+      <OnboardingStack.Screen name="Height" component={HeightScreen} />
+      <OnboardingStack.Screen name="Weight" component={WeightScreen} />
+      <OnboardingStack.Screen name="Activity" component={ActivityScreen} />
+      <OnboardingStack.Screen name="Preference" component={PreferenceScreen} />
+      <OnboardingStack.Screen name="WeeklyGoal" component={WeeklyGoalScreen} />
+      <OnboardingStack.Screen name="BMI" component={BMIScreen} />
+    </OnboardingStack.Navigator>
+  );
+};
+
 export const AppNavigator: React.FC = () => {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
 
   return (
     <NavigationContainer>
@@ -163,6 +207,7 @@ export const AppNavigator: React.FC = () => {
         }}
       >
         {isLoggedIn ? (
+          user?.completedOnboarding ? (
           <Stack.Screen
             name="Home"
             component={HomeStackNavigator}
@@ -170,6 +215,15 @@ export const AppNavigator: React.FC = () => {
               animation: 'none',
             }}
           />
+          ) : (
+            <Stack.Screen
+              name="Onboarding"
+              component={OnboardingStackScreen}
+              options={{
+                animation: 'none',
+              }}
+            />
+          )
         ) : (
           <Stack.Screen
             name="Auth"

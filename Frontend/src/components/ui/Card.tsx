@@ -4,11 +4,10 @@ import { Colors } from '../../theme/colors';
 import { Radius, Spacing } from '../../theme/tokens';
 
 type CardProps = ViewProps & {
-  glow?: boolean;
   style?: ViewStyle | ViewStyle[];
 };
 
-export const Card: React.FC<CardProps> = ({ glow = false, style, children, ...rest }) => {
+export const Card: React.FC<CardProps> = ({ style, children, ...rest }) => {
   return (
     <View
       style={[

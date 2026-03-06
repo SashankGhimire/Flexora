@@ -63,6 +63,7 @@ exports.register = async (req, res) => {
         name: user.name,
         email: user.email,
         avatarUrl: user.avatarUrl,
+        completedOnboarding: user.completedOnboarding,
       },
     });
   } catch (error) {
@@ -129,6 +130,7 @@ exports.login = async (req, res) => {
         name: user.name,
         email: user.email,
         avatarUrl: user.avatarUrl,
+        completedOnboarding: user.completedOnboarding,
       },
     });
   } catch (error) {
@@ -156,6 +158,7 @@ exports.getMe = async (req, res) => {
         name: user.name,
         email: user.email,
         avatarUrl: user.avatarUrl,
+        completedOnboarding: user.completedOnboarding,
       },
     });
   } catch (error) {
@@ -203,6 +206,7 @@ exports.updateMe = async (req, res) => {
         name: user.name,
         email: user.email,
         avatarUrl: user.avatarUrl,
+        completedOnboarding: user.completedOnboarding,
       },
     });
   } catch (error) {

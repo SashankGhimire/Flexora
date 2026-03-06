@@ -1,17 +1,30 @@
 import React, { createContext, useContext, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   loginUser,
   registerUser,
   logout as logoutApi,
   updateProfile as updateProfileApi,
 } from '../services/authService';
+import { getOnboardingProfile } from '../services/onboardingService';
+
+const onboardingKey = (userId: string) => `@flexora:onboarding_completed:${userId}`;
+
+type AuthUser = {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+  completedOnboarding?: boolean;
+};
 
 interface AuthContextType {
   isLoggedIn: boolean;
-  user: { name: string; email: string; avatarUrl?: string } | null;
+  user: AuthUser | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   register: (email: string, password: string, name: string) => Promise<void>;
+  markOnboardingCompleted: () => Promise<void>;
   updateProfile: (data: {
     name?: string;
     avatar?: { uri: string; name?: string; type?: string } | null;
@@ -22,11 +35,36 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<{ name: string; email: string; avatarUrl?: string } | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  const resolveOnboardingStatus = async (nextUser: AuthUser): Promise<boolean> => {
+    if (nextUser.completedOnboarding) {
+      await AsyncStorage.setItem(onboardingKey(nextUser.id), 'true');
+      return true;
+    }
+
+    const local = await AsyncStorage.getItem(onboardingKey(nextUser.id));
+    if (local === 'true') {
+      return true;
+    }
+
+    try {
+      const response = await getOnboardingProfile(nextUser.id);
+      if (response?.profile?.completedOnboarding) {
+        await AsyncStorage.setItem(onboardingKey(nextUser.id), 'true');
+        return true;
+      }
+    } catch {
+      // Ignore profile fetch errors here and fallback to false.
+    }
+
+    return false;
+  };
 
   const login = async (email: string, password: string): Promise<void> => {
     const response = await loginUser({ email, password });
-    setUser(response.user);
+    const completedOnboarding = await resolveOnboardingStatus(response.user);
+    setUser({ ...response.user, completedOnboarding });
     setIsLoggedIn(true);
   };
 
@@ -38,8 +76,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (email: string, password: string, name: string): Promise<void> => {
     const response = await registerUser({ email, password, name });
-    setUser(response.user);
+    const completedOnboarding = await resolveOnboardingStatus(response.user);
+    setUser({ ...response.user, completedOnboarding });
     setIsLoggedIn(true);
+  };
+
+  const markOnboardingCompleted = async (): Promise<void> => {
+    if (!user) {
+      return;
+    }
+
+    await AsyncStorage.setItem(onboardingKey(user.id), 'true');
+    setUser({ ...user, completedOnboarding: true });
   };
 
   const updateProfile = async (data: {
@@ -56,6 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     logout,
     register,
+    markOnboardingCompleted,
     updateProfile,
   };
 

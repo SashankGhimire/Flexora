@@ -15,6 +15,7 @@ const ICON_MAP: Record<string, string> = {
   home: 'home',
   activity: 'activity',
   'trending-up': 'trending-up',
+  'trending-down': 'trending-down',
   user: 'user',
   
   // Action icons
@@ -22,6 +23,7 @@ const ICON_MAP: Record<string, string> = {
   'log-out': 'log-out',
   settings: 'settings',
   edit: 'edit',
+  'edit-2': 'edit-2',
   check: 'check',
   'at-sign': 'at-sign',
   shield: 'shield',
@@ -52,6 +54,16 @@ const ICON_MAP: Record<string, string> = {
   image: 'image',
   plus: 'plus',
   minus: 'minus',
+  'chevron-right': 'chevron-right',
+  'bar-chart': 'bar-chart-2',
+  dumbbell: 'tool',
+  person: 'user',
+  female: 'user',
+  calendar: 'calendar',
+  star: 'star',
+  heart: 'heart',
+  runner: 'activity',
+  bot: 'cpu',
 };
 
 export const SimpleIcon: React.FC<SimpleIconProps> = ({

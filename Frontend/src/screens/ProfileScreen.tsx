@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
@@ -19,6 +20,8 @@ import { Card, PrimaryButton, SectionHeader, SimpleIcon, StatCard } from '../com
 
 export const ProfileScreen: React.FC = () => {
   const { user, updateProfile, logout } = useAuth();
+  const { width } = useWindowDimensions();
+  const compact = width <= 360;
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name || '');
   const [avatarAsset, setAvatarAsset] = useState<{
@@ -83,10 +86,17 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.bgOrbTop} />
+      <View style={styles.bgOrbBottom} />
+      <ScrollView contentContainerStyle={[styles.content, compact && styles.contentCompact]} showsVerticalScrollIndicator={false}>
         <SectionHeader title="Profile" subtitle="Your fitness overview" />
 
         <Card style={styles.profileCard}>
+          <View style={styles.profileBadge}>
+            <SimpleIcon name="award" size={12} color={Colors.primary} />
+            <Text style={styles.profileBadgeText}>Active member</Text>
+          </View>
+
           <View style={styles.profileTopRow}>
             <View style={styles.avatarWrap}>
               {avatarAsset?.uri || avatarUrl ? (
@@ -124,7 +134,8 @@ export const ProfileScreen: React.FC = () => {
                 activeOpacity={0.8}
                 onPress={() => setIsEditing(true)}
               >
-                <SimpleIcon name="edit" size={16} color="#FBBF24" />
+                <SimpleIcon name="edit" size={14} color="#F87171" />
+                <Text style={styles.editButtonText}>Edit Profile</Text>
               </TouchableOpacity>
             ) : null}
           </View>
@@ -142,7 +153,7 @@ export const ProfileScreen: React.FC = () => {
           ) : null}
         </Card>
 
-        <View style={styles.statRow}>
+        <View style={[styles.statRow, compact && styles.statRowCompact]}>
           <StatCard
             label="Workouts"
             value="24"
@@ -178,17 +189,17 @@ export const ProfileScreen: React.FC = () => {
         <Card style={styles.listCard}>
           <TouchableOpacity style={styles.listItem} activeOpacity={0.8} onPress={() => setIsEditing(true)}>
             <Text style={styles.listLabel}>Edit Profile</Text>
-            <SimpleIcon name="arrow-down" size={16} color={Colors.textSecondary} />
+            <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
           <View style={styles.divider} />
           <TouchableOpacity style={styles.listItem} activeOpacity={0.8}>
             <Text style={styles.listLabel}>Goals</Text>
-            <SimpleIcon name="arrow-down" size={16} color={Colors.textSecondary} />
+            <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
           <View style={styles.divider} />
           <TouchableOpacity style={styles.listItem} activeOpacity={0.8}>
             <Text style={styles.listLabel}>Notifications</Text>
-            <SimpleIcon name="arrow-down" size={16} color={Colors.textSecondary} />
+            <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
         </Card>
 
@@ -196,12 +207,12 @@ export const ProfileScreen: React.FC = () => {
         <Card style={styles.listCard}>
           <TouchableOpacity style={styles.listItem} activeOpacity={0.8}>
             <Text style={styles.listLabel}>Privacy & Security</Text>
-            <SimpleIcon name="arrow-down" size={16} color={Colors.textSecondary} />
+            <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
           <View style={styles.divider} />
           <TouchableOpacity style={styles.listItem} activeOpacity={0.8}>
             <Text style={styles.listLabel}>Help Center</Text>
-            <SimpleIcon name="arrow-down" size={16} color={Colors.textSecondary} />
+            <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
         </Card>
 
@@ -221,14 +232,54 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  bgOrbTop: {
+    position: 'absolute',
+    top: -90,
+    right: -40,
+    width: 220,
+    height: 220,
+    borderRadius: 999,
+    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+  },
+  bgOrbBottom: {
+    position: 'absolute',
+    bottom: -110,
+    left: -80,
+    width: 230,
+    height: 230,
+    borderRadius: 999,
+    backgroundColor: 'rgba(52, 211, 153, 0.08)',
+  },
   content: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.x2,
     paddingBottom: Spacing.x2,
   },
+  contentCompact: {
+    paddingHorizontal: Spacing.md,
+  },
   profileCard: {
     marginTop: Spacing.md,
     borderRadius: Radius.xl,
+    backgroundColor: '#141A22',
+  },
+  profileBadge: {
+    alignSelf: 'flex-start',
+    marginBottom: Spacing.sm,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.32)',
+    backgroundColor: 'rgba(52, 211, 153, 0.14)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  profileBadgeText: {
+    color: '#A7F3D0',
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.semi,
   },
   profileTopRow: {
     flexDirection: 'row',
@@ -260,7 +311,7 @@ const styles = StyleSheet.create({
   },
   name: {
     color: Colors.textPrimary,
-    fontSize: Typography.title,
+    fontSize: 22,
     fontWeight: FontWeight.bold,
   },
   email: {
@@ -280,14 +331,21 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   editButton: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.md,
+    minHeight: 34,
+    borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: 'rgba(248, 113, 113, 0.4)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: 'rgba(248, 113, 113, 0.14)',
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: Spacing.sm,
+  },
+  editButtonText: {
+    color: '#F87171',
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.semi,
   },
   editRow: {
     marginTop: Spacing.lg,
@@ -302,6 +360,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.md,
   },
+  statRowCompact: {
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
   sectionTop: {
     marginTop: Spacing.xl,
   },
@@ -310,6 +372,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     paddingVertical: 0,
     paddingHorizontal: 0,
+    backgroundColor: '#141A22',
   },
   listItem: {
     paddingHorizontal: Spacing.lg,
@@ -330,6 +393,7 @@ const styles = StyleSheet.create({
   },
   highlightCard: {
     marginTop: Spacing.sm,
+    backgroundColor: '#141A22',
   },
   highlightRow: {
     flexDirection: 'row',
