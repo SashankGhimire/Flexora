@@ -1,48 +1,73 @@
 import React from 'react';
 import {
-  View,
-  Text,
+  Alert,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
+  Text,
   TouchableOpacity,
-  Alert,
+  View,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { SimpleIcon } from '../components/ui';
-import {
-  GoalCard,
-  SummaryCard,
-  ProgressChart,
-  PostureAccuracy,
-} from '../components';
-import { COLORS } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
 import { HomeTabParamList } from '../types';
+import { Colors } from '../theme/colors';
+import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
+import {
+  Card,
+  PrimaryButton,
+  SectionHeader,
+  SimpleIcon,
+  StatCard,
+  WorkoutCard,
+} from '../components/ui';
 
-// Mock workout data
-const MOCK_DATA = {
-  dailyGoal: {
-    target: 50,
-    current: 30,
+const WORKOUT_CATEGORIES = [
+  { id: 'strength', label: 'Strength', icon: 'activity' },
+  { id: 'cardio', label: 'Cardio', icon: 'zap' },
+  { id: 'mobility', label: 'Mobility', icon: 'shield' },
+  { id: 'ai', label: 'AI Training', icon: 'target' },
+];
+
+const RECOMMENDED = [
+  {
+    id: 'squat',
+    title: 'Squats',
+    description: 'Lower body form and depth control',
+    difficulty: 'Beginner' as const,
+    timer: '10 min',
+    icon: 'activity',
   },
-  postureAccuracy: 92,
-  todaySummary: [
-    { icon: 'activity', label: 'Exercises', value: '5 completed', color: COLORS.primary },
-    { icon: 'clock', label: 'Time Spent', value: '35 minutes', color: COLORS.primaryLight },
-    { icon: 'zap', label: 'Calories', value: '240 kcal', color: '#f59e0b' },
-  ],
-  weeklyProgress: [
-    { day: 'Mon', value: 45 },
-    { day: 'Tue', value: 52 },
-    { day: 'Wed', value: 38 },
-    { day: 'Thu', value: 61 },
-    { day: 'Fri', value: 55 },
-    { day: 'Sat', value: 48 },
-    { day: 'Sun', value: 0 }, // Today
-  ],
-};
+  {
+    id: 'pushup',
+    title: 'Push Ups',
+    description: 'Upper body strength and alignment',
+    difficulty: 'Intermediate' as const,
+    timer: '8 min',
+    icon: 'target',
+  },
+  {
+    id: 'lunge',
+    title: 'Lunges',
+    description: 'Leg balance and posture control',
+    difficulty: 'Intermediate' as const,
+    timer: '12 min',
+    icon: 'zap',
+  },
+];
+
+const HERO_METRICS = [
+  { id: 'streak', label: 'Streak', value: '12 days' },
+  { id: 'accuracy', label: 'Accuracy', value: '92%' },
+  { id: 'session', label: 'Today', value: '35 min' },
+];
+
+const QUICK_SIGNALS = [
+  { id: 'focus', label: 'Focus Zone', value: 'Posture + Core', icon: 'target' },
+  { id: 'energy', label: 'Energy', value: 'High', icon: 'zap' },
+  { id: 'readiness', label: 'Readiness', value: '8.7 / 10', icon: 'activity' },
+];
 
 export const DashboardScreen: React.FC = () => {
   const { user, logout } = useAuth();
@@ -64,328 +89,363 @@ export const DashboardScreen: React.FC = () => {
     ]);
   };
 
-  const getCurrentGreeting = (): string => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
-      >
-        <View style={styles.header}>
-          <View style={styles.greetingSection}>
-            <Text style={styles.greeting}>
-              {getCurrentGreeting()}, {user?.name || 'Sasahank'}
-            </Text>
-            <Text style={styles.subGreeting}>Let’s improve your form today</Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.greeting}>Welcome back</Text>
+            <Text style={styles.userName}>{user?.name || 'Athlete'}</Text>
+            <Text style={styles.subGreeting}>Ready to train smarter today?</Text>
           </View>
-
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-            activeOpacity={0.7}
-          >
-            <SimpleIcon name="log-out" size={20} color={COLORS.error} />
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
+            <SimpleIcon name="log-out" size={18} color="#F87171" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.heroCard}>
+        <Card style={styles.heroCard}>
           <View style={styles.heroTopRow}>
             <View>
-              <Text style={styles.heroTitle}>Today’s Focus</Text>
-              <Text style={styles.heroSubtitle}>Core strength + posture</Text>
+              <Text style={styles.heroEyebrow}>FLEXORA SIGNATURE MODE</Text>
+              <Text style={styles.heroTitle}>AI Posture Trainer</Text>
+              <Text style={styles.heroSubtitle}>Real-time posture correction with AI</Text>
             </View>
-            <View style={styles.heroBadge}>
-              <SimpleIcon name="activity" size={14} color={COLORS.primary} />
-              <Text style={styles.heroBadgeText}>30 min</Text>
+            <View style={styles.heroPulseWrap}>
+              <View style={styles.heroPulseCore}>
+                <SimpleIcon name="cpu" size={16} color={Colors.primary} />
+              </View>
             </View>
           </View>
-          <Text style={styles.heroDescription}>
-            Complete your goal and keep the streak alive.
-          </Text>
-          <TouchableOpacity
-            style={styles.heroButton}
-            onPress={handleStartWorkout}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.heroButtonText}>Start Workout</Text>
-            <SimpleIcon name="arrow-down" size={18} color={COLORS.background} />
-          </TouchableOpacity>
-        </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Daily Goal</Text>
-          <Text style={styles.sectionSubtitle}>Your reps for today</Text>
-        </View>
-        <GoalCard
-          targetReps={MOCK_DATA.dailyGoal.target}
-          currentReps={MOCK_DATA.dailyGoal.current}
-          onStartWorkout={handleStartWorkout}
+          <View style={styles.heroMetricRow}>
+            {HERO_METRICS.map((metric) => (
+              <View key={metric.id} style={styles.heroMetricPill}>
+                <Text style={styles.heroMetricValue}>{metric.value}</Text>
+                <Text style={styles.heroMetricLabel}>{metric.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          <PrimaryButton title="Start AI Training" onPress={handleStartWorkout} style={styles.heroButton} />
+        </Card>
+
+        <SectionHeader
+          title="Workout Categories"
+          subtitle="Choose your training focus"
+          style={styles.sectionTop}
         />
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Posture Check</Text>
-          <Text style={styles.sectionSubtitle}>Stay aligned</Text>
+        <View style={styles.categoryGrid}>
+          {WORKOUT_CATEGORIES.map((category) => (
+            <Card key={category.id} style={styles.categoryCard}>
+              <View style={styles.categoryIconWrap}>
+                <SimpleIcon name={category.icon} size={16} color={Colors.primary} />
+              </View>
+              <Text style={styles.categoryLabel}>{category.label}</Text>
+            </Card>
+          ))}
         </View>
-        <PostureAccuracy accuracy={MOCK_DATA.postureAccuracy} />
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Today’s Summary</Text>
-          <Text style={styles.sectionSubtitle}>Keep the momentum</Text>
-        </View>
-        <SummaryCard items={MOCK_DATA.todaySummary} />
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Weekly Progress</Text>
-          <Text style={styles.sectionSubtitle}>Consistency over time</Text>
-        </View>
-        <ProgressChart
-          data={MOCK_DATA.weeklyProgress}
-          title="Weekly Progress"
-          maxValue={70}
+        <SectionHeader
+          title="Workout Recommendations"
+          subtitle="Suggested sessions for today"
+          style={styles.sectionTop}
         />
-
-        <View style={styles.quickStatsContainer}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: `${COLORS.primary}20` }]}>
-              <SimpleIcon name="trending-up" size={22} color={COLORS.primary} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
+          {RECOMMENDED.map((item) => (
+            <View key={item.id} style={styles.recommendationCardWrap}>
+              <WorkoutCard
+                title={item.title}
+                description={item.description}
+                difficulty={item.difficulty}
+                timer={item.timer}
+                icon={item.icon}
+                buttonLabel="Start Workout"
+                onStart={handleStartWorkout}
+              />
             </View>
-            <Text style={styles.statCardLabel}>Consistency</Text>
-            <Text style={styles.statCardValue}>85%</Text>
-          </View>
+          ))}
+        </ScrollView>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: `${COLORS.primaryLight}20` }]}>
-              <SimpleIcon name="award" size={22} color={COLORS.primaryLight} />
-            </View>
-            <Text style={styles.statCardLabel}>Streak</Text>
-            <Text style={styles.statCardValue}>12 days</Text>
-          </View>
+        <SectionHeader
+          title="Progress Summary"
+          subtitle="Your performance snapshot"
+          style={styles.sectionTop}
+        />
+        <View style={styles.statsGrid}>
+          <StatCard
+            label="Total Workouts"
+            value="24"
+            icon={<SimpleIcon name="activity" size={16} color={Colors.primary} />}
+          />
+          <StatCard
+            label="Accuracy %"
+            value="92%"
+            icon={<SimpleIcon name="target" size={16} color={Colors.primary} />}
+          />
+          <StatCard
+            label="Calories"
+            value="1240"
+            icon={<SimpleIcon name="zap" size={16} color={Colors.primary} />}
+          />
+          <StatCard
+            label="Weekly"
+            value="+18%"
+            icon={<SimpleIcon name="trending-up" size={16} color={Colors.primary} />}
+          />
         </View>
 
-        <View style={styles.tipContainer}>
-          <View style={styles.tipIconContainer}>
-            <SimpleIcon name="lightbulb" size={22} color={COLORS.primary} />
+        <SectionHeader
+          title="Coach Notes"
+          subtitle="Today\'s strategic guidance"
+          style={styles.sectionTop}
+        />
+        <Card style={styles.noteCard}>
+          <View style={styles.noteRow}>
+            <View style={styles.noteIconWrap}>
+              <SimpleIcon name="award" size={16} color={Colors.primary} />
+            </View>
+            <View style={styles.noteTextWrap}>
+              <Text style={styles.noteTitle}>Posture priority for today</Text>
+              <Text style={styles.noteDesc}>
+                Keep shoulders stable during push movements and slow down on the eccentric phase.
+              </Text>
+            </View>
           </View>
-          <View style={styles.tipContent}>
-            <Text style={styles.tipTitle}>Pro Tip</Text>
-            <Text style={styles.tipText}>
-              Proper posture during workouts prevents injuries and maximizes results.
-            </Text>
-          </View>
+        </Card>
+
+        <SectionHeader
+          title="Quick Signals"
+          subtitle="Snapshot of your training profile"
+          style={styles.sectionTop}
+        />
+        <View style={styles.signalRow}>
+          {QUICK_SIGNALS.map((item) => (
+            <Card key={item.id} style={styles.signalCard}>
+              <SimpleIcon name={item.icon} size={16} color={Colors.primary} />
+              <Text style={styles.signalValue}>{item.value}</Text>
+              <Text style={styles.signalLabel}>{item.label}</Text>
+            </Card>
+          ))}
         </View>
 
-        <View style={styles.spacing} />
+        <View style={styles.bottomSpace} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
+const ACCENT_GREEN = '#22C55E';
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   content: {
-    paddingBottom: 24,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.x2,
+    paddingBottom: Spacing.x2,
   },
-  header: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginTop: 40,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  greetingSection: {
-    flex: 1,
   },
   greeting: {
-    fontSize: 26,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-    color: COLORS.text,
-    marginBottom: 4,
+    color: Colors.textSecondary,
+    fontSize: Typography.subtitle,
+  },
+  userName: {
+    marginTop: Spacing.xs,
+    color: Colors.textPrimary,
+    fontSize: Typography.display,
+    lineHeight: Typography.displayLine,
+    fontWeight: FontWeight.heavy,
   },
   subGreeting: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
+    marginTop: Spacing.xs,
+    color: Colors.textSecondary,
+    fontSize: Typography.body,
   },
   logoutButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: `${COLORS.error}15`,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
+    backgroundColor: 'rgba(248, 113, 113, 0.14)',
     borderWidth: 1,
-    borderColor: `${COLORS.error}40`,
+    borderColor: 'rgba(248, 113, 113, 0.34)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   heroCard: {
-    marginHorizontal: 16,
-    marginBottom: 20,
-    padding: 18,
-    borderRadius: 18,
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    marginTop: Spacing.xl,
+    borderRadius: Radius.xl,
   },
   heroTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    gap: Spacing.md,
+  },
+  heroEyebrow: {
+    color: ACCENT_GREEN,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 0.6,
+    marginBottom: Spacing.sm,
   },
   heroTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
+    color: Colors.textPrimary,
+    fontSize: Typography.heading,
+    fontWeight: FontWeight.heavy,
   },
   heroSubtitle: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: 4,
-  },
-  heroBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: `${COLORS.primary}20`,
-  },
-  heroBadgeText: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-  heroDescription: {
-    marginTop: 12,
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    lineHeight: 20,
+    marginTop: Spacing.xs,
+    color: Colors.textSecondary,
+    fontSize: Typography.body,
   },
   heroButton: {
-    marginTop: 16,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    marginTop: Spacing.lg,
   },
-  heroButtonText: {
-    color: COLORS.background,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  sectionHeader: {
-    paddingHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  sectionSubtitle: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  quickStatsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginVertical: 12,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
+  heroPulseWrap: {
+    width: 58,
+    height: 58,
+    borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    borderColor: 'rgba(34, 197, 94, 0.35)',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
+    backgroundColor: 'rgba(34, 197, 94, 0.08)',
   },
-  statCardLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  statCardValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.text,
-  },
-  tipContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginVertical: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    alignItems: 'flex-start',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.primary,
-  },
-  tipIconContainer: {
+  heroPulseCore: {
     width: 40,
     height: 40,
-    borderRadius: 10,
-    backgroundColor: `${COLORS.primary}20`,
-    justifyContent: 'center',
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.4)',
     alignItems: 'center',
-    marginRight: 12,
-    marginTop: 2,
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
   },
-  tipContent: {
+  heroMetricRow: {
+    marginTop: Spacing.lg,
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  heroMetricPill: {
+    flex: 1,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+  },
+  heroMetricValue: {
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
+  },
+  heroMetricLabel: {
+    marginTop: 2,
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+  },
+  sectionTop: {
+    marginTop: Spacing.xl,
+  },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.md,
+  },
+  categoryCard: {
+    width: '47%',
+    borderRadius: Radius.lg,
+    minHeight: 84,
+  },
+  categoryIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.sm,
+  },
+  categoryLabel: {
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
+  },
+  horizontalList: {
+    paddingRight: Spacing.lg,
+    gap: Spacing.md,
+  },
+  recommendationCardWrap: {
+    width: 292,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.md,
+  },
+  noteCard: {
+    marginTop: Spacing.sm,
+  },
+  noteRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  noteIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.26)',
+    marginRight: Spacing.sm,
+  },
+  noteTextWrap: {
     flex: 1,
   },
-  tipTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 4,
+  noteTitle: {
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
   },
-  tipText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    fontWeight: '400',
+  noteDesc: {
+    marginTop: Spacing.xs,
+    color: Colors.textSecondary,
+    fontSize: Typography.body,
     lineHeight: 18,
   },
-  spacing: {
-    height: 30,
+  signalRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  signalCard: {
+    flex: 1,
+    borderRadius: Radius.lg,
+    minHeight: 96,
+    justifyContent: 'space-between',
+  },
+  signalValue: {
+    marginTop: Spacing.sm,
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
+  },
+  signalLabel: {
+    marginTop: 2,
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+  },
+  bottomSpace: {
+    height: 88,
   },
 });

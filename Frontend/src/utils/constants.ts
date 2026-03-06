@@ -1,17 +1,17 @@
 export const COLORS = {
-  primary: '#10b981',
-  primaryDark: '#059669',
-  primaryLight: '#34d399',
+  primary: '#22C55E',
+  primaryDark: '#16A34A',
+  primaryLight: '#4ADE80',
 
-  background: '#1a1a1a',
-  card: '#242424',
-  input: '#2a2a2a',
-  border: '#333333',
+  background: '#111315',
+  card: '#1C1F22',
+  input: '#1C1F22',
+  border: '#2A2E33',
 
-  text: '#ffffff',
-  textSecondary: '#9ca3af',
-  placeholder: '#6b7280',
+  text: '#F9FAFB',
+  textSecondary: '#9CA3AF',
+  placeholder: '#6F6F6F',
 
-  error: '#ef4444',
-  success: '#10b981',
+  error: '#FF4D4F',
+  success: '#22C55E',
 };

@@ -1,140 +1,132 @@
 import React from 'react';
-import {
-  FlatList,
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { SimpleIcon } from '../components/ui';
-import { COLORS } from '../utils/constants';
+import { Card, PrimaryButton, SectionHeader, SimpleIcon } from '../components/ui';
 import { ExerciseType, HomeStackParamList } from '../types';
-
-type ExerciseCard = {
-  key: ExerciseType;
-  name: string;
-  description: string;
-  icon: string;
-  cardBackground: string;
-  cardBorder: string;
-};
-
-const EXERCISES: ExerciseCard[] = [
-  {
-    key: 'squat',
-    name: 'Squats',
-    description: 'Lower body strength and control',
-    icon: 'activity',
-    cardBackground: '#1B1B1B',
-    cardBorder: '#3E5149',
-  },
-  {
-    key: 'pushup',
-    name: 'Push Ups',
-    description: 'Upper body push movement',
-    icon: 'target',
-    cardBackground: '#1B1B1B',
-    cardBorder: '#3D4F48',
-  },
-  {
-    key: 'lunge',
-    name: 'Lunges',
-    description: 'Leg balance and coordination',
-    icon: 'zap',
-    cardBackground: '#1B1B1B',
-    cardBorder: '#3E5149',
-  },
-  {
-    key: 'jumpingJack',
-    name: 'Jumping Jacks',
-    description: 'Full body cardio activation',
-    icon: 'users',
-    cardBackground: '#1B1B1B',
-    cardBorder: '#3D4F48',
-  },
-  {
-    key: 'plank',
-    name: 'Plank',
-    description: 'Core endurance hold',
-    icon: 'shield',
-    cardBackground: '#1B1B1B',
-    cardBorder: '#3E5149',
-  },
-  {
-    key: 'bicepCurl',
-    name: 'Bicep Curl',
-    description: 'Arm flexion and control',
-    icon: 'activity',
-    cardBackground: '#1B1B1B',
-    cardBorder: '#3D4F48',
-  },
-];
+import { Colors } from '../theme/colors';
+import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
 
 type ExerciseNavProp = NativeStackNavigationProp<HomeStackParamList, 'ExerciseSelection'>;
 
-const CardGradient: React.FC<{ id: string }> = ({ id }) => (
-  <View style={styles.gradientLayer} pointerEvents="none">
-    <Svg width="100%" height="100%" preserveAspectRatio="none">
-      <Defs>
-        <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor="#2A2A2A" />
-          <Stop offset="1" stopColor="#121212" />
-        </LinearGradient>
-      </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" rx="20" ry="20" fill={`url(#${id})`} />
-    </Svg>
-  </View>
-);
+type WorkoutItem = {
+  key: ExerciseType;
+  title: string;
+  description: string;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+  timer: string;
+  icon: string;
+  accent: 'green' | 'red';
+};
+
+const ACCENTS = {
+  green: '#22C55E',
+  red: '#F87171',
+} as const;
+
+const AI_WORKOUTS: WorkoutItem[] = [
+  {
+    key: 'squat',
+    title: 'Squats',
+    description: 'AI-assisted form correction for lower body strength',
+    difficulty: 'Beginner',
+    timer: '8-12 min',
+    icon: 'activity',
+    accent: 'green',
+  },
+  {
+    key: 'pushup',
+    title: 'Push Ups',
+    description: 'Real-time upper-body posture coaching',
+    difficulty: 'Intermediate',
+    timer: '6-10 min',
+    icon: 'target',
+    accent: 'green',
+  },
+  {
+    key: 'lunge',
+    title: 'Lunges',
+    description: 'Balance and knee-alignment feedback',
+    difficulty: 'Intermediate',
+    timer: '10 min',
+    icon: 'zap',
+    accent: 'green',
+  },
+  {
+    key: 'jumpingJack',
+    title: 'Jumping Jacks',
+    description: 'Cardio posture monitoring with rep guidance',
+    difficulty: 'Beginner',
+    timer: '5-8 min',
+    icon: 'users',
+    accent: 'red',
+  },
+];
+
+const NORMAL_WORKOUTS: WorkoutItem[] = [
+  {
+    key: 'plank',
+    title: 'Plank',
+    description: 'Timer-based core endurance hold',
+    difficulty: 'Beginner',
+    timer: '3 x 45s',
+    icon: 'shield',
+    accent: 'green',
+  },
+  {
+    key: 'bicepCurl',
+    title: 'Bicep Curl',
+    description: 'Controlled arm training with timed sets',
+    difficulty: 'Intermediate',
+    timer: '3 x 12 reps',
+    icon: 'activity',
+    accent: 'green',
+  },
+];
 
 export const ExerciseSelectionScreen: React.FC = () => {
   const navigation = useNavigation<ExerciseNavProp>();
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Choose Exercise</Text>
-        <Text style={styles.subtitle}>Select a movement to start posture tracking</Text>
+  const handleStartWorkout = (exerciseType: ExerciseType) => {
+    navigation.navigate('Workout', { exerciseType });
+  };
+
+  const renderGridCard = (workout: WorkoutItem) => (
+    <Card key={workout.key} style={styles.gridCard}>
+      <View style={styles.gridTop}>
+        <View style={styles.iconWrap}>
+          <SimpleIcon name={workout.icon} size={16} color={Colors.textSecondary} />
+        </View>
+        <Text style={[styles.timerText, { color: ACCENTS[workout.accent] }]}>{workout.timer}</Text>
       </View>
 
-      <FlatList
-        data={EXERCISES}
-        keyExtractor={(item) => item.key}
-        numColumns={2}
-        contentContainerStyle={styles.listContent}
-        columnWrapperStyle={styles.column}
-        ItemSeparatorComponent={() => <View style={styles.rowSpacer} />}
-        renderItem={({ item }) => (
-          <Pressable
-            style={({ pressed }) => [
-              styles.card,
-              {
-                backgroundColor: item.cardBackground,
-                borderColor: item.cardBorder,
-              },
-              pressed && styles.cardPressed,
-            ]}
-            onPress={() => navigation.navigate('Workout', { exerciseType: item.key })}
-          >
-            <CardGradient id={`exercise-card-gradient-${item.key}`} />
+      <Text style={styles.title}>{workout.title}</Text>
+      <Text style={styles.description} numberOfLines={2}>{workout.description}</Text>
+      <Text style={[styles.difficulty, { color: ACCENTS[workout.accent] }]}>{workout.difficulty}</Text>
 
-            <View style={styles.cardBody}>
-              <View style={styles.iconWrap}>
-                <SimpleIcon name={item.icon} size={20} color={COLORS.primaryLight} />
-              </View>
+      <PrimaryButton title="Start" onPress={() => handleStartWorkout(workout.key)} style={styles.startButton} />
+    </Card>
+  );
 
-              <Text style={styles.cardTitle}>{item.name}</Text>
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <SectionHeader title="AI WORKOUTS" subtitle="Exercises using posture detection camera" />
+        <View style={styles.grid}>
+          {AI_WORKOUTS.map(renderGridCard)}
+        </View>
 
-              <View>
-                <Text style={styles.cardSubtitle}>{item.description}</Text>
-              </View>
-            </View>
-          </Pressable>
-        )}
-      />
+        <SectionHeader
+          title="NORMAL WORKOUTS"
+          subtitle="Timer-based workouts with exercise animation"
+          style={styles.sectionTop}
+        />
+        <View style={styles.grid}>
+          {NORMAL_WORKOUTS.map(renderGridCard)}
+        </View>
+
+        <View style={styles.bottomSpace} />
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -142,85 +134,67 @@ export const ExerciseSelectionScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
-  header: {
-    marginTop: 26,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 8,
+  content: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.x2,
+    paddingBottom: Spacing.x2,
   },
-  title: {
-    color: COLORS.text,
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: 0.1,
+  sectionTop: {
+    marginTop: Spacing.x2,
   },
-  subtitle: {
-    marginTop: 3,
-    color: `${COLORS.textSecondary}CC`,
-    fontSize: 12,
-    lineHeight: 16,
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.md,
   },
-  listContent: {
-    paddingHorizontal: 14,
-    paddingBottom: 24,
+  gridCard: {
+    width: '47%',
+    borderRadius: Radius.lg,
+    minHeight: 214,
+    padding: Spacing.md,
   },
-  column: {
-    gap: 14,
-  },
-  rowSpacer: {
-    height: 12,
-  },
-  card: {
-    flex: 1,
-    height: 166,
-    overflow: 'hidden',
-    borderRadius: 20,
-    borderWidth: 1,
-    backgroundColor: COLORS.card,
-    shadowColor: '#000000',
-    shadowOpacity: 0.16,
-    shadowRadius: 7,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-  },
-  cardPressed: {
-    opacity: 0.8,
-  },
-  gradientLayer: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  cardBody: {
-    flex: 1,
+  gridTop: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 12,
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
   },
   iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: Radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: `${COLORS.background}7A`,
     borderWidth: 1,
-    borderColor: '#3B4641',
-    shadowColor: '#000000',
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 2,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
   },
-  cardTitle: {
-    color: COLORS.text,
-    fontSize: 15,
-    fontWeight: '800',
+  timerText: {
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.semi,
   },
-  cardSubtitle: {
-    color: `${COLORS.textSecondary}E0`,
-    fontSize: 11,
-    lineHeight: 15,
+  title: {
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
+  },
+  description: {
+    marginTop: Spacing.xs,
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+    lineHeight: 16,
+  },
+  difficulty: {
+    marginTop: Spacing.sm,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.bold,
+  },
+  startButton: {
+    marginTop: 'auto',
+  },
+  bottomSpace: {
+    height: 88,
   },
 });

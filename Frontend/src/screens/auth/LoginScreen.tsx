@@ -1,24 +1,22 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  TouchableOpacity,
   StyleSheet,
-  Alert,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import Animated, {
-  FadeInDown,
-  FadeInUp,
-} from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Logo, CustomInput, CustomButton } from '../../components/ui';
+import { Logo, CustomInput, CustomButton, SimpleIcon } from '../../components/ui';
 import { COLORS } from '../../utils/constants';
 import { AuthStackParamList } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { FontWeight, Radius, Spacing, Typography } from '../../theme/tokens';
 
 type LoginScreenProps = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
@@ -61,13 +59,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
     setLoading(true);
     try {
-      // Use auth context to login
       await login(email, password);
-      
-      // Login successful - navigation handled automatically by App context
       Alert.alert('Success', 'Login successful!');
     } catch (error: any) {
-      // Handle error
       const errorMessage = error?.message || 'Login failed. Please try again.';
       Alert.alert('Login Error', errorMessage);
     } finally {
@@ -79,29 +73,37 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.background}>
-        <View style={styles.glowTop} />
-        <View style={styles.glowBottom} />
-      </View>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
-      >
+      <View style={styles.topAura} />
+      <View style={styles.bottomAura} />
+
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.container}>
-            <Animated.View entering={FadeInUp.duration(600).springify()} style={styles.logoBlock}>
-              <Logo size={72} />
-              <Text style={styles.subtitle}>Welcome back to your training</Text>
+            <Animated.View entering={FadeInUp.duration(350)} style={styles.heroBlock}>
+              <Logo size={56} />
+              <Text style={styles.eyebrow}>FLEXORA</Text>
+              <Text style={styles.title}>Welcome back</Text>
+              <Text style={styles.subtitle}>Login to continue your training progress.</Text>
+
+              <View style={styles.badgeRow}>
+                <View style={styles.badge}>
+                  <SimpleIcon name="activity" size={12} color={COLORS.primary} />
+                  <Text style={styles.badgeText}>AI Coach</Text>
+                </View>
+                <View style={styles.badge}>
+                  <SimpleIcon name="shield" size={12} color={COLORS.primary} />
+                  <Text style={styles.badgeText}>Secure</Text>
+                </View>
+              </View>
             </Animated.View>
 
-            <Animated.View
-              entering={FadeInDown.duration(600).delay(200).springify()}
-              style={styles.card}
-            >
+            <Animated.View entering={FadeInDown.duration(320).delay(70)} style={styles.formCard}>
+              <Text style={styles.formTitle}>Sign In</Text>
+
               <CustomInput
                 label="Email"
                 icon="at-sign"
@@ -129,34 +131,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 error={passwordError}
               />
 
-              <TouchableOpacity style={styles.forgotButton}>
+              <TouchableOpacity style={styles.forgotButton} activeOpacity={0.8}>
                 <Text style={styles.forgotText}>Forgot Password?</Text>
               </TouchableOpacity>
 
-              <View style={styles.buttonShadow}>
-                <CustomButton
-                  title="Log In"
-                  onPress={handleLogin}
-                  loading={loading}
-                  disabled={isDisabled}
-                />
-              </View>
+              <CustomButton title="Log In" onPress={handleLogin} loading={loading} disabled={isDisabled} />
 
               <View style={styles.signUpRow}>
-                <Text style={styles.signUpText}>Don't have an account? </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                  <Text style={styles.signUpLink}>Sign Up</Text>
+                <Text style={styles.signUpText}>No account yet? </Text>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('Register')}>
+                  <Text style={styles.signUpLink}>Create one</Text>
                 </TouchableOpacity>
               </View>
-            </Animated.View>
-
-            <Animated.View
-              entering={FadeInDown.duration(600).delay(400).springify()}
-              style={styles.footer}
-            >
-              <Text style={styles.footerText}>
-                AI-powered fitness tracking with real-time feedback
-              </Text>
             </Animated.View>
           </View>
         </ScrollView>
@@ -168,106 +154,124 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#0D1012',
+  },
+  topAura: {
+    position: 'absolute',
+    top: -120,
+    right: -90,
+    width: 250,
+    height: 250,
+    borderRadius: Radius.pill,
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+  },
+  bottomAura: {
+    position: 'absolute',
+    bottom: -130,
+    left: -90,
+    width: 220,
+    height: 220,
+    borderRadius: Radius.pill,
+    backgroundColor: 'rgba(34, 197, 94, 0.08)',
   },
   flex: {
     flex: 1,
-  },
-  background: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: COLORS.background,
-  },
-  glowTop: {
-    position: 'absolute',
-    top: -140,
-    right: -80,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: `${COLORS.primary}25`,
-    opacity: 0.7,
-  },
-  glowBottom: {
-    position: 'absolute',
-    bottom: -160,
-    left: -90,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: `${COLORS.primary}15`,
-    opacity: 0.6,
   },
   scrollContent: {
     flexGrow: 1,
   },
   container: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 40,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.x2,
+    gap: Spacing.xl,
   },
-  logoBlock: {
+  heroBlock: {
     alignItems: 'center',
   },
+  eyebrow: {
+    marginTop: Spacing.sm,
+    color: COLORS.primary,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 1,
+  },
+  title: {
+    marginTop: Spacing.sm,
+    color: '#F4F6F8',
+    fontSize: 34,
+    fontWeight: FontWeight.heavy,
+  },
   subtitle: {
-    marginTop: 8,
-    fontSize: 13,
-    color: COLORS.textSecondary,
+    marginTop: Spacing.xs,
+    color: '#8C949D',
+    fontSize: Typography.body,
     textAlign: 'center',
   },
-  card: {
-    marginTop: 20,
-    backgroundColor: COLORS.card,
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 22,
+  badgeRow: {
+    marginTop: Spacing.md,
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.3,
-    shadowRadius: 26,
-    elevation: 6,
+    borderColor: 'rgba(34, 197, 94, 0.28)',
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+  },
+  badgeText: {
+    color: COLORS.primary,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.semi,
+  },
+  formCard: {
+    backgroundColor: '#171C1F',
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: '#262C31',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.xl,
+    shadowColor: '#000000',
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  formTitle: {
+    marginBottom: Spacing.md,
+    color: '#F4F6F8',
+    fontSize: Typography.title,
+    fontWeight: FontWeight.bold,
   },
   forgotButton: {
     alignSelf: 'flex-end',
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    marginBottom: 18,
+    marginTop: -4,
+    marginBottom: Spacing.lg,
+    paddingVertical: 4,
   },
   forgotText: {
     color: COLORS.primary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  buttonShadow: {
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    elevation: 4,
+    fontSize: Typography.body,
+    fontWeight: FontWeight.semi,
   },
   signUpRow: {
+    marginTop: Spacing.lg,
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
   },
   signUpText: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
+    color: '#8C949D',
+    fontSize: Typography.body,
   },
   signUpLink: {
     color: COLORS.primary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  footer: {
-    paddingTop: 24,
-  },
-  footerText: {
-    color: COLORS.placeholder,
-    fontSize: 12,
-    textAlign: 'center',
-    letterSpacing: 0.2,
+    fontSize: Typography.body,
+    fontWeight: FontWeight.bold,
   },
 });

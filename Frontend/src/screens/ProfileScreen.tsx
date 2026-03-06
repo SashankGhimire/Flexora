@@ -1,20 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
   Alert,
   Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { SimpleIcon } from '../components/ui';
 import { API_BASE_URL } from '../services/api';
-import { COLORS } from '../utils/constants';
 import { useAuth } from '../context/AuthContext';
+import { Colors } from '../theme/colors';
+import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
+import { Card, PrimaryButton, SectionHeader, SimpleIcon, StatCard } from '../components/ui';
 
 export const ProfileScreen: React.FC = () => {
   const { user, updateProfile, logout } = useAuth();
@@ -81,252 +82,167 @@ export const ProfileScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Profile</Text>
-            <Text style={styles.subtitle}>Your fitness overview</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.editButton}
-            activeOpacity={0.85}
-            onPress={() => {
-              if (!isEditing) {
-                setIsEditing(true);
-              }
-            }}
-            disabled={saving || isEditing}
-          >
-            <SimpleIcon
-              name="edit"
-              size={18}
-              color={COLORS.primary}
-            />
-          </TouchableOpacity>
-        </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <SectionHeader title="Profile" subtitle="Your fitness overview" />
 
-        <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            {avatarAsset?.uri || avatarUrl ? (
-              <Image
-                source={{ uri: avatarAsset?.uri || avatarUrl }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <Text style={styles.avatarText}>
-                {(user?.name || 'User')
-                  .split(' ')
-                  .map((part) => part[0])
-                  .join('')
-                  .slice(0, 2)
-                  .toUpperCase()}
-              </Text>
-            )}
-          </View>
-          <View style={styles.profileInfo}>
-            {isEditing ? (
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                style={styles.nameInput}
-                placeholder="Your name"
-                placeholderTextColor={COLORS.placeholder}
-              />
-            ) : (
-              <Text style={styles.profileName}>{user?.name || 'User'}</Text>
-            )}
-            <Text style={styles.profileEmail}>{user?.email || 'email@domain.com'}</Text>
-            {isEditing ? (
+        <Card style={styles.profileCard}>
+          <View style={styles.profileTopRow}>
+            <View style={styles.avatarWrap}>
+              {avatarAsset?.uri || avatarUrl ? (
+                <Image source={{ uri: avatarAsset?.uri || avatarUrl }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {(user?.name || 'User')
+                    .split(' ')
+                    .map((part) => part[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.profileInfo}>
+              {isEditing ? (
+                <TextInput
+                  value={name}
+                  onChangeText={setName}
+                  style={styles.nameInput}
+                  placeholder="Your name"
+                  placeholderTextColor={Colors.textSecondary}
+                />
+              ) : (
+                <Text style={styles.name}>{user?.name || 'User'}</Text>
+              )}
+              <Text style={styles.email}>{user?.email || 'email@domain.com'}</Text>
+            </View>
+
+            {!isEditing ? (
               <TouchableOpacity
-                style={styles.changePhotoButton}
-                onPress={handlePickAvatar}
-                activeOpacity={0.85}
+                style={styles.editButton}
+                activeOpacity={0.8}
+                onPress={() => setIsEditing(true)}
               >
-                <SimpleIcon name="image" size={16} color={COLORS.primary} />
-                <Text style={styles.changePhotoText}>Change photo</Text>
+                <SimpleIcon name="edit" size={16} color="#FBBF24" />
               </TouchableOpacity>
             ) : null}
           </View>
+
+          {isEditing ? (
+            <View style={styles.editRow}>
+              <PrimaryButton title="Change Photo" onPress={handlePickAvatar} style={styles.editBtnHalf} />
+              <PrimaryButton
+                title={saving ? 'Saving...' : 'Save'}
+                onPress={handleSave}
+                disabled={saving}
+                style={styles.editBtnHalf}
+              />
+            </View>
+          ) : null}
+        </Card>
+
+        <View style={styles.statRow}>
+          <StatCard
+            label="Workouts"
+            value="24"
+            icon={<SimpleIcon name="activity" size={16} color="#FBBF24" />}
+          />
+          <StatCard
+            label="Total Reps"
+            value="1240"
+            icon={<SimpleIcon name="target" size={16} color={Colors.textSecondary} />}
+          />
+          <StatCard
+            label="Accuracy"
+            value="92%"
+            icon={<SimpleIcon name="award" size={16} color="#FBBF24" />}
+          />
         </View>
 
-        {isEditing ? (
-          <View style={styles.editActions}>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => {
-                setIsEditing(false);
-                setName(user?.name || '');
-                setAvatarAsset(null);
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleSave}
-              activeOpacity={0.85}
-              disabled={saving}
-            >
-              <Text style={styles.saveText}>{saving ? 'Saving...' : 'Save'}</Text>
-            </TouchableOpacity>
+        <SectionHeader title="Highlights" subtitle="This week in your training" style={styles.sectionTop} />
+        <Card style={styles.highlightCard}>
+          <View style={styles.highlightRow}>
+            <View style={styles.highlightPill}>
+              <SimpleIcon name="fire" size={14} color="#FBBF24" />
+              <Text style={styles.highlightText}>12-day streak</Text>
+            </View>
+            <View style={styles.highlightPill}>
+              <SimpleIcon name="clock" size={14} color={Colors.textSecondary} />
+              <Text style={styles.highlightText}>2h 45m total</Text>
+            </View>
           </View>
-        ) : null}
+        </Card>
 
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>24</Text>
-            <Text style={styles.statLabel}>Workouts</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>12</Text>
-            <Text style={styles.statLabel}>Streak</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>92%</Text>
-            <Text style={styles.statLabel}>Accuracy</Text>
-          </View>
-        </View>
-
-        <View style={styles.sectionTitleRow}>
-          <Text style={styles.sectionTitle}>Account</Text>
-        </View>
-
-        <View style={styles.listCard}>
-          <TouchableOpacity
-            style={styles.listItem}
-            activeOpacity={0.8}
-            onPress={() => setIsEditing(true)}
-          >
-            <View style={styles.listLeft}>
-              <View style={styles.listIcon}>
-                <SimpleIcon name="user" size={18} color={COLORS.primary} />
-              </View>
-              <Text style={styles.listText}>Edit Profile</Text>
-            </View>
-            <SimpleIcon name="arrow-down" size={16} color={COLORS.textSecondary} />
+        <SectionHeader title="Account" style={styles.sectionTop} />
+        <Card style={styles.listCard}>
+          <TouchableOpacity style={styles.listItem} activeOpacity={0.8} onPress={() => setIsEditing(true)}>
+            <Text style={styles.listLabel}>Edit Profile</Text>
+            <SimpleIcon name="arrow-down" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
-          <View style={styles.listDivider} />
+          <View style={styles.divider} />
           <TouchableOpacity style={styles.listItem} activeOpacity={0.8}>
-            <View style={styles.listLeft}>
-              <View style={styles.listIcon}>
-                <SimpleIcon name="target" size={18} color={COLORS.primary} />
-              </View>
-              <Text style={styles.listText}>Goals</Text>
-            </View>
-            <SimpleIcon name="arrow-down" size={16} color={COLORS.textSecondary} />
+            <Text style={styles.listLabel}>Goals</Text>
+            <SimpleIcon name="arrow-down" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
-          <View style={styles.listDivider} />
+          <View style={styles.divider} />
           <TouchableOpacity style={styles.listItem} activeOpacity={0.8}>
-            <View style={styles.listLeft}>
-              <View style={styles.listIcon}>
-                <SimpleIcon name="bell" size={18} color={COLORS.primary} />
-              </View>
-              <Text style={styles.listText}>Notifications</Text>
-            </View>
-            <SimpleIcon name="arrow-down" size={16} color={COLORS.textSecondary} />
+            <Text style={styles.listLabel}>Notifications</Text>
+            <SimpleIcon name="arrow-down" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
-        </View>
+        </Card>
 
-        <View style={styles.sectionTitleRow}>
-          <Text style={styles.sectionTitle}>Support</Text>
-        </View>
-
-        <View style={styles.listCard}>
+        <SectionHeader title="Support" style={styles.sectionTop} />
+        <Card style={styles.listCard}>
           <TouchableOpacity style={styles.listItem} activeOpacity={0.8}>
-            <View style={styles.listLeft}>
-              <View style={styles.listIcon}>
-                <SimpleIcon name="shield" size={18} color={COLORS.primary} />
-              </View>
-              <Text style={styles.listText}>Privacy & Security</Text>
-            </View>
-            <SimpleIcon name="arrow-down" size={16} color={COLORS.textSecondary} />
+            <Text style={styles.listLabel}>Privacy & Security</Text>
+            <SimpleIcon name="arrow-down" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
-          <View style={styles.listDivider} />
+          <View style={styles.divider} />
           <TouchableOpacity style={styles.listItem} activeOpacity={0.8}>
-            <View style={styles.listLeft}>
-              <View style={styles.listIcon}>
-                <SimpleIcon name="help-circle" size={18} color={COLORS.primary} />
-              </View>
-              <Text style={styles.listText}>Help Center</Text>
-            </View>
-            <SimpleIcon name="arrow-down" size={16} color={COLORS.textSecondary} />
+            <Text style={styles.listLabel}>Help Center</Text>
+            <SimpleIcon name="arrow-down" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
-        </View>
+        </Card>
 
-        <TouchableOpacity
-          style={styles.logoutButton}
-          activeOpacity={0.85}
-          onPress={logout}
-        >
-          <SimpleIcon name="log-out" size={18} color={COLORS.error} />
-          <Text style={styles.logoutText}>Sign Out</Text>
+        <TouchableOpacity style={styles.signOutButton} activeOpacity={0.85} onPress={logout}>
+          <SimpleIcon name="log-out" size={16} color="#F87171" />
+          <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
+
+        <View style={styles.bottomSpace} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   content: {
-    flexGrow: 1,
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 32,
-    gap: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: COLORS.text,
-    marginTop: 30,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-  },
-  editButton: {
-    width: 40,
-    marginTop: 30,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: `${COLORS.primary}20`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: `${COLORS.primary}40`,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.x2,
+    paddingBottom: Spacing.x2,
   },
   profileCard: {
+    marginTop: Spacing.md,
+    borderRadius: Radius.xl,
+  },
+  profileTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: `${COLORS.primary}25`,
-    justifyContent: 'center',
+  avatarWrap: {
+    width: 68,
+    height: 68,
+    borderRadius: Radius.xl,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
     alignItems: 'center',
+    justifyContent: 'center',
     overflow: 'hidden',
   },
   avatarImage: {
@@ -334,163 +250,126 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   avatarText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.primary,
+    color: Colors.primary,
+    fontSize: Typography.title,
+    fontWeight: FontWeight.heavy,
   },
   profileInfo: {
-    marginLeft: 14,
+    flex: 1,
+    marginLeft: Spacing.md,
   },
-  profileName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 4,
+  name: {
+    color: Colors.textPrimary,
+    fontSize: Typography.title,
+    fontWeight: FontWeight.bold,
+  },
+  email: {
+    marginTop: Spacing.xs,
+    color: Colors.textSecondary,
+    fontSize: Typography.body,
   },
   nameInput: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: COLORS.input,
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: 6,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.background,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
   },
-  profileEmail: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-  },
-  changePhotoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
-  },
-  changePhotoText: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  editActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    borderRadius: 12,
+  editButton: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingVertical: 12,
+    borderColor: Colors.border,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
   },
-  cancelText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  saveButton: {
-    flex: 1,
-    borderRadius: 12,
-    backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  saveText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.background,
-  },
-  statsRow: {
+  editRow: {
+    marginTop: Spacing.lg,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    gap: Spacing.md,
   },
-  statItem: {
+  editBtnHalf: {
     flex: 1,
-    alignItems: 'center',
   },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.text,
-    marginBottom: 4,
+  statRow: {
+    marginTop: Spacing.md,
+    flexDirection: 'row',
+    gap: Spacing.md,
   },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  statDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: COLORS.border,
-  },
-  sectionTitleRow: {
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.text,
+  sectionTop: {
+    marginTop: Spacing.xl,
   },
   listCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    overflow: 'hidden',
+    marginTop: Spacing.sm,
+    borderRadius: Radius.xl,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
   },
   listItem: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  listLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  listIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: `${COLORS.primary}20`,
-    justifyContent: 'center',
     alignItems: 'center',
   },
-  listText: {
-    fontSize: 14,
-    color: COLORS.text,
-    fontWeight: '600',
+  listLabel: {
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.semi,
   },
-  listDivider: {
+  divider: {
     height: 1,
-    backgroundColor: COLORS.border,
+    backgroundColor: Colors.border,
+    marginHorizontal: Spacing.lg,
   },
-  logoutButton: {
+  highlightCard: {
+    marginTop: Spacing.sm,
+  },
+  highlightRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  highlightPill: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 14,
+    gap: Spacing.xs,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.background,
     borderWidth: 1,
-    borderColor: `${COLORS.error}40`,
-    backgroundColor: `${COLORS.error}15`,
+    borderColor: Colors.border,
+    paddingVertical: Spacing.sm,
   },
-  logoutText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.error,
+  highlightText: {
+    color: Colors.textPrimary,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.semi,
+  },
+  signOutButton: {
+    marginTop: Spacing.xl,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(248, 113, 113, 0.35)',
+    backgroundColor: 'rgba(248, 113, 113, 0.12)',
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  signOutText: {
+    color: '#F87171',
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
+  },
+  bottomSpace: {
+    height: 88,
   },
 });

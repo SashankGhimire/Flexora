@@ -40,6 +40,11 @@ export const Logo: React.FC<LogoProps> = ({ size = 80 }) => {
             width: size,
             height: size,
             backgroundColor: COLORS.primary,
+            shadowColor: COLORS.primary,
+            shadowOpacity: 0.28,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 0 },
+            elevation: 6,
           },
           styles.iconWrap,
         ]}
@@ -69,11 +74,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconText: {
-    color: 'white',
+    color: COLORS.background,
     fontWeight: 'bold',
   },
   title: {
-    color: 'white',
+    color: COLORS.text,
     fontSize: 28,
     fontWeight: 'bold',
     marginTop: 16,

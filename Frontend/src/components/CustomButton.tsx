@@ -12,6 +12,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { COLORS } from '../utils/constants';
+import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -50,22 +51,29 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
   const getVariantStyles = () => {
     switch (variant) {
       case 'secondary':
-        return { backgroundColor: COLORS.card };
+        return { backgroundColor: COLORS.card, borderColor: COLORS.border, borderWidth: 1 };
       case 'outline':
         return { backgroundColor: 'transparent', borderWidth: 2, borderColor: COLORS.primary };
       default:
-        return { backgroundColor: COLORS.primary };
+        return {
+          backgroundColor: COLORS.primary,
+          shadowColor: COLORS.primary,
+          shadowOpacity: 0.24,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 0 },
+          elevation: 5,
+        };
     }
   };
 
   const getTextColor = () => {
     switch (variant) {
       case 'secondary':
-        return 'white';
+        return COLORS.text;
       case 'outline':
         return COLORS.primary;
       default:
-        return 'white';
+        return COLORS.background;
     }
   };
 
@@ -84,7 +92,7 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' ? COLORS.primary : 'white'} />
+        <ActivityIndicator color={variant === 'outline' ? COLORS.primary : COLORS.background} />
       ) : (
         <>
           {icon && <>{icon}</>}
@@ -99,16 +107,16 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
 
 const styles = StyleSheet.create({
   baseButton: {
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: Spacing.x2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonText: {
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontWeight: FontWeight.bold,
+    fontSize: Typography.subtitle,
   },
   enabledButton: {
     opacity: 1,

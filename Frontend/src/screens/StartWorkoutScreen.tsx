@@ -1,18 +1,12 @@
 import React from 'react';
-import {
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { COLORS } from '../utils/constants';
+import { Button, Card, SimpleIcon } from '../components/ui';
 import { HomeStackParamList, HomeTabParamList } from '../types';
-
-const ACCENT = '#22C55E';
+import { Colors } from '../theme/colors';
+import { FontWeight, Spacing, Typography } from '../theme/tokens';
 
 type StartWorkoutNavProp = CompositeNavigationProp<
   BottomTabNavigationProp<HomeTabParamList, 'StartWorkout'>,
@@ -29,20 +23,17 @@ export const StartWorkoutScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.heroCard}>
-          <Text style={styles.title}>Ready to move?</Text>
-          <Text style={styles.subtitle}>
-            Train with real-time posture guidance and hit your goals.
-          </Text>
+        <Card style={styles.heroCard}>
+          <View style={styles.badge}>
+            <SimpleIcon name="activity" size={13} color={Colors.primary} />
+            <Text style={styles.badgeText}>Workout Ready</Text>
+          </View>
 
-          <TouchableOpacity
-            style={styles.startButton}
-            onPress={handleStart}
-            activeOpacity={0.9}
-          >
-            <Text style={styles.startButtonText}>Start Workout</Text>
-          </TouchableOpacity>
-        </View>
+          <Text style={styles.title}>Ready to move?</Text>
+          <Text style={styles.subtitle}>Train with real-time posture guidance and hit your goals.</Text>
+
+          <Button title="Start Workout" onPress={handleStart} style={styles.startButton} />
+        </Card>
       </View>
     </SafeAreaView>
   );
@@ -51,43 +42,47 @@ export const StartWorkoutScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   container: {
     flex: 1,
-    padding: 20,
     justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
   },
   heroCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 20,
-    paddingVertical: 32,
-    paddingHorizontal: 24,
+    backgroundColor: Colors.card,
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: 'rgba(34, 197, 94, 0.3)',
+    backgroundColor: 'rgba(34, 197, 94, 0.14)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    marginBottom: Spacing.md,
+  },
+  badgeText: {
+    marginLeft: Spacing.xs,
+    color: Colors.primary,
+    fontSize: 11,
+    fontWeight: FontWeight.bold,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: COLORS.text,
-    marginBottom: 10,
+    fontSize: Typography.display,
+    lineHeight: Typography.displayLine,
+    fontWeight: FontWeight.heavy,
+    color: Colors.textPrimary,
   },
   subtitle: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
+    fontSize: Typography.subtitle,
     lineHeight: 20,
-    marginBottom: 24,
+    color: Colors.textSecondary,
+    marginTop: Spacing.sm,
   },
   startButton: {
-    backgroundColor: ACCENT,
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  startButtonText: {
-    color: COLORS.background,
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    marginTop: Spacing.xl,
   },
 });

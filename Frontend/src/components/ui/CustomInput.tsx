@@ -17,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SimpleIcon } from './SimpleIcon';
 import { COLORS } from '../../utils/constants';
+import { FontWeight, Radius, Spacing, Typography } from '../../theme/tokens';
 
 interface CustomInputProps extends TextInputProps {
   label: string;
@@ -149,40 +150,40 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 8,
+    color: COLORS.text,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.semi,
+    marginBottom: Spacing.sm,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.input,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     paddingHorizontal: 16,
-    borderWidth: 2,
+    borderWidth: 1,
   },
   leftIcon: {
     marginRight: 12,
   },
   textInput: {
     flex: 1,
-    color: 'white',
+    color: COLORS.text,
     paddingVertical: 16,
-    fontSize: 16,
+    fontSize: Typography.subtitle,
   },
   passwordToggle: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: Radius.pill,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
   },
   errorText: {
-    color: '#ef4444',
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
+    color: COLORS.error,
+    fontSize: Typography.caption,
+    marginTop: Spacing.xs,
+    marginLeft: Spacing.xs,
   },
 });
