@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Video from 'react-native-video';
 import { Colors } from '../../theme/colors';
 import { FontWeight } from '../../theme/tokens';
 
@@ -8,8 +9,26 @@ type CountdownOverlayProps = {
 };
 
 export const CountdownOverlay: React.FC<CountdownOverlayProps> = ({ count }) => {
+  const source = count === 3
+    ? require('../../assets/audio/3.wav')
+    : count === 2
+      ? require('../../assets/audio/2.wav')
+      : require('../../assets/audio/1.wav');
+
   return (
     <View style={styles.overlay}>
+      <Video
+        key={`count-audio-${count}`}
+        source={source}
+        paused={false}
+        repeat={false}
+        muted={false}
+        controls={false}
+        playInBackground={false}
+        playWhenInactive={false}
+        ignoreSilentSwitch="ignore"
+        style={styles.hiddenAudio}
+      />
       <Text style={styles.number}>{count}</Text>
     </View>
   );
@@ -22,6 +41,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 20,
+  },
+  hiddenAudio: {
+    width: 0,
+    height: 0,
+    position: 'absolute',
   },
   number: {
     color: Colors.textPrimary,

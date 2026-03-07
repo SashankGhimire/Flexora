@@ -1,0 +1,168 @@
+🏋️ Flexora – AI Fitness Trainer
+
+Flexora is an AI-powered mobile fitness application that helps users perform exercises correctly using real-time pose detection and posture correction.
+
+The app combines computer vision, mobile AI, and guided workouts to create a beginner-friendly personal training experience directly on your phone.
+
+🔗 GitHub Repository
+https://github.com/SashankGhimire/Flexora
+
+🚀 Features
+🤖 AI Posture Detection
+
+Flexora uses MoveNet Lightning (TensorFlow Lite) to analyze exercise form from the camera in real time.
+
+✨ Capabilities
+
+• Real-time pose detection
+• Automatic repetition counting
+• Posture correction feedback
+• Live workout metrics
+• On-device AI (no cloud required)
+
+🧠 Supported AI Exercises
+
+• Squat
+• Push-up
+• Lunge
+• Jumping Jack
+• Plank
+• Bicep Curl
+
+These exercises use body keypoints and motion analysis to detect repetitions and form accuracy.
+
+💪 Guided Bodyweight Workouts (Non-AI)
+
+Flexora also includes guided beginner workout programs.
+
+These workouts help users exercise without AI by following visual animations and audio cues.
+
+✨ Includes
+
+• Exercise GIF / MP4 demonstrations
+• Audio workout cues
+• Timer-based workouts
+• Rep-based workouts
+• Muscle focus information
+• Common mistake tips
+
+🏠 Example Workout Programs
+
+• Abs Workout
+• Arm Workout
+• Leg Workout
+• Full Body Workout
+
+Users can follow the animations while performing the exercises.
+
+🧠 AI System Architecture
+
+Flexora uses a hybrid AI pipeline combining pose estimation + rule-based motion analysis.
+
+Camera Stream
+      ↓
+VisionCamera Frame Processor
+      ↓
+MoveNet Lightning (TensorFlow Lite)
+      ↓
+17 Body Keypoints Detection
+      ↓
+Motion Intelligence Layer
+      ↓
+Exercise Detection
+      ↓
+Rep Counting & Posture Feedback
+
+The entire system runs directly on the device for fast performance and privacy.
+
+🧍 Pose Estimation Model
+
+Flexora uses MoveNet Lightning, a lightweight pose estimation model optimized for mobile devices.
+
+📄 Model file
+
+movenet_lightning.tflite
+
+📥 Model input
+
+192 × 192 RGB image
+
+📤 Model output
+
+17 body keypoints including:
+
+• shoulders
+• elbows
+• wrists
+• hips
+• knees
+• ankles
+
+Each keypoint contains:
+
+• x coordinate
+• y coordinate
+• confidence score
+
+🧮 Motion Detection Logic
+
+Flexora uses rule-based motion analysis to interpret pose data.
+
+The system calculates:
+
+• joint angles
+• wrist movement
+• hip displacement
+• body alignment
+
+Example – Bicep Curl
+elbow angle < 60°  → arm bent
+elbow angle > 160° → arm extended
+
+Rep counted when movement completes:
+
+down → up → down
+📊 User Personalization
+
+After signup, users complete an onboarding questionnaire.
+
+Collected data:
+
+• Fitness goal
+• Gender
+• Age
+• Height
+• Weight
+• Activity level
+• Training preference
+
+BMI Calculation
+BMI = weight / (height²)
+
+This information helps personalize workout plans and track progress.
+
+🛠 Tech Stack
+📱 Frontend
+
+• React Native
+• React Native VisionCamera
+• React Native Worklets
+• Lottie Animations
+
+🧠 AI
+
+• TensorFlow Lite
+• MoveNet Lightning
+
+🌐 Backend
+
+• Node.js
+• Express.js
+• MongoDB
+
+⚠️ Known Limitations
+
+• Pose detection accuracy may decrease in poor lighting
+• Occlusion can affect keypoint detection
+• Single-person detection only
+• Camera placement affects posture tracking

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import LottieView from 'lottie-react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
@@ -15,7 +15,7 @@ type WorkoutAnimationProps = {
   speed?: number;
 };
 
-export const WorkoutAnimation: React.FC<WorkoutAnimationProps> = ({
+const WorkoutAnimationComponent: React.FC<WorkoutAnimationProps> = ({
   animation,
   size = 120,
   loop,
@@ -25,7 +25,7 @@ export const WorkoutAnimation: React.FC<WorkoutAnimationProps> = ({
   const [failed, setFailed] = useState(false);
   const lottieRef = useRef<LottieView>(null);
   const pulse = useSharedValue(0);
-  const asset = resolveAnimationAsset(animation);
+  const asset = useMemo(() => resolveAnimationAsset(animation), [animation]);
   const source = asset?.source;
 
   useEffect(() => {
@@ -125,6 +125,17 @@ export const WorkoutAnimation: React.FC<WorkoutAnimationProps> = ({
     </View>
   );
 };
+
+export const WorkoutAnimation = memo(
+  WorkoutAnimationComponent,
+  (prev, next) => (
+    prev.animation === next.animation &&
+    prev.size === next.size &&
+    prev.loop === next.loop &&
+    prev.autoPlay === next.autoPlay &&
+    prev.speed === next.speed
+  )
+);
 
 const styles = StyleSheet.create({
   frame: {

@@ -32,6 +32,7 @@ export const ExercisePlayer: React.FC<ExercisePlayerProps> = ({
         <WorkoutAnimation
           animation={exercise.animation}
           size={230}
+          autoPlay={exercise.type === 'reps' || !paused}
           speed={animationSpeedByType[exercise.type]}
         />
       </View>

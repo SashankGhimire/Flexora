@@ -191,7 +191,7 @@ export const ProgressScreen: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={[styles.content, compact && styles.contentCompact]} showsVerticalScrollIndicator={false}>
         <Animated.View entering={FadeInUp.duration(420)}>
-          <Text style={[styles.title, compact && styles.titleCompact]}>REPORT</Text>
+          <Text style={[styles.title, compact && styles.titleCompact]}>Report</Text>
           <Text style={styles.subtitle}>Your weekly body metrics and training consistency</Text>
         </Animated.View>
 
@@ -437,26 +437,26 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.x2,
+    paddingTop: Spacing.x3 + Spacing.sm,
     paddingBottom: 36,
   },
   contentCompact: {
     paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.lg,
+    paddingTop: Spacing.x3,
   },
   title: {
     color: Colors.textPrimary,
-    fontSize: 34,
-    fontWeight: FontWeight.heavy,
-    letterSpacing: 0.4,
+    fontSize: Typography.title,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 0.2,
   },
   titleCompact: {
-    fontSize: 30,
+    fontSize: Typography.subtitle,
   },
   subtitle: {
     marginTop: Spacing.xs,
     color: Colors.textSecondary,
-    fontSize: Typography.body,
+    fontSize: Typography.caption,
   },
   statsRow: {
     flexDirection: 'row',

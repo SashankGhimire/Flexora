@@ -1,7 +1,9 @@
 import React from 'react';
+import { useWindowDimensions } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SimpleIcon } from '../components/ui';
 import { LoginScreen, RegisterScreen } from '../screens/auth';
 import {
@@ -76,6 +78,13 @@ const AuthStackScreen = () => {
 };
 
 const HomeTabs: React.FC = () => {
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const compact = height < 700;
+
+  const tabBarHeight = compact ? 60 : 64;
+  const tabBarBottom = insets.bottom > 0 ? Math.max(0, insets.bottom - 2) : 2;
+
   return (
     <Tab.Navigator
       id="home-tabs"
@@ -89,14 +98,14 @@ const HomeTabs: React.FC = () => {
           position: 'absolute',
           left: 14,
           right: 14,
-          bottom: 10,
+          bottom: tabBarBottom,
           borderTopWidth: 0,
           borderWidth: 1,
           borderColor: COLORS.border,
           borderRadius: 16,
-          paddingBottom: 7,
-          paddingTop: 7,
-          height: 64,
+          paddingBottom: compact ? 6 : 7,
+          paddingTop: compact ? 6 : 7,
+          height: tabBarHeight,
           shadowColor: '#000000',
           shadowOpacity: 0.12,
           shadowRadius: 8,
