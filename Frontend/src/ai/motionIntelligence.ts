@@ -32,6 +32,9 @@ export type MotionAnalysis = {
 const MIN_STABLE_KEYPOINTS = 10;
 const DEFAULT_WRIST_THRESHOLD = 0.01;
 const DEFAULT_HIP_THRESHOLD = 0.008;
+const KEYPOINT_SMOOTHING_ALPHA = 0.5;
+const FAST_KEYPOINT_SMOOTHING_ALPHA = 0.7;
+const FAST_KEYPOINT_DELTA = 0.03;
 const NO_ANGLES: JointAngles = {
   leftElbow: null,
   rightElbow: null,
@@ -110,8 +113,20 @@ const smoothKeypoints = (
     const previousPoint = previous[index];
     const existingPoint = target[index];
 
-    const nextX = previousPoint ? (previousPoint.x + currentPoint.x) * 0.5 : currentPoint.x;
-    const nextY = previousPoint ? (previousPoint.y + currentPoint.y) * 0.5 : currentPoint.y;
+    // Use stronger smoothing for noisy small deltas and faster response for quick movement.
+    const movementDelta = previousPoint
+      ? Math.max(Math.abs(currentPoint.x - previousPoint.x), Math.abs(currentPoint.y - previousPoint.y))
+      : 0;
+    const alpha = movementDelta >= FAST_KEYPOINT_DELTA
+      ? FAST_KEYPOINT_SMOOTHING_ALPHA
+      : KEYPOINT_SMOOTHING_ALPHA;
+
+    const nextX = previousPoint
+      ? previousPoint.x + (currentPoint.x - previousPoint.x) * alpha
+      : currentPoint.x;
+    const nextY = previousPoint
+      ? previousPoint.y + (currentPoint.y - previousPoint.y) * alpha
+      : currentPoint.y;
     const nextScore = previousPoint
       ? (typeof currentPoint.score === 'number' ? currentPoint.score : previousPoint.score)
       : currentPoint.score;
@@ -311,3 +326,5 @@ export const analyzeMotion = (
     bodyVerticalMovement: detectBodyVerticalMovement(previous, smoothedCurrent, hipThreshold, minScore, smoothedCurrent),
   };
 };
+
+

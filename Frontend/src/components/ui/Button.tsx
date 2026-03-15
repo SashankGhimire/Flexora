@@ -66,7 +66,7 @@ export const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'ghost' ? Colors.primary : Colors.background} />
+        <ActivityIndicator color={variant === 'ghost' ? Colors.primary : Colors.textOnPrimary} />
       ) : (
         <View style={styles.content}>
           {icon ? <View style={styles.icon}>{icon}</View> : null}
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   },
   secondary: {
     backgroundColor: Colors.card,
-    borderColor: Colors.border,
+    borderColor: Colors.primary,
   },
   ghost: {
     backgroundColor: 'transparent',
@@ -120,12 +120,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   primaryText: {
-    color: Colors.background,
+    color: Colors.textOnPrimary,
   },
   secondaryText: {
-    color: Colors.textPrimary,
+    color: Colors.primary,
   },
   disabled: {
     opacity: 0.5,
   },
 });
+
+

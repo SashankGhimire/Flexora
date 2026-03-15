@@ -46,3 +46,5 @@ export const getExercisesForProgram = (programId: string): WorkoutExercise[] => 
 
 export const getProgramsByFocus = (focus: string): WorkoutProgram[] =>
   WORKOUTS.filter((program) => program.focus.toLowerCase() === focus.toLowerCase());
+
+

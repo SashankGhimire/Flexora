@@ -34,7 +34,7 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={Colors.background} />
+        <ActivityIndicator color={Colors.textOnPrimary} />
       ) : (
         <View style={styles.content}>
           {icon ? <View style={styles.icon}>{icon}</View> : null}
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
   },
   text: {
-    color: Colors.background,
+    color: Colors.textOnPrimary,
     fontSize: Typography.subtitle,
     fontWeight: FontWeight.bold,
     letterSpacing: 0.2,
@@ -74,3 +74,5 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
 });
+
+

@@ -182,3 +182,5 @@ export const resetLungeDetector = (): void => {
   state.rightKneeAngle = 180;
   state.hipDrop = 0;
 };
+
+

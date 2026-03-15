@@ -16,7 +16,7 @@ import Animated, {
   Extrapolate,
 } from 'react-native-reanimated';
 import { SimpleIcon } from './SimpleIcon';
-import { COLORS } from '../../utils/constants';
+import { Colors } from '../../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../../theme/tokens';
 
 interface CustomInputProps extends TextInputProps {
@@ -41,7 +41,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
   const animatedBorderStyle = useAnimatedStyle(() => {
     return {
       borderColor: withTiming(
-        focusAnimation.value === 1 ? COLORS.primary : COLORS.border,
+        focusAnimation.value === 1 ? Colors.primary : Colors.border,
         { duration: 200 }
       ),
     };
@@ -101,7 +101,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
           <SimpleIcon
             name={icon}
             size={20}
-            color={isFocused ? COLORS.primary : COLORS.placeholder}
+            color={isFocused ? Colors.primary : Colors.textMuted}
             style={styles.leftIcon}
           />
         )}
@@ -111,7 +111,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
           onFocus={handleFocus}
           onBlur={handleBlur}
           style={styles.textInput}
-          placeholderTextColor={COLORS.placeholder}
+          placeholderTextColor={Colors.textMuted}
         />
         {isPassword && (
           <TouchableOpacity
@@ -121,8 +121,8 @@ export const CustomInput: React.FC<CustomInputProps> = ({
               styles.passwordToggle,
               {
                 backgroundColor: isFocused
-                  ? `${COLORS.primary}20`
-                  : `${COLORS.placeholder}15`,
+                  ? `${Colors.primary}20`
+                  : `${Colors.textMuted}15`,
               },
             ]}
           >
@@ -130,7 +130,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
               <SimpleIcon
                 name={showPassword ? 'eye' : 'eye-off'}
                 size={24}
-                color={isFocused ? COLORS.primary : COLORS.placeholder}
+                color={isFocused ? Colors.primary : Colors.textMuted}
               />
             </Animated.View>
           </TouchableOpacity>
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: Typography.subtitle,
     fontWeight: FontWeight.semi,
     marginBottom: Spacing.sm,
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.input,
+    backgroundColor: Colors.input,
     borderRadius: Radius.md,
     paddingHorizontal: 16,
     borderWidth: 1,
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    color: COLORS.text,
+    color: Colors.textPrimary,
     paddingVertical: 16,
     fontSize: Typography.subtitle,
   },
@@ -181,9 +181,14 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   errorText: {
-    color: COLORS.error,
+    color: Colors.error,
     fontSize: Typography.caption,
     marginTop: Spacing.xs,
     marginLeft: Spacing.xs,
   },
 });
+
+
+
+
+

@@ -11,7 +11,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { COLORS } from '../utils/constants';
+import { Colors } from '../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
@@ -51,13 +51,13 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
   const getVariantStyles = () => {
     switch (variant) {
       case 'secondary':
-        return { backgroundColor: COLORS.card, borderColor: COLORS.border, borderWidth: 1 };
+        return { backgroundColor: Colors.card, borderColor: Colors.primary, borderWidth: 1 };
       case 'outline':
-        return { backgroundColor: 'transparent', borderWidth: 2, borderColor: COLORS.primary };
+        return { backgroundColor: 'transparent', borderWidth: 2, borderColor: Colors.primary };
       default:
         return {
-          backgroundColor: COLORS.primary,
-          shadowColor: COLORS.primary,
+          backgroundColor: Colors.primary,
+          shadowColor: Colors.primary,
           shadowOpacity: 0.24,
           shadowRadius: 8,
           shadowOffset: { width: 0, height: 0 },
@@ -69,11 +69,11 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
   const getTextColor = () => {
     switch (variant) {
       case 'secondary':
-        return COLORS.text;
+        return Colors.primary;
       case 'outline':
-        return COLORS.primary;
+        return Colors.primary;
       default:
-        return COLORS.background;
+        return Colors.card;
     }
   };
 
@@ -92,7 +92,7 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' ? COLORS.primary : COLORS.background} />
+        <ActivityIndicator color={variant === 'outline' ? Colors.primary : Colors.card} />
       ) : (
         <>
           {icon && <>{icon}</>}
@@ -125,3 +125,6 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 });
+
+
+

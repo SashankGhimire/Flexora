@@ -153,3 +153,5 @@ export const resetJumpingJackDetector = (): void => {
   state.ankleDistanceBuffer = [];
   state.lastAnkleDistance = 0;
 };
+
+

@@ -207,14 +207,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     padding: Spacing.md,
-    backgroundColor: 'rgba(8, 12, 14, 0.56)',
+    backgroundColor: Colors.blackA56,
   },
   heroTag: {
     alignSelf: 'flex-start',
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.52)',
-    backgroundColor: 'rgba(52, 211, 153, 0.18)',
+    borderColor: Colors.primaryA52,
+    backgroundColor: Colors.primaryLightA2,
     color: Colors.primary,
     fontSize: Typography.caption,
     fontWeight: FontWeight.bold,
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   heroTitle: {
-    color: '#FFFFFF',
+    color: Colors.textOnPrimary,
     fontSize: Typography.heading,
     fontWeight: FontWeight.heavy,
   },
@@ -311,8 +311,8 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.52)',
-    backgroundColor: 'rgba(52, 211, 153, 0.16)',
+    borderColor: Colors.primaryA52,
+    backgroundColor: Colors.primaryLightA2,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
@@ -339,8 +339,8 @@ const styles = StyleSheet.create({
   metaPill: {
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.42)',
-    backgroundColor: 'rgba(52, 211, 153, 0.14)',
+    borderColor: Colors.primaryA42,
+    backgroundColor: Colors.primaryLightA16,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
     flexDirection: 'row',
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.56)',
+    backgroundColor: Colors.blackA56,
     justifyContent: 'flex-end',
   },
   modalSheet: {
@@ -449,8 +449,8 @@ const styles = StyleSheet.create({
   focusTag: {
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.35)',
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryLightA16,
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
   },
@@ -470,13 +470,13 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(248, 113, 113, 0.35)',
-    backgroundColor: 'rgba(248, 113, 113, 0.13)',
+    borderColor: Colors.errorA35,
+    backgroundColor: Colors.errorA12,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.sm,
   },
   mistakeHighlightText: {
-    color: '#FCA5A5',
+    color: Colors.error,
     fontSize: Typography.body,
     fontWeight: FontWeight.semi,
   },
@@ -501,8 +501,11 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   closeText: {
-    color: Colors.background,
+    color: Colors.textOnPrimary,
     fontSize: Typography.subtitle,
     fontWeight: FontWeight.bold,
   },
 });
+
+
+

@@ -25,16 +25,16 @@ import { resetJumpingJackDetector, updateJumpingJack } from '../ai/jumpingJackDe
 import { resetLungeDetector, updateLunge } from '../ai/lungeDetector';
 import { resetPushupDetector, updatePushup } from '../ai/pushupDetector';
 import { resetSquatDetector, SquatViewMode, updateSquat } from '../ai/squatDetector';
-import { COLORS } from '../utils/constants';
+import { Colors } from '../theme/colors';
 import { ExerciseType, HomeStackParamList } from '../types';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/native';
 
 // Constants
-const ACCENT = '#22C55E';
-const OVERLAY_LIGHT = 'rgba(0,0,0,0.45)';
-const OVERLAY_MEDIUM = 'rgba(0,0,0,0.5)';
-const OVERLAY_SUBTLE = 'rgba(0,0,0,0.3)';
+const ACCENT = Colors.primary;
+const OVERLAY_LIGHT = Colors.blackA45;
+const OVERLAY_MEDIUM = Colors.blackA5;
+const OVERLAY_SUBTLE = Colors.blackA3;
 const GAP = 12;
 const BORDER_RADIUS = 14;
 const DEBUG_MIN_SCORE = 0.25;
@@ -121,7 +121,7 @@ const PoseOverlay = React.memo(({ keypoints }: { keypoints: PoseKeypoint[] }) =>
   return (
     <Svg style={styles.poseOverlay} width={screenWidth} height={screenHeight} pointerEvents="none">
       {circles.map((circle) => (
-        <Circle key={circle.key} cx={circle.cx} cy={circle.cy} r={3} fill="rgba(34,197,94,0.75)" />
+        <Circle key={circle.key} cx={circle.cx} cy={circle.cy} r={3} fill={Colors.successA75} />
       ))}
     </Svg>
   );
@@ -2041,7 +2041,7 @@ const styles = StyleSheet.create({
   // ===== MAIN LAYOUT =====
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -2067,14 +2067,14 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 4,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: Colors.blackA5,
   },
   viewModeButtonActive: {
     backgroundColor: `${ACCENT}33`,
     borderColor: `${ACCENT}AA`,
   },
   viewModeText: {
-    color: COLORS.textSecondary,
+    color: Colors.textSecondary,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -2082,7 +2082,7 @@ const styles = StyleSheet.create({
     color: ACCENT,
   },
   bicepTitle: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 1,
@@ -2094,19 +2094,19 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   bicepMeta: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 18,
     fontWeight: '700',
     marginTop: 4,
   },
   bicepAngle: {
-    color: COLORS.textSecondary,
+    color: Colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
     marginTop: 2,
   },
   bicepMetric: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 13,
     fontWeight: '700',
     marginTop: 2,
@@ -2117,13 +2117,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   bicepFormGood: {
-    color: '#22C55E',
+    color: Colors.success,
   },
   bicepFormOk: {
-    color: '#FACC15',
+    color: Colors.warning,
   },
   bicepFormImprove: {
-    color: '#EF4444',
+    color: Colors.error,
   },
   squatOverlay: {
     position: 'absolute',
@@ -2140,7 +2140,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   lungeTitle: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 1,
@@ -2152,7 +2152,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   lungeMetric: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 13,
     fontWeight: '700',
     marginTop: 2,
@@ -2172,7 +2172,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pushupTitle: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 1,
@@ -2184,13 +2184,13 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   pushupMetric: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 13,
     fontWeight: '700',
     marginTop: 2,
   },
   jumpingJackTitle: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 1,
@@ -2202,13 +2202,13 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   jumpingJackMetric: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 13,
     fontWeight: '700',
     marginTop: 2,
   },
   squatTitle: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 1,
@@ -2220,7 +2220,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   squatMetric: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 13,
     fontWeight: '700',
     marginTop: 2,
@@ -2247,11 +2247,11 @@ const styles = StyleSheet.create({
   exerciseTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: Colors.textPrimary,
   },
   timerText: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: Colors.textSecondary,
     marginTop: 4,
   },
   topRight: {
@@ -2291,11 +2291,11 @@ const styles = StyleSheet.create({
     color: ACCENT,
   },
   topBadgePaused: {
-    backgroundColor: 'rgba(255, 152, 0, 0.15)',
-    borderColor: 'rgba(255, 152, 0, 0.4)',
+    backgroundColor: Colors.warningA15,
+    borderColor: Colors.warningA4,
   },
   topBadgeTextPaused: {
-    color: '#FF9800',
+    color: Colors.warning,
   },
 
   // ===== STATS ROW =====
@@ -2313,12 +2313,12 @@ const styles = StyleSheet.create({
   },
   cornerLabel: {
     fontSize: 11,
-    color: COLORS.textSecondary,
+    color: Colors.textSecondary,
   },
   cornerValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: Colors.textPrimary,
     marginTop: 4,
   },
 
@@ -2331,7 +2331,7 @@ const styles = StyleSheet.create({
   feedbackText: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: Colors.textPrimary,
     backgroundColor: OVERLAY_LIGHT,
     paddingHorizontal: 20,
     paddingVertical: 10,
@@ -2339,7 +2339,7 @@ const styles = StyleSheet.create({
   },
   motionStatusBadge: {
     marginTop: 10,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: Colors.blackA55,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -2349,32 +2349,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   motionStatusBadgeDetected: {
-    borderColor: 'rgba(34,197,94,0.85)',
-    backgroundColor: 'rgba(34,197,94,0.18)',
+    borderColor: Colors.successA85,
+    backgroundColor: Colors.successA18,
   },
   motionStatusBadgeIdle: {
-    borderColor: 'rgba(156,163,175,0.55)',
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderColor: Colors.textMutedA55,
+    backgroundColor: Colors.blackA55,
   },
   motionStatusTitle: {
     fontSize: 12,
     fontWeight: '800',
   },
   motionStatusTitleDetected: {
-    color: '#22C55E',
+    color: Colors.success,
   },
   motionStatusTitleIdle: {
-    color: '#9CA3AF',
+    color: Colors.textSecondary,
   },
   motionStatusText: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 12,
     marginTop: 3,
     fontWeight: '600',
   },
   detectStatusBadge: {
     marginTop: 8,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: Colors.blackA55,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -2389,14 +2389,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   detectStatusText: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 12,
     marginTop: 3,
     fontWeight: '600',
   },
   debugHud: {
     marginTop: 12,
-    backgroundColor: 'rgba(0,0,0,0.62)',
+    backgroundColor: Colors.blackA62,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -2411,7 +2411,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   debugText: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 11,
     marginTop: 2,
   },
@@ -2429,7 +2429,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   detectButtonText: {
-    color: COLORS.background,
+    color: Colors.textOnPrimary,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -2440,10 +2440,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
   secondaryButtonText: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -2455,7 +2455,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: COLORS.background,
+    color: Colors.textOnPrimary,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -2463,7 +2463,7 @@ const styles = StyleSheet.create({
   // ===== PERMISSION STATES =====
   permissionContainer: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
@@ -2471,13 +2471,13 @@ const styles = StyleSheet.create({
   permissionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.text,
+    color: Colors.textPrimary,
     marginBottom: 8,
     marginTop: 16,
   },
   permissionSubtitle: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: Colors.textSecondary,
     textAlign: 'center',
   },
   retryButton: {
@@ -2488,8 +2488,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   retryButtonText: {
-    color: COLORS.background,
+    color: Colors.textOnPrimary,
     fontSize: 14,
     fontWeight: '700',
   },
 });
+
+
+
+
+

@@ -31,13 +31,13 @@ const getBmiCategory = (bmi: number): string => {
 const getBmiCategoryColor = (category: string): string => {
   switch (category) {
     case 'Underweight':
-      return '#5B88E8';
+      return Colors.info;
     case 'Normal':
-      return '#66F1D4';
+      return Colors.success;
     case 'Overweight':
-      return '#E8A24E';
+      return Colors.warning;
     default:
-      return '#E65061';
+      return Colors.error;
   }
 };
 
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   bmiValueDecimal: {
-    color: '#C7D0DA',
+    color: Colors.textSecondary,
     fontSize: 25,
     fontWeight: '700',
     marginBottom: 5,
@@ -226,16 +226,16 @@ const styles = StyleSheet.create({
     height: 12,
   },
   segmentUnder: {
-    backgroundColor: '#5B88E8',
+    backgroundColor: Colors.info,
   },
   segmentNormal: {
-    backgroundColor: '#66F1D4',
+    backgroundColor: Colors.success,
   },
   segmentOver: {
-    backgroundColor: '#E8A24E',
+    backgroundColor: Colors.warning,
   },
   segmentObese: {
-    backgroundColor: '#E65061',
+    backgroundColor: Colors.error,
   },
   segmentLeft: {
     borderTopLeftRadius: Radius.pill,
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 20,
     borderRadius: Radius.pill,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     transform: [{ translateX: -2 }],
   },
   ticks: {
@@ -265,3 +265,5 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
 });
+
+

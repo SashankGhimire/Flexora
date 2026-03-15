@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     minHeight: 126,
-    backgroundColor: 'rgba(11, 15, 19, 0.44)',
+    backgroundColor: Colors.blackA3,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
   },
@@ -67,15 +67,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   focus: {
-    color: '#BBF7D0',
+    color: Colors.primaryLight,
     fontSize: Typography.caption,
     fontWeight: FontWeight.bold,
   },
   timePill: {
     borderRadius: Radius.pill,
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    backgroundColor: Colors.backgroundA82,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: Colors.border,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
   },
@@ -97,14 +97,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   meta: {
-    color: '#E5E7EB',
+    color: Colors.textSecondary,
     fontSize: Typography.caption,
   },
   ctaPill: {
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.42)',
-    backgroundColor: 'rgba(34, 197, 94, 0.18)',
+    borderColor: Colors.primaryA42,
+    backgroundColor: Colors.primaryLightA2,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
   },
@@ -114,3 +114,6 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
   },
 });
+
+
+

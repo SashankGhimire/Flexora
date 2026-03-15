@@ -150,3 +150,5 @@ export const resetPushupDetector = (): void => {
   state.rightElbowAngle = 180;
   state.avgElbowAngle = 180;
 };
+
+

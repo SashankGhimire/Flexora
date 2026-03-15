@@ -234,8 +234,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   unitChipActive: {
-    borderColor: 'rgba(52, 211, 153, 0.42)',
-    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    borderColor: Colors.primaryA42,
+    backgroundColor: Colors.primaryLightA18,
   },
   unitText: {
     color: Colors.textSecondary,
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: '#10151B',
+    backgroundColor: Colors.background,
     color: Colors.textPrimary,
     fontSize: 22,
     paddingHorizontal: Spacing.md,
@@ -288,3 +288,6 @@ const styles = StyleSheet.create({
     height: Spacing.sm,
   },
 });
+
+
+

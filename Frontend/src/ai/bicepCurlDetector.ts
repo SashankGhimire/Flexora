@@ -8,14 +8,19 @@ type ArmSide = 'left' | 'right';
 
 type BicepCurlState = {
   repCount: number;
+  initialized: boolean;
   phase: BicepCurlPhase;
   pendingPhase: BicepCurlPhase | null;
   pendingFrames: number;
+  pendingRequiredFrames: number;
   lastAngle: number;
   lastProcessedAt: number;
+  smoothedFrameDeltaMs: number;
+  lastAngleVelocity: number;
   maxAngle: number;
   minAngle: number;
   repStartTime: number | null;
+  reachedUpInCurrentCycle: boolean;
   lastRepSpeedSec: number;
   lastRom: number;
   totalAccuracy: number;
@@ -28,6 +33,7 @@ type BicepCurlState = {
   activeArm: ArmSide | null;
   activeArmLostFrames: number;
   lastRawAngle: number;
+  recentAngles: number[];
 };
 
 export type BicepCurlResult = {
@@ -43,10 +49,10 @@ export type BicepCurlResult = {
 };
 
 type BicepProfile = {
-  downEnter: number;
-  downExit: number;
-  upEnter: number;
-  upExit: number;
+  extendedEnter: number;
+  extendedExit: number;
+  curledEnter: number;
+  curledExit: number;
   elbowDriftThreshold: number;
   strict: {
     maxAngle: number;
@@ -65,45 +71,56 @@ type BicepCurlOptions = {
 };
 
 const MIN_CONFIDENCE = 0.2;
-const CONFIRMATION_FRAMES = 2;
-const ANALYSIS_INTERVAL_MS = 180;
-const ANGLE_SMOOTHING_ALPHA = 0.35;
+const BASE_CONFIRMATION_FRAMES = 2;
+const ANALYSIS_INTERVAL_MS = 55;
+const ANGLE_SMOOTHING_ALPHA = 0.32;
+const FAST_SMOOTHING_ALPHA = 0.6;
+const SMOOTHING_WINDOW_SIZE = 4;
+const FRAME_TIME_ALPHA = 0.35;
+const DEFAULT_FRAME_DELTA_MS = ANALYSIS_INTERVAL_MS;
+const MIN_FRAME_DELTA_MS = 28;
+const MAX_FRAME_DELTA_MS = 120;
+const FAST_MOVEMENT_DEG_PER_SEC = 180;
+const SLOW_MOVEMENT_DEG_PER_SEC = 70;
+const ANGLE_NOISE_BUFFER_DEG = 3;
+const FAST_MOVEMENT_BUFFER_DEG = 4;
 const ARM_STICKY_CONFIDENCE_MARGIN = 0.06;
 const ARM_LOST_GRACE_UPDATES = 4;
 
 const BICEP_PROFILES: Record<BicepViewMode, BicepProfile> = {
   side: {
-    downEnter: 84,
-    downExit: 90,
-    upEnter: 128,
-    upExit: 120,
+    // DOWN = arm extended, UP = arm curled.
+    extendedEnter: 154,
+    extendedExit: 149,
+    curledEnter: 66,
+    curledExit: 74,
     elbowDriftThreshold: 0.16,
     strict: {
-      maxAngle: 150,
-      minAngle: 70,
-      rom: 70,
+      maxAngle: 152,
+      minAngle: 68,
+      rom: 64,
     },
     assisted: {
-      maxAngle: 132,
-      minAngle: 90,
-      rom: 45,
+      maxAngle: 144,
+      minAngle: 88,
+      rom: 48,
     },
   },
   front: {
-    downEnter: 88,
-    downExit: 94,
-    upEnter: 122,
-    upExit: 114,
+    extendedEnter: 152,
+    extendedExit: 147,
+    curledEnter: 68,
+    curledExit: 76,
     elbowDriftThreshold: 0.2,
     strict: {
-      maxAngle: 145,
-      minAngle: 75,
-      rom: 62,
+      maxAngle: 150,
+      minAngle: 70,
+      rom: 60,
     },
     assisted: {
-      maxAngle: 128,
-      minAngle: 95,
-      rom: 38,
+      maxAngle: 142,
+      minAngle: 90,
+      rom: 42,
     },
   },
 };
@@ -119,14 +136,19 @@ const MOVENET = {
 
 const state: BicepCurlState = {
   repCount: 0,
-  phase: 'up',
+  initialized: false,
+  phase: 'down',
   pendingPhase: null,
   pendingFrames: 0,
-  lastAngle: 180,
+  pendingRequiredFrames: BASE_CONFIRMATION_FRAMES,
+  lastAngle: 170,
   lastProcessedAt: 0,
-  maxAngle: 180,
-  minAngle: 180,
+  smoothedFrameDeltaMs: DEFAULT_FRAME_DELTA_MS,
+  lastAngleVelocity: 0,
+  maxAngle: 170,
+  minAngle: 170,
   repStartTime: null,
+  reachedUpInCurrentCycle: false,
   lastRepSpeedSec: 0,
   lastRom: 0,
   totalAccuracy: 0,
@@ -135,10 +157,11 @@ const state: BicepCurlState = {
   stabilitySampleCount: 0,
   stabilityPenaltyCount: 0,
   lastSpeedFeedback: 'Controlled',
-  smoothedAngle: 180,
+  smoothedAngle: 170,
   activeArm: null,
   activeArmLostFrames: 0,
-  lastRawAngle: 180,
+  lastRawAngle: 170,
+  recentAngles: [],
 };
 
 const hasConfidence = (point: PoseKeypoint | undefined, threshold: number): point is PoseKeypoint => {
@@ -210,43 +233,94 @@ export const calculateAccuracy = (
 };
 
 const smoothAngle = (rawAngle: number): number => {
-  const angleDelta = Math.abs(rawAngle - state.smoothedAngle);
-  const adaptiveAlpha = angleDelta > 10 ? 0.55 : ANGLE_SMOOTHING_ALPHA;
-  state.smoothedAngle = state.smoothedAngle + (rawAngle - state.smoothedAngle) * adaptiveAlpha;
+  state.recentAngles.push(rawAngle);
+  if (state.recentAngles.length > SMOOTHING_WINDOW_SIZE) {
+    state.recentAngles.shift();
+  }
+
+  let windowSum = 0;
+  for (let i = 0; i < state.recentAngles.length; i += 1) {
+    windowSum += state.recentAngles[i];
+  }
+  const movingAverage = windowSum / state.recentAngles.length;
+
+  const angleDelta = Math.abs(movingAverage - state.smoothedAngle);
+  const adaptiveAlpha = angleDelta > 12 ? FAST_SMOOTHING_ALPHA : ANGLE_SMOOTHING_ALPHA;
+  state.smoothedAngle = state.smoothedAngle + (movingAverage - state.smoothedAngle) * adaptiveAlpha;
   return state.smoothedAngle;
+};
+
+const getRequiredConfirmationFrames = (angleVelocity: number): number => {
+  // Keep confirmation lightweight (2-3 frames) while reacting faster on quicker curls.
+  return Math.abs(angleVelocity) <= SLOW_MOVEMENT_DEG_PER_SEC ? 3 : BASE_CONFIRMATION_FRAMES;
+};
+
+const getSmoothedFrameDeltaMs = (rawDeltaMs: number): number => {
+  const boundedDeltaMs = Math.max(MIN_FRAME_DELTA_MS, Math.min(MAX_FRAME_DELTA_MS, rawDeltaMs));
+  state.smoothedFrameDeltaMs =
+    state.smoothedFrameDeltaMs + (boundedDeltaMs - state.smoothedFrameDeltaMs) * FRAME_TIME_ALPHA;
+  return state.smoothedFrameDeltaMs;
 };
 
 const resolvePhaseFromAngle = (
   elbowAngle: number,
   rawAngle: number,
+  angleVelocity: number,
   profile: BicepProfile
 ): BicepCurlPhase | null => {
-  const downDetected = elbowAngle <= profile.downEnter || rawAngle <= profile.downEnter - 6;
-  const upDetected = elbowAngle >= profile.upEnter || rawAngle >= profile.upEnter - 4;
+  const isFastMovement = Math.abs(angleVelocity) >= FAST_MOVEMENT_DEG_PER_SEC;
+  const dynamicBuffer = isFastMovement ? FAST_MOVEMENT_BUFFER_DEG : ANGLE_NOISE_BUFFER_DEG;
 
-  if (state.phase === 'up') {
-    if (downDetected) {
-      return 'down';
-    }
-    return elbowAngle >= profile.upExit || rawAngle >= profile.upExit - 4 ? 'up' : null;
-  }
+  const isCurled =
+    elbowAngle <= profile.curledEnter + dynamicBuffer ||
+    rawAngle <= profile.curledEnter + dynamicBuffer + 1 ||
+    (angleVelocity <= -FAST_MOVEMENT_DEG_PER_SEC && elbowAngle <= profile.curledExit + dynamicBuffer);
+  const isExtended =
+    elbowAngle >= profile.extendedEnter - dynamicBuffer ||
+    rawAngle >= profile.extendedEnter - dynamicBuffer - 1 ||
+    (angleVelocity >= FAST_MOVEMENT_DEG_PER_SEC && elbowAngle >= profile.extendedExit - dynamicBuffer);
 
   if (state.phase === 'down') {
-    if (upDetected) {
+    if (isCurled) {
       return 'up';
     }
-    return elbowAngle <= profile.downExit || rawAngle <= profile.downExit - 4 ? 'down' : null;
+    return elbowAngle >= profile.extendedExit - ANGLE_NOISE_BUFFER_DEG ? 'down' : null;
   }
 
-  if (downDetected) {
+  if (state.phase === 'up') {
+    if (isExtended) {
+      return 'down';
+    }
+    return elbowAngle <= profile.curledExit + ANGLE_NOISE_BUFFER_DEG ? 'up' : null;
+  }
+
+  if (isExtended) {
     return 'down';
   }
 
-  if (upDetected) {
+  if (isCurled) {
     return 'up';
   }
 
   return null;
+};
+
+const bootstrapInitialPhase = (angle: number, rawAngle: number, profile: BicepProfile): void => {
+  if (state.initialized) {
+    return;
+  }
+
+  if (angle <= profile.curledExit || rawAngle <= profile.curledExit + 2) {
+    state.phase = 'up';
+    state.reachedUpInCurrentCycle = true;
+    state.repStartTime = Date.now();
+  } else {
+    state.phase = 'down';
+    state.reachedUpInCurrentCycle = false;
+    state.repStartTime = Date.now();
+  }
+
+  state.initialized = true;
 };
 
 const getSpeedScore = (repSpeedSec: number): { score: number; feedback: RepSpeedFeedback } => {
@@ -276,9 +350,9 @@ const getSpeedScore = (repSpeedSec: number): { score: number; feedback: RepSpeed
 };
 
 const getRomScore = (maxAngle: number, minAngle: number, rom: number): number => {
-  const maxScore = maxAngle >= 150 ? 100 : Math.max(0, Math.min(100, (maxAngle / 150) * 100));
-  const minScore = minAngle <= 70 ? 100 : Math.max(0, Math.min(100, (70 / minAngle) * 100));
-  const romScore = rom >= 70 ? 100 : Math.max(0, Math.min(100, (rom / 70) * 100));
+  const maxScore = maxAngle >= 146 ? 100 : Math.max(0, Math.min(100, (maxAngle / 146) * 100));
+  const minScore = minAngle <= 74 ? 100 : Math.max(0, Math.min(100, (74 / minAngle) * 100));
+  const romScore = rom >= 58 ? 100 : Math.max(0, Math.min(100, (rom / 58) * 100));
   return maxScore * 0.35 + minScore * 0.35 + romScore * 0.3;
 };
 
@@ -361,11 +435,13 @@ const finalizeRepWindow = (repEndTime: number, profile: BicepProfile): void => {
 const applyPhaseTransition = (
   nextPhase: BicepCurlPhase,
   now: number,
+  requiredFrames: number,
   profile: BicepProfile
 ): void => {
   if (nextPhase === state.phase) {
     state.pendingPhase = null;
     state.pendingFrames = 0;
+    state.pendingRequiredFrames = BASE_CONFIRMATION_FRAMES;
     return;
   }
 
@@ -374,9 +450,10 @@ const applyPhaseTransition = (
   } else {
     state.pendingPhase = nextPhase;
     state.pendingFrames = 1;
+    state.pendingRequiredFrames = requiredFrames;
   }
 
-  if (state.pendingFrames < CONFIRMATION_FRAMES) {
+  if (state.pendingFrames < state.pendingRequiredFrames) {
     return;
   }
 
@@ -385,13 +462,18 @@ const applyPhaseTransition = (
   state.pendingPhase = null;
   state.pendingFrames = 0;
 
-  if (previousPhase === 'up' && nextPhase === 'down') {
-    resetRepWindow(now);
+  if (previousPhase === 'down' && nextPhase === 'up') {
+    if (state.repStartTime === null) {
+      resetRepWindow(now);
+    }
+    state.reachedUpInCurrentCycle = true;
     return;
   }
 
-  if (previousPhase === 'down' && nextPhase === 'up') {
+  if (previousPhase === 'up' && nextPhase === 'down' && state.reachedUpInCurrentCycle) {
     finalizeRepWindow(now, profile);
+    state.reachedUpInCurrentCycle = false;
+    resetRepWindow(now);
   }
 };
 
@@ -470,7 +552,8 @@ export const updateBicepCurl = (
   const profile = BICEP_PROFILES[viewMode];
 
   const now = Date.now();
-  if (now - state.lastProcessedAt < ANALYSIS_INTERVAL_MS) {
+  const previousProcessedAt = state.lastProcessedAt;
+  if (now - previousProcessedAt < ANALYSIS_INTERVAL_MS) {
     return toResult();
   }
   state.lastProcessedAt = now;
@@ -481,13 +564,27 @@ export const updateBicepCurl = (
   }
 
   const angle = smoothAngle(armObservation.angle);
+  const rawFrameDeltaMs = previousProcessedAt > 0 ? now - previousProcessedAt : DEFAULT_FRAME_DELTA_MS;
+  const smoothedFrameDeltaMs = getSmoothedFrameDeltaMs(rawFrameDeltaMs);
+  const angleVelocity = ((angle - state.lastAngle) / smoothedFrameDeltaMs) * 1000;
+
   state.lastRawAngle = armObservation.angle;
+  state.lastAngleVelocity = angleVelocity;
   state.lastAngle = angle;
+
+  bootstrapInitialPhase(angle, armObservation.angle, profile);
+
+  if (state.phase === 'down' && state.repStartTime === null) {
+    // Arm is at the extended start position; start tracking a potential rep window.
+    resetRepWindow(now);
+  }
+
   updateRepWindowStats(angle, armObservation.shoulderX, armObservation.elbowX, profile);
 
-  const nextPhase = resolvePhaseFromAngle(angle, armObservation.angle, profile);
+  const nextPhase = resolvePhaseFromAngle(angle, armObservation.angle, angleVelocity, profile);
   if (nextPhase) {
-    applyPhaseTransition(nextPhase, now, profile);
+    const requiredFrames = getRequiredConfirmationFrames(angleVelocity);
+    applyPhaseTransition(nextPhase, now, requiredFrames, profile);
   }
 
   return toResult();
@@ -495,14 +592,19 @@ export const updateBicepCurl = (
 
 export const resetBicepCurlDetector = (): void => {
   state.repCount = 0;
-  state.phase = 'up';
+  state.initialized = false;
+  state.phase = 'down';
   state.pendingPhase = null;
   state.pendingFrames = 0;
-  state.lastAngle = 180;
+  state.pendingRequiredFrames = BASE_CONFIRMATION_FRAMES;
+  state.lastAngle = 170;
   state.lastProcessedAt = 0;
-  state.maxAngle = 180;
-  state.minAngle = 180;
+  state.smoothedFrameDeltaMs = DEFAULT_FRAME_DELTA_MS;
+  state.lastAngleVelocity = 0;
+  state.maxAngle = 170;
+  state.minAngle = 170;
   state.repStartTime = null;
+  state.reachedUpInCurrentCycle = false;
   state.lastRepSpeedSec = 0;
   state.lastRom = 0;
   state.totalAccuracy = 0;
@@ -511,8 +613,11 @@ export const resetBicepCurlDetector = (): void => {
   state.stabilitySampleCount = 0;
   state.stabilityPenaltyCount = 0;
   state.lastSpeedFeedback = 'Controlled';
-  state.smoothedAngle = 180;
+  state.smoothedAngle = 170;
   state.activeArm = null;
   state.activeArmLostFrames = 0;
-  state.lastRawAngle = 180;
+  state.lastRawAngle = 170;
+  state.recentAngles = [];
 };
+
+

@@ -36,3 +36,5 @@ export const animationSpeedByType = {
   timer: 1,
   reps: 0.9,
 } as const;
+
+

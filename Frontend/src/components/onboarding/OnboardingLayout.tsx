@@ -73,7 +73,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0C1015',
+    backgroundColor: Colors.background,
   },
   bgOrbTop: {
     position: 'absolute',
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     borderRadius: 999,
-    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+    backgroundColor: Colors.primaryA12,
   },
   bgOrbBottom: {
     position: 'absolute',
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 999,
-    backgroundColor: 'rgba(110, 231, 183, 0.08)',
+    backgroundColor: Colors.primaryLightA14,
   },
   content: {
     flexGrow: 1,
@@ -107,8 +107,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(23, 29, 35, 0.75)',
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
   },
@@ -122,22 +122,21 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   badgeIconWrap: {
-    width: 22,
+    backgroundColor: Colors.primaryA14,
     height: 22,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(52, 211, 153, 0.14)',
     marginRight: Spacing.xs,
   },
   badgeText: {
-    color: '#98A4B3',
+    color: Colors.textSecondary,
     fontSize: Typography.caption,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
   title: {
-    color: '#F9FAFB',
+    color: Colors.textPrimary,
     fontSize: 28,
     fontWeight: '800',
     lineHeight: 34,
@@ -148,7 +147,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginTop: Spacing.xs,
-    color: '#B5BEC9',
+    color: Colors.textSecondary,
     fontSize: Typography.body,
     lineHeight: 20,
   },
@@ -163,3 +162,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
   },
 });
+
+
+

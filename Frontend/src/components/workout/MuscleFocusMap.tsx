@@ -21,8 +21,8 @@ export const MuscleFocusMap: React.FC<MuscleFocusMapProps> = ({ focus }) => {
   const backShoulder = hasAny(focus, ['shoulders', 'arms', 'triceps']);
   const backLegs = hasAny(focus, ['legs', 'glutes']);
 
-  const active = '#22C55E';
-  const muted = '#C7CBD1';
+  const active = Colors.primary;
+  const muted = Colors.border;
 
   return (
     <View style={styles.container}>
@@ -89,3 +89,6 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.semi,
   },
 });
+
+
+

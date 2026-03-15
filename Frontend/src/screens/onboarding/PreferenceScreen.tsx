@@ -36,3 +36,5 @@ export const PreferenceScreen: React.FC<Props> = ({ navigation, route }) => {
     </OnboardingLayout>
   );
 };
+
+

@@ -32,10 +32,10 @@ export const WorkoutCompleteScreen: React.FC<Props> = ({ route, navigation }) =>
       <View style={styles.container}>
         <View style={styles.topRow}>
           <TouchableOpacity style={styles.iconButton} activeOpacity={0.85} onPress={() => navigation.goBack()}>
-            <SimpleIcon name="arrow-left" size={20} color="#0F3B33" />
+            <SimpleIcon name="arrow-left" size={20} color={Colors.primaryDark} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton} activeOpacity={0.85}>
-            <SimpleIcon name="more-horizontal" size={20} color="#0F3B33" />
+            <SimpleIcon name="more-horizontal" size={20} color={Colors.primaryDark} />
           </TouchableOpacity>
         </View>
 
@@ -62,7 +62,7 @@ export const WorkoutCompleteScreen: React.FC<Props> = ({ route, navigation }) =>
             title="Complete"
             onPress={() => navigation.navigate('HomeTabs')}
             style={styles.completeButton}
-            icon={<SimpleIcon name="check-circle" size={18} color={Colors.background} />}
+            icon={<SimpleIcon name="check-circle" size={18} color={Colors.textOnPrimary} />}
           />
         </View>
       </View>
@@ -73,7 +73,7 @@ export const WorkoutCompleteScreen: React.FC<Props> = ({ route, navigation }) =>
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7F9F8',
+    backgroundColor: Colors.background,
   },
   container: {
     flex: 1,
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     height: 94,
     borderRadius: Radius.pill,
     overflow: 'hidden',
-    backgroundColor: '#D8E3DF',
+    backgroundColor: Colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -110,20 +110,20 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   avatarText: {
-    color: '#0F3B33',
+    color: Colors.primaryDark,
     fontSize: Typography.title,
     fontWeight: FontWeight.bold,
   },
   name: {
     marginTop: Spacing.lg,
-    color: '#0C3A32',
+    color: Colors.primaryDark,
     fontSize: 44,
     fontWeight: FontWeight.heavy,
     textAlign: 'center',
   },
   subMeta: {
     marginTop: Spacing.xs,
-    color: '#4E5B58',
+    color: Colors.textSecondary,
     fontSize: Typography.title,
     textAlign: 'center',
   },
@@ -132,20 +132,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   amountValue: {
-    color: '#0C3A32',
+    color: Colors.primaryDark,
     fontSize: 88,
     fontWeight: FontWeight.heavy,
     lineHeight: 96,
   },
   amountUnit: {
     marginTop: Spacing.sm,
-    color: '#2A3B37',
+    color: Colors.textPrimary,
     fontSize: 34,
     fontWeight: FontWeight.semi,
   },
   timeText: {
     marginTop: Spacing.sm,
-    color: '#5C6966',
+    color: Colors.textSecondary,
     fontSize: 28,
     fontWeight: FontWeight.medium,
   },
@@ -156,7 +156,9 @@ const styles = StyleSheet.create({
   completeButton: {
     minHeight: 58,
     borderRadius: Radius.xl,
-    backgroundColor: '#0E5A4A',
-    borderColor: '#0E5A4A',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
 });
+
+

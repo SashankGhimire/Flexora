@@ -13,7 +13,7 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Logo, CustomInput, CustomButton, SimpleIcon } from '../../components/ui';
-import { COLORS } from '../../utils/constants';
+import { Colors } from '../../theme/colors';
 import { AuthStackParamList } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { FontWeight, Radius, Spacing, Typography } from '../../theme/tokens';
@@ -33,7 +33,7 @@ const getPasswordStrength = (value: string) => {
 
   const percent = [0, 35, 70, 100][score];
   const label = ['Weak', 'Weak', 'Medium', 'Strong'][score];
-  const color = [COLORS.error, COLORS.error, '#f59e0b', COLORS.primary][score];
+  const color = [Colors.error, Colors.error, Colors.warning, Colors.primary][score];
 
   return { percent, label, color };
 };
@@ -138,7 +138,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
               <Text style={styles.title}>Create account</Text>
               <Text style={styles.subtitle}>Start your smarter fitness journey in under a minute.</Text>
               <View style={styles.badge}>
-                <SimpleIcon name="shield" size={12} color={COLORS.primary} />
+                <SimpleIcon name="shield" size={12} color={Colors.primary} />
                 <Text style={styles.badgeText}>Protected and private</Text>
               </View>
             </Animated.View>
@@ -234,7 +234,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0D1012',
+    backgroundColor: Colors.background,
   },
   topAura: {
     position: 'absolute',
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: Radius.pill,
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    backgroundColor: Colors.primaryA12,
   },
   bottomAura: {
     position: 'absolute',
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     borderRadius: Radius.pill,
-    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+    backgroundColor: Colors.primaryLightA12,
   },
   flex: {
     flex: 1,
@@ -272,20 +272,20 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     marginTop: Spacing.sm,
-    color: COLORS.primary,
+    color: Colors.primary,
     fontSize: Typography.caption,
     fontWeight: FontWeight.bold,
     letterSpacing: 1,
   },
   title: {
     marginTop: Spacing.sm,
-    color: '#F4F6F8',
+    color: Colors.textPrimary,
     fontSize: 32,
     fontWeight: FontWeight.heavy,
   },
   subtitle: {
     marginTop: Spacing.xs,
-    color: '#8C949D',
+    color: Colors.textSecondary,
     fontSize: Typography.body,
     textAlign: 'center',
     maxWidth: 320,
@@ -296,33 +296,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.xs,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.28)',
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderColor: Colors.primaryA3,
+    backgroundColor: Colors.primaryLightA15,
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
   },
   badgeText: {
-    color: COLORS.primary,
+    color: Colors.primary,
     fontSize: Typography.caption,
     fontWeight: FontWeight.semi,
   },
   formCard: {
-    backgroundColor: '#171C1F',
+    backgroundColor: Colors.card,
     borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: '#262C31',
+    borderColor: Colors.border,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.xl,
-    shadowColor: '#000000',
-    shadowOpacity: 0.22,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.12,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
     elevation: 8,
   },
   formTitle: {
     marginBottom: Spacing.md,
-    color: '#F4F6F8',
+    color: Colors.textPrimary,
     fontSize: Typography.title,
     fontWeight: FontWeight.bold,
   },
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   },
   strengthBar: {
     height: 6,
-    backgroundColor: COLORS.input,
+    backgroundColor: Colors.input,
     borderRadius: Radius.pill,
     overflow: 'hidden',
   },
@@ -351,12 +351,17 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
   },
   signInText: {
-    color: '#8C949D',
+    color: Colors.textSecondary,
     fontSize: Typography.body,
   },
   signInLink: {
-    color: COLORS.primary,
+    color: Colors.primary,
     fontSize: Typography.body,
     fontWeight: FontWeight.bold,
   },
 });
+
+
+
+
+

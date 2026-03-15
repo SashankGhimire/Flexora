@@ -53,3 +53,5 @@ export type RootNavigationParamList = {
   Onboarding: undefined;
   Home: undefined;
 };
+
+

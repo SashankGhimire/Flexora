@@ -36,3 +36,5 @@ export const ActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     </OnboardingLayout>
   );
 };
+
+

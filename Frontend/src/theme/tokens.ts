@@ -1,3 +1,5 @@
+import { Colors } from './colors';
+
 export const Spacing = {
   xs: 6,
   sm: 8,
@@ -32,3 +34,29 @@ export const FontWeight = {
   bold: '700',
   heavy: '800',
 } as const;
+
+export const Shadows = {
+  sm: {
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  md: {
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+} as const;
+
+export const Buttons = {
+  primary: {
+    textColor: Colors.textOnPrimary,
+  },
+  secondary: {
+    borderWidth: 1,
+  },
+} as const;
+
+

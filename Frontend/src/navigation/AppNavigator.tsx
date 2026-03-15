@@ -29,7 +29,7 @@ import {
   WeightScreen,
 } from '../screens/onboarding';
 import { useAuth } from '../context/AuthContext';
-import { COLORS } from '../utils/constants';
+import { Colors } from '../theme/colors';
 import {
   AuthStackParamList,
   HomeStackParamList,
@@ -66,7 +66,7 @@ const AuthStackScreen = () => {
       id="auth-stack"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: COLORS.background },
+        contentStyle: { backgroundColor: Colors.background },
         animation: 'slide_from_right',
       }}
       initialRouteName="Login"
@@ -90,23 +90,23 @@ const HomeTabs: React.FC = () => {
       id="home-tabs"
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textSecondary,
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textSecondary,
         tabBarHideOnKeyboard: true,
         tabBarStyle: {
-          backgroundColor: COLORS.card,
+          backgroundColor: Colors.card,
           position: 'absolute',
           left: 14,
           right: 14,
           bottom: tabBarBottom,
           borderTopWidth: 0,
           borderWidth: 1,
-          borderColor: COLORS.border,
+          borderColor: Colors.border,
           borderRadius: 16,
           paddingBottom: compact ? 6 : 7,
           paddingTop: compact ? 6 : 7,
           height: tabBarHeight,
-          shadowColor: '#000000',
+          shadowColor: Colors.black,
           shadowOpacity: 0.12,
           shadowRadius: 8,
           shadowOffset: { width: 0, height: 3 },
@@ -166,7 +166,7 @@ export const HomeStackNavigator: React.FC = () => {
       id="home-stack"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: COLORS.background },
+        contentStyle: { backgroundColor: Colors.background },
       }}
     >
       <HomeStack.Screen name="HomeTabs" component={HomeTabs} />
@@ -185,7 +185,7 @@ const OnboardingStackScreen: React.FC = () => {
       id="onboarding-stack"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: COLORS.background },
+        contentStyle: { backgroundColor: Colors.background },
       }}
       initialRouteName="Welcome"
     >
@@ -212,7 +212,7 @@ export const AppNavigator: React.FC = () => {
         id="root-stack"
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: COLORS.background },
+          contentStyle: { backgroundColor: Colors.background },
         }}
       >
         {isLoggedIn ? (
@@ -246,3 +246,7 @@ export const AppNavigator: React.FC = () => {
     </NavigationContainer>
   );
 };
+
+
+
+

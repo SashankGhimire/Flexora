@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: '#10151B',
+    backgroundColor: Colors.background,
     color: Colors.textPrimary,
     fontSize: 26,
     fontWeight: FontWeight.heavy,
@@ -95,3 +95,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
 });
+
+

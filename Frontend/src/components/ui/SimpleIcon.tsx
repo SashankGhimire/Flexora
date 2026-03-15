@@ -1,6 +1,7 @@
 import React from 'react';
 import { ViewStyle } from 'react-native';
 import Icon from '@react-native-vector-icons/feather';
+import { Colors } from '../../theme/colors';
 
 interface SimpleIconProps {
   name: string;
@@ -69,7 +70,7 @@ const ICON_MAP: Record<string, string> = {
 export const SimpleIcon: React.FC<SimpleIconProps> = ({
   name,
   size = 24,
-  color = '#000',
+  color = Colors.textPrimary,
   style,
 }) => {
   const iconName = ICON_MAP[name] || 'help-circle';
@@ -83,3 +84,5 @@ export const SimpleIcon: React.FC<SimpleIconProps> = ({
     />
   );
 };
+
+

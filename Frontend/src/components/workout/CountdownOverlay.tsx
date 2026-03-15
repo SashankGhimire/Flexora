@@ -37,7 +37,7 @@ export const CountdownOverlay: React.FC<CountdownOverlayProps> = ({ count }) => 
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.72)',
+    backgroundColor: Colors.blackA72,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 20,
@@ -53,3 +53,5 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.heavy,
   },
 });
+
+

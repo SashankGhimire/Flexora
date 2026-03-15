@@ -521,3 +521,5 @@ export const detectExercise = (
   const candidate = detector(previousKeypoints, currentKeypoints);
   return applyRepPersistenceGate(exerciseType, candidate);
 };
+
+

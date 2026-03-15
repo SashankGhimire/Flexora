@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Colors } from '../../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../../theme/tokens';
 
 type ProgressHeaderProps = {
@@ -25,7 +26,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   label: {
-    color: '#9AA6B6',
+    color: Colors.textSecondary,
     fontSize: Typography.caption,
     fontWeight: FontWeight.semi,
     marginBottom: 7,
@@ -35,14 +36,17 @@ const styles = StyleSheet.create({
   track: {
     height: 8,
     borderRadius: Radius.pill,
-    backgroundColor: '#1A212B',
+    backgroundColor: Colors.primaryLightA22,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: Colors.border,
   },
   fill: {
     height: '100%',
     borderRadius: Radius.pill,
-    backgroundColor: '#57D5A8',
+    backgroundColor: Colors.primary,
   },
 });
+
+
+

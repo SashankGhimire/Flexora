@@ -275,7 +275,7 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
           <Text style={styles.programName}>{program.name.toUpperCase()}</Text>
           {phase !== 'ready' ? (
             <TouchableOpacity style={styles.finishButton} activeOpacity={0.85} onPress={handleFinishSession}>
-              <SimpleIcon name="x" size={16} color="#F87171" />
+              <SimpleIcon name="x" size={16} color={Colors.error} />
             </TouchableOpacity>
           ) : (
             <View style={styles.headerSpacer} />
@@ -388,8 +388,8 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(248, 113, 113, 0.38)',
-    backgroundColor: 'rgba(248, 113, 113, 0.14)',
+    borderColor: Colors.errorA38,
+    backgroundColor: Colors.errorA14,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -414,8 +414,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.35)',
-    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryA12,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
     marginBottom: Spacing.sm,
@@ -450,3 +450,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
 });
+
+
+

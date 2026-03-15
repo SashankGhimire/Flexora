@@ -113,7 +113,7 @@ export const ExerciseSelectionScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0A0C0F',
+    backgroundColor: Colors.background,
   },
   content: {
     paddingHorizontal: Spacing.lg,
@@ -123,8 +123,8 @@ const styles = StyleSheet.create({
   heroCard: {
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.25)',
-    backgroundColor: '#0D1015',
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
     padding: Spacing.md,
   },
   heroTopRow: {
@@ -137,16 +137,16 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.35)',
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryLightA16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   heroLivePill: {
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.35)',
-    backgroundColor: 'rgba(34, 197, 94, 0.14)',
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryLightA16,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
   },
@@ -176,8 +176,8 @@ const styles = StyleSheet.create({
   heroPointChip: {
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.13)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
   },
@@ -197,8 +197,8 @@ const styles = StyleSheet.create({
     width: '48.5%',
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.2)',
-    backgroundColor: '#11161C',
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
     minHeight: 138,
     padding: Spacing.sm,
   },
@@ -212,16 +212,16 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.26)',
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderColor: Colors.primaryA3,
+    backgroundColor: Colors.primaryLightA16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   startPill: {
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.35)',
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryLightA16,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
   },
@@ -249,3 +249,6 @@ const styles = StyleSheet.create({
     height: 92,
   },
 });
+
+
+

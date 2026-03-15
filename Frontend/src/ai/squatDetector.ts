@@ -386,3 +386,5 @@ export const resetSquatDetector = (): void => {
   state.scoredReps = 0;
   state.averageAccuracy = 0;
 };
+
+

@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#12161B',
+    backgroundColor: Colors.background,
   },
   valueWrap: {
     flex: 1,
@@ -79,3 +79,5 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.heavy,
   },
 });
+
+

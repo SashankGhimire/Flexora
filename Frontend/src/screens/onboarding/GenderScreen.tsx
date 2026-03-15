@@ -36,3 +36,5 @@ export const GenderScreen: React.FC<Props> = ({ navigation, route }) => {
     </OnboardingLayout>
   );
 };
+
+

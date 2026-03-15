@@ -40,8 +40,8 @@ const styles = StyleSheet.create({
     height: 62,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.3)',
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderColor: Colors.successA3,
+    backgroundColor: Colors.successA12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.md,
@@ -61,3 +61,5 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 });
+
+

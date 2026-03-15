@@ -119,7 +119,7 @@ export const DashboardScreen: React.FC = () => {
             <Text style={styles.subGreeting}>Ready for today&apos;s workout?</Text>
           </View>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.85}>
-            <SimpleIcon name="log-out" size={18} color="#F87171" />
+            <SimpleIcon name="log-out" size={18} color={Colors.error} />
           </TouchableOpacity>
         </View>
 
@@ -239,7 +239,7 @@ export const DashboardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0A0C0F',
+    backgroundColor: Colors.background,
   },
   content: {
     paddingHorizontal: Spacing.lg,
@@ -266,17 +266,17 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(248, 113, 113, 0.34)',
-    backgroundColor: 'rgba(248, 113, 113, 0.14)',
+    borderColor: Colors.errorA35,
+    backgroundColor: Colors.errorA14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   aiCard: {
     marginTop: Spacing.xl,
     borderRadius: Radius.lg,
-    backgroundColor: '#0E1116',
+    backgroundColor: Colors.card,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.22)',
+    borderColor: Colors.border,
   },
   aiTopRow: {
     flexDirection: 'row',
@@ -311,10 +311,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 999,
-    backgroundColor: '#22C55E',
+    backgroundColor: Colors.success,
   },
   aiStatusText: {
-    color: '#9AE6B4',
+    color: Colors.primaryDark,
     fontSize: Typography.caption,
     fontWeight: FontWeight.semi,
   },
@@ -329,8 +329,8 @@ const styles = StyleSheet.create({
   aiFeatureChip: {
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.13)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 5,
   },
@@ -344,8 +344,8 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.34)',
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderColor: Colors.primaryA34,
+    backgroundColor: Colors.primaryLightA16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -358,8 +358,8 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.sm,
   },
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   },
   planOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.46)',
+    backgroundColor: Colors.blackA46,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
   },
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: '#141920',
+    backgroundColor: Colors.card,
     padding: Spacing.sm,
   },
   focusProgramImage: {
@@ -468,8 +468,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   focusChipActive: {
-    borderColor: 'rgba(34, 197, 94, 0.35)',
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryLightA16,
   },
   focusChipText: {
     color: Colors.textPrimary,
@@ -488,3 +488,6 @@ const styles = StyleSheet.create({
     height: 94,
   },
 });
+
+
+

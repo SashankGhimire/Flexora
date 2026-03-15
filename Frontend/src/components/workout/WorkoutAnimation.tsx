@@ -141,8 +141,8 @@ const styles = StyleSheet.create({
   frame: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.26)',
-    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+    borderColor: Colors.successA26,
+    backgroundColor: Colors.successA08,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
@@ -158,8 +158,8 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 999,
     borderWidth: 2,
-    borderColor: 'rgba(34, 197, 94, 0.65)',
-    backgroundColor: 'rgba(34, 197, 94, 0.18)',
+    borderColor: Colors.successA65,
+    backgroundColor: Colors.successA18,
   },
   caption: {
     marginTop: 10,
@@ -173,3 +173,5 @@ const styles = StyleSheet.create({
     fontSize: Typography.caption,
   },
 });
+
+

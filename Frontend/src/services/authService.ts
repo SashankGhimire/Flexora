@@ -158,3 +158,5 @@ export const logout = async () => {
 export const getStoredToken = () => {
   return authToken;
 };
+
+

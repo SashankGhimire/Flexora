@@ -35,27 +35,27 @@ const getBmiCategoryTheme = (category: string) => {
   switch (category) {
     case 'Underweight':
       return {
-        pillBorder: 'rgba(91, 136, 232, 0.45)',
-        pillBg: 'rgba(91, 136, 232, 0.16)',
-        dot: '#5B88E8',
+        pillBorder: Colors.primaryLightA22,
+        pillBg: Colors.primaryLightA2,
+        dot: Colors.info,
       };
     case 'Healthy weight':
       return {
-        pillBorder: 'rgba(102, 241, 212, 0.32)',
-        pillBg: 'rgba(102, 241, 212, 0.13)',
-        dot: '#66F1D4',
+        pillBorder: Colors.primaryA35,
+        pillBg: Colors.primaryLightA16,
+        dot: Colors.success,
       };
     case 'Overweight':
       return {
-        pillBorder: 'rgba(232, 162, 78, 0.45)',
-        pillBg: 'rgba(232, 162, 78, 0.15)',
-        dot: '#E8A24E',
+        pillBorder: Colors.warningA45,
+        pillBg: Colors.warningA14,
+        dot: Colors.warning,
       };
     default:
       return {
-        pillBorder: 'rgba(230, 80, 97, 0.45)',
-        pillBg: 'rgba(230, 80, 97, 0.15)',
-        dot: '#E65061',
+        pillBorder: Colors.errorA4,
+        pillBg: Colors.errorA14,
+        dot: Colors.error,
       };
   }
 };
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xl,
   },
   chartCard: {
-    backgroundColor: '#151A20',
+    backgroundColor: Colors.card,
   },
   weightTopRow: {
     flexDirection: 'row',
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   },
   graphLine: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: Colors.textSecondaryA2,
   },
   graphDotsRow: {
     flexDirection: 'row',
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 999,
     borderWidth: 2,
-    borderColor: '#8EF0C8',
+    borderColor: Colors.primaryLight,
     backgroundColor: Colors.primary,
   },
   graphDay: {
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.semi,
   },
   bmiCard: {
-    backgroundColor: '#151A20',
+    backgroundColor: Colors.card,
   },
   bmiTopRow: {
     flexDirection: 'row',
@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   bmiValueDecimal: {
-    color: '#C7D0DA',
+    color: Colors.textSecondary,
     fontSize: 28,
     fontWeight: FontWeight.bold,
     marginLeft: 1,
@@ -595,7 +595,7 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 999,
-    backgroundColor: '#66F1D4',
+    backgroundColor: Colors.success,
     marginRight: 6,
   },
   bmiCategoryText: {
@@ -617,16 +617,16 @@ const styles = StyleSheet.create({
     height: 12,
   },
   bmiSegmentUnder: {
-    backgroundColor: '#5B88E8',
+    backgroundColor: Colors.info,
   },
   bmiSegmentNormal: {
-    backgroundColor: '#66F1D4',
+    backgroundColor: Colors.success,
   },
   bmiSegmentOver: {
-    backgroundColor: '#E8A24E',
+    backgroundColor: Colors.warning,
   },
   bmiSegmentObese: {
-    backgroundColor: '#E65061',
+    backgroundColor: Colors.error,
   },
   bmiSegmentLeft: {
     borderTopLeftRadius: Radius.pill,
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 20,
     borderRadius: Radius.pill,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     transform: [{ translateX: -2 }],
   },
   bmiTicksRow: {
@@ -681,8 +681,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    backgroundColor: '#1D252E',
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
     gap: 5,
@@ -693,7 +693,7 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
   },
   calendarCard: {
-    backgroundColor: '#151A20',
+    backgroundColor: Colors.card,
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -721,13 +721,13 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#10151A',
+    backgroundColor: Colors.background,
     borderWidth: 1,
     borderColor: Colors.border,
   },
   calendarCellActive: {
-    backgroundColor: 'rgba(52, 211, 153, 0.17)',
-    borderColor: 'rgba(52, 211, 153, 0.42)',
+    backgroundColor: Colors.primaryLightA22,
+    borderColor: Colors.primaryA42,
   },
   calendarCellText: {
     color: Colors.textSecondary,
@@ -735,17 +735,17 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.semi,
   },
   calendarCellTextActive: {
-    color: '#A7F3D0',
+    color: Colors.primaryDark,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.58)',
+    backgroundColor: Colors.blackA58,
     justifyContent: 'center',
     paddingHorizontal: Spacing.lg,
   },
   modalCard: {
     borderRadius: Radius.lg,
-    backgroundColor: '#151A20',
+    backgroundColor: Colors.card,
     borderWidth: 1,
     borderColor: Colors.border,
     padding: Spacing.lg,
@@ -765,7 +765,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: '#0F141A',
+    backgroundColor: Colors.background,
     color: Colors.textPrimary,
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: '#0F141A',
+    backgroundColor: Colors.background,
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
   },
@@ -805,7 +805,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   modalBtnText: {
-    color: '#03130D',
+    color: Colors.textOnPrimary,
     fontSize: Typography.subtitle,
     fontWeight: FontWeight.bold,
   },
@@ -813,3 +813,6 @@ const styles = StyleSheet.create({
     height: 70,
   },
 });
+
+
+

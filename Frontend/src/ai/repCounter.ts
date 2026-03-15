@@ -212,3 +212,5 @@ export const resetRepCounter = (exerciseType?: ExerciseType): void => {
     states[key] = { phase: 'hold', repCount: 0, pendingPhase: null, pendingFrames: 0 };
   }
 };
+
+

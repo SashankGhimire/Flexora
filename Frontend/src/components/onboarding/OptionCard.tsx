@@ -24,7 +24,7 @@ export const OptionCard: React.FC<OptionCardProps> = ({ label, iconName, selecte
             <SimpleIcon
               name={iconName}
               size={18}
-              color={selected ? '#0A1A14' : Colors.secondary}
+              color={selected ? Colors.textOnPrimary : Colors.primary}
             />
           </View>
         ) : null}
@@ -55,8 +55,8 @@ const styles = StyleSheet.create({
     minHeight: 62,
   },
   selectedCard: {
-    borderColor: 'rgba(52, 211, 153, 0.42)',
-    backgroundColor: 'rgba(52, 211, 153, 0.16)',
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryLightA18,
   },
   leftRow: {
     flexDirection: 'row',
@@ -71,11 +71,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: '#12161B',
+    backgroundColor: Colors.background,
     marginRight: Spacing.sm,
   },
   iconBadgeSelected: {
-    borderColor: 'rgba(52, 211, 153, 0.5)',
+    borderColor: Colors.primaryA5,
     backgroundColor: Colors.primary,
   },
   label: {
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   selectedLabel: {
-    color: '#B7F7DA',
+    color: Colors.primaryDark,
   },
   dot: {
     width: 14,
@@ -100,3 +100,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
 });
+
+
+

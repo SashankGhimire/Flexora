@@ -31,24 +31,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.primary,
-    shadowColor: '#34D399',
+    shadowColor: Colors.primary,
     shadowOpacity: 0.28,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
   },
   disabledButton: {
-    backgroundColor: 'rgba(52, 211, 153, 0.34)',
+    backgroundColor: Colors.primaryA34,
     shadowOpacity: 0,
     elevation: 0,
   },
   text: {
-    color: '#04130E',
+    color: Colors.textOnPrimary,
     fontSize: Typography.subtitle,
     fontWeight: FontWeight.bold,
     letterSpacing: 0.2,
   },
   disabledText: {
-    color: '#6B7280',
+    color: Colors.textSecondary,
   },
 });
+
+
+

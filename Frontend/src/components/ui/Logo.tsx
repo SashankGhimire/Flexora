@@ -6,7 +6,7 @@ import Animated, {
   withRepeat,
   withSequence,
 } from 'react-native-reanimated';
-import { COLORS } from '../../utils/constants';
+import { Colors } from '../../theme/colors';
 
 interface LogoProps {
   size?: number;
@@ -16,8 +16,8 @@ export const Logo: React.FC<LogoProps> = ({ size = 80 }) => {
   const dynamicIconStyle = useMemo(() => ({
     width: size,
     height: size,
-    backgroundColor: COLORS.primary,
-    shadowColor: COLORS.primary,
+    backgroundColor: Colors.primary,
+    shadowColor: Colors.primary,
     shadowOpacity: 0.28,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 },
@@ -80,18 +80,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconText: {
-    color: COLORS.background,
+    color: Colors.background,
     fontWeight: 'bold',
   },
   title: {
-    color: COLORS.text,
+    color: Colors.textPrimary,
     fontSize: 28,
     fontWeight: 'bold',
     marginTop: 16,
   },
   subtitle: {
-    color: COLORS.textSecondary,
+    color: Colors.textSecondary,
     fontSize: 14,
     marginTop: 4,
   },
 });
+
+
+
+

@@ -17,3 +17,5 @@ export const calculateAngle = (
   const cosine = Math.min(1, Math.max(-1, dot / (magAB * magCB)));
   return Math.round((Math.acos(cosine) * 180) / Math.PI);
 };
+
+

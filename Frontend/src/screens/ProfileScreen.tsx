@@ -14,12 +14,14 @@ import {
 import { launchImageLibrary } from 'react-native-image-picker';
 import { API_BASE_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { Colors } from '../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
 import { Card, PrimaryButton, SectionHeader, SimpleIcon, StatCard } from '../components/ui';
 
 export const ProfileScreen: React.FC = () => {
   const { user, updateProfile, logout } = useAuth();
+  const { themeMode, toggleTheme } = useTheme();
   const { width } = useWindowDimensions();
   const compact = width <= 360;
   const [isEditing, setIsEditing] = useState(false);
@@ -30,6 +32,9 @@ export const ProfileScreen: React.FC = () => {
     type?: string;
   } | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // For button label
+  const themeLabel = themeMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
 
   useEffect(() => {
     if (!isEditing) {
@@ -134,7 +139,7 @@ export const ProfileScreen: React.FC = () => {
                 activeOpacity={0.8}
                 onPress={() => setIsEditing(true)}
               >
-                <SimpleIcon name="edit" size={14} color="#F87171" />
+                <SimpleIcon name="edit" size={14} color={Colors.error} />
                 <Text style={styles.editButtonText}>Edit Profile</Text>
               </TouchableOpacity>
             ) : null}
@@ -157,7 +162,7 @@ export const ProfileScreen: React.FC = () => {
           <StatCard
             label="Workouts"
             value="24"
-            icon={<SimpleIcon name="activity" size={16} color="#FBBF24" />}
+            icon={<SimpleIcon name="activity" size={16} color={Colors.warning} />}
           />
           <StatCard
             label="Total Reps"
@@ -167,7 +172,7 @@ export const ProfileScreen: React.FC = () => {
           <StatCard
             label="Accuracy"
             value="92%"
-            icon={<SimpleIcon name="award" size={16} color="#FBBF24" />}
+            icon={<SimpleIcon name="award" size={16} color={Colors.warning} />}
           />
         </View>
 
@@ -175,7 +180,7 @@ export const ProfileScreen: React.FC = () => {
         <Card style={styles.highlightCard}>
           <View style={styles.highlightRow}>
             <View style={styles.highlightPill}>
-              <SimpleIcon name="fire" size={14} color="#FBBF24" />
+              <SimpleIcon name="fire" size={14} color={Colors.warning} />
               <Text style={styles.highlightText}>12-day streak</Text>
             </View>
             <View style={styles.highlightPill}>
@@ -184,6 +189,13 @@ export const ProfileScreen: React.FC = () => {
             </View>
           </View>
         </Card>
+
+        {/* Prominent theme toggle button */}
+        <PrimaryButton
+          title={themeLabel}
+          onPress={toggleTheme}
+          style={{ marginTop: 24, marginBottom: 8 }}
+        />
 
         <SectionHeader title="Account" style={styles.sectionTop} />
         <Card style={styles.listCard}>
@@ -201,6 +213,14 @@ export const ProfileScreen: React.FC = () => {
             <Text style={styles.listLabel}>Notifications</Text>
             <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
+          <View style={styles.divider} />
+          <TouchableOpacity style={styles.listItem} activeOpacity={0.8} onPress={toggleTheme}>
+            <Text style={styles.listLabel}>Theme</Text>
+            <View style={styles.themeValueWrap}>
+              <Text style={styles.themeValue}>{themeMode === 'dark' ? 'Dark' : 'Light'}</Text>
+              <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
+            </View>
+          </TouchableOpacity>
         </Card>
 
         <SectionHeader title="Support" style={styles.sectionTop} />
@@ -217,7 +237,7 @@ export const ProfileScreen: React.FC = () => {
         </Card>
 
         <TouchableOpacity style={styles.signOutButton} activeOpacity={0.85} onPress={logout}>
-          <SimpleIcon name="log-out" size={16} color="#F87171" />
+          <SimpleIcon name="log-out" size={16} color={Colors.error} />
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
 
@@ -239,7 +259,7 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     borderRadius: 999,
-    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+    backgroundColor: Colors.primaryA1,
   },
   bgOrbBottom: {
     position: 'absolute',
@@ -248,7 +268,7 @@ const styles = StyleSheet.create({
     width: 230,
     height: 230,
     borderRadius: 999,
-    backgroundColor: 'rgba(52, 211, 153, 0.08)',
+    backgroundColor: Colors.primaryA08,
   },
   content: {
     paddingHorizontal: Spacing.lg,
@@ -261,15 +281,15 @@ const styles = StyleSheet.create({
   profileCard: {
     marginTop: Spacing.md,
     borderRadius: Radius.xl,
-    backgroundColor: '#141A22',
+    backgroundColor: Colors.card,
   },
   profileBadge: {
     alignSelf: 'flex-start',
     marginBottom: Spacing.sm,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.32)',
-    backgroundColor: 'rgba(52, 211, 153, 0.14)',
+    borderColor: Colors.primaryA32,
+    backgroundColor: Colors.primaryLightA14,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 6,
     flexDirection: 'row',
@@ -277,7 +297,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   profileBadgeText: {
-    color: '#A7F3D0',
+    color: Colors.primaryDark,
     fontSize: Typography.caption,
     fontWeight: FontWeight.semi,
   },
@@ -334,16 +354,16 @@ const styles = StyleSheet.create({
     minHeight: 34,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(248, 113, 113, 0.4)',
+    borderColor: Colors.errorA4,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(248, 113, 113, 0.14)',
+    backgroundColor: Colors.errorA14,
     flexDirection: 'row',
     gap: 6,
     paddingHorizontal: Spacing.sm,
   },
   editButtonText: {
-    color: '#F87171',
+    color: Colors.error,
     fontSize: Typography.caption,
     fontWeight: FontWeight.semi,
   },
@@ -372,7 +392,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     paddingVertical: 0,
     paddingHorizontal: 0,
-    backgroundColor: '#141A22',
+    backgroundColor: Colors.card,
   },
   listItem: {
     paddingHorizontal: Spacing.lg,
@@ -386,6 +406,16 @@ const styles = StyleSheet.create({
     fontSize: Typography.subtitle,
     fontWeight: FontWeight.semi,
   },
+  themeValueWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  themeValue: {
+    color: Colors.textSecondary,
+    fontSize: Typography.body,
+    fontWeight: FontWeight.medium,
+  },
   divider: {
     height: 1,
     backgroundColor: Colors.border,
@@ -393,7 +423,7 @@ const styles = StyleSheet.create({
   },
   highlightCard: {
     marginTop: Spacing.sm,
-    backgroundColor: '#141A22',
+    backgroundColor: Colors.card,
   },
   highlightRow: {
     flexDirection: 'row',
@@ -420,8 +450,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xl,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(248, 113, 113, 0.35)',
-    backgroundColor: 'rgba(248, 113, 113, 0.12)',
+    borderColor: Colors.errorA35,
+    backgroundColor: Colors.errorA12,
     minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
@@ -429,7 +459,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   signOutText: {
-    color: '#F87171',
+    color: Colors.error,
     fontSize: Typography.subtitle,
     fontWeight: FontWeight.bold,
   },
@@ -437,3 +467,6 @@ const styles = StyleSheet.create({
     height: 88,
   },
 });
+
+
+
