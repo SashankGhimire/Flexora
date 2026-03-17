@@ -46,18 +46,23 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({ program, onPress }) =>
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Radius.md,
+    borderRadius: Radius.xl,
     overflow: 'hidden',
+    shadowColor: Colors.black,
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   imageWrap: {
     minHeight: 126,
   },
   image: {
-    borderRadius: Radius.md,
+    borderRadius: Radius.xl,
   },
   overlay: {
     minHeight: 126,
-    backgroundColor: Colors.blackA3,
+    backgroundColor: Colors.blackA45,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
   },
@@ -86,7 +91,7 @@ const styles = StyleSheet.create({
   },
   name: {
     marginTop: Spacing.md,
-    color: Colors.textPrimary,
+    color: Colors.textOnPrimary,
     fontSize: Typography.subtitle,
     fontWeight: FontWeight.heavy,
   },
@@ -97,7 +102,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   meta: {
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.8)',
     fontSize: Typography.caption,
   },
   ctaPill: {

@@ -6,9 +6,10 @@ import { FontWeight } from '../../theme/tokens';
 
 type CountdownOverlayProps = {
   count: number;
+  active?: boolean;
 };
 
-export const CountdownOverlay: React.FC<CountdownOverlayProps> = ({ count }) => {
+export const CountdownOverlay: React.FC<CountdownOverlayProps> = ({ count, active = true }) => {
   const source = count === 3
     ? require('../../assets/audio/3.wav')
     : count === 2
@@ -18,9 +19,9 @@ export const CountdownOverlay: React.FC<CountdownOverlayProps> = ({ count }) => 
   return (
     <View style={styles.overlay}>
       <Video
-        key={`count-audio-${count}`}
+        key={`count-audio-${count}-${active ? 'active' : 'paused'}`}
         source={source}
-        paused={false}
+        paused={!active}
         repeat={false}
         muted={false}
         controls={false}

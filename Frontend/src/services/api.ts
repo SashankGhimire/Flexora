@@ -1,6 +1,5 @@
 /**
  * API Configuration and Endpoints
- * Centralized backend configuration for development and production
  */
 
 const LAPTOP_LAN_IP = '192.168.1.68';

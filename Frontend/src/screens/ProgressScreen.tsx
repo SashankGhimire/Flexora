@@ -195,6 +195,35 @@ export const ProgressScreen: React.FC = () => {
           <Text style={styles.subtitle}>Your weekly body metrics and training consistency</Text>
         </Animated.View>
 
+        <Animated.View entering={FadeInDown.duration(340).delay(40)} style={styles.reportHeroCard}>
+          <View style={styles.reportHeroTopRow}>
+            <View>
+              <Text style={styles.reportHeroEyebrow}>Weekly Overview</Text>
+              <Text style={styles.reportHeroTitle}>Strong progress this week</Text>
+            </View>
+            <View style={styles.reportHeroIconWrap}>
+              <SimpleIcon name="trending-up" size={18} color={Colors.primary} />
+            </View>
+          </View>
+          <Text style={styles.reportHeroText}>
+            Your body metrics are steady and your streak is holding strong. Keep showing up and the trend will keep working in your favor.
+          </Text>
+          <View style={styles.reportHeroPills}>
+            <View style={styles.reportHeroPill}>
+              <Text style={styles.reportHeroPillValue}>7 Days</Text>
+              <Text style={styles.reportHeroPillLabel}>Tracked</Text>
+            </View>
+            <View style={styles.reportHeroPill}>
+              <Text style={styles.reportHeroPillValue}>-0.4 kg</Text>
+              <Text style={styles.reportHeroPillLabel}>Weekly change</Text>
+            </View>
+            <View style={styles.reportHeroPill}>
+              <Text style={styles.reportHeroPillValue}>On Track</Text>
+              <Text style={styles.reportHeroPillLabel}>Goal status</Text>
+            </View>
+          </View>
+        </Animated.View>
+
         <Animated.View entering={FadeInDown.duration(360).delay(80)} style={[styles.statsRow, compact && styles.statsRowCompact]}>
           <StatCard
             label="Sessions"
@@ -218,7 +247,7 @@ export const ProgressScreen: React.FC = () => {
           subtitle="Weekly trend and current status"
           rightNode={(
             <Pressable onPress={() => setBmiModalVisible(true)} style={styles.editPill}>
-              <SimpleIcon name="edit-2" size={14} color={Colors.primary} />
+              <SimpleIcon name="edit-2" size={14} color={Colors.error} />
               <Text style={styles.editPillText}>Edit</Text>
             </Pressable>
           )}
@@ -329,7 +358,7 @@ export const ProgressScreen: React.FC = () => {
             <View style={[styles.bmiBottomRow, compact && styles.bmiBottomRowCompact]}>
               <Text style={styles.heightText}>Height {heightFt} ft {heightIn} in</Text>
               <Pressable onPress={() => setBmiModalVisible(true)} style={styles.editPill}>
-                <SimpleIcon name="edit-2" size={14} color={Colors.primary} />
+                <SimpleIcon name="edit-2" size={14} color={Colors.error} />
                 <Text style={styles.editPillText}>Edit</Text>
               </Pressable>
             </View>
@@ -365,6 +394,37 @@ export const ProgressScreen: React.FC = () => {
                 );
               })}
             </View>
+          </Card>
+        </Animated.View>
+
+        <SectionHeader
+          title="Highlights"
+          subtitle="A quick summary of your current report"
+          style={styles.sectionSpace}
+        />
+
+        <Animated.View entering={FadeInDown.duration(360).delay(320)} style={styles.highlightsWrap}>
+          <Card style={styles.highlightCard}>
+            <View style={styles.highlightTopRow}>
+              <Text style={styles.highlightTitle}>Body Status</Text>
+              <View style={styles.highlightBadge}>
+                <Text style={styles.highlightBadgeText}>{bmiCategory}</Text>
+              </View>
+            </View>
+            <Text style={styles.highlightDescription}>
+              Your current BMI and weight trend suggest you are maintaining a steady rhythm. Keep balancing training with recovery.
+            </Text>
+          </Card>
+          <Card style={styles.highlightCard}>
+            <View style={styles.highlightTopRow}>
+              <Text style={styles.highlightTitle}>Training Note</Text>
+              <View style={styles.highlightBadge}>
+                <Text style={styles.highlightBadgeText}>Weekly</Text>
+              </View>
+            </View>
+            <Text style={styles.highlightDescription}>
+              Focus on consistency over intensity. Small improvements each week are building a stronger long-term result.
+            </Text>
           </Card>
         </Animated.View>
 
@@ -469,6 +529,78 @@ const styles = StyleSheet.create({
   },
   sectionSpace: {
     marginTop: Spacing.xl,
+  },
+  reportHeroCard: {
+    marginTop: Spacing.lg,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.primaryA34,
+    backgroundColor: Colors.card,
+    padding: Spacing.lg,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  reportHeroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: Spacing.md,
+  },
+  reportHeroEyebrow: {
+    color: Colors.primary,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  reportHeroTitle: {
+    marginTop: Spacing.xs,
+    color: Colors.textPrimary,
+    fontSize: Typography.title,
+    fontWeight: FontWeight.heavy,
+  },
+  reportHeroIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryLightA16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportHeroText: {
+    marginTop: Spacing.sm,
+    color: Colors.textSecondary,
+    fontSize: Typography.body,
+    lineHeight: 20,
+  },
+  reportHeroPills: {
+    marginTop: Spacing.md,
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  reportHeroPill: {
+    flex: 1,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+  },
+  reportHeroPillValue: {
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
+  },
+  reportHeroPillLabel: {
+    marginTop: 2,
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
   },
   chartCard: {
     backgroundColor: Colors.card,
@@ -681,14 +813,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.background,
+    borderColor: Colors.errorA35,
+    backgroundColor: Colors.errorA12,
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
     gap: 5,
   },
   editPillText: {
-    color: Colors.textPrimary,
+    color: Colors.error,
     fontSize: Typography.caption,
     fontWeight: FontWeight.bold,
   },
@@ -736,6 +868,42 @@ const styles = StyleSheet.create({
   },
   calendarCellTextActive: {
     color: Colors.primaryDark,
+  },
+  highlightsWrap: {
+    gap: Spacing.md,
+  },
+  highlightCard: {
+    backgroundColor: Colors.card,
+  },
+  highlightTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  highlightTitle: {
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
+  },
+  highlightBadge: {
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryLightA16,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 5,
+  },
+  highlightBadgeText: {
+    color: Colors.primary,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.bold,
+  },
+  highlightDescription: {
+    marginTop: Spacing.sm,
+    color: Colors.textSecondary,
+    fontSize: Typography.body,
+    lineHeight: 20,
   },
   modalBackdrop: {
     flex: 1,

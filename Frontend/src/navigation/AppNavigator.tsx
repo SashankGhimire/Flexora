@@ -83,7 +83,7 @@ const HomeTabs: React.FC = () => {
   const compact = height < 700;
 
   const tabBarHeight = compact ? 60 : 64;
-  const tabBarBottom = insets.bottom > 0 ? Math.max(0, insets.bottom - 2) : 2;
+  const tabBarBottom = insets.bottom > 0 ? Math.max(10, insets.bottom + 8) : 14;
 
   return (
     <Tab.Navigator
@@ -91,7 +91,7 @@ const HomeTabs: React.FC = () => {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textSecondary,
+        tabBarInactiveTintColor: Colors.textMuted,
         tabBarHideOnKeyboard: true,
         tabBarStyle: {
           backgroundColor: Colors.card,

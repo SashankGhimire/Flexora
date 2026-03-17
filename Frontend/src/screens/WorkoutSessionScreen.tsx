@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useIsFocused } from '@react-navigation/native';
 import Video from 'react-native-video';
 import { HomeStackParamList } from '../types';
 import { getExercisesForProgram, getProgramById } from '../data/workoutData';
@@ -48,6 +49,7 @@ const formatClock = (seconds: number): string => {
 
 export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => {
   const { programId } = route.params;
+  const isFocused = useIsFocused();
   const program = getProgramById(programId);
   const exercises = getExercisesForProgram(programId);
 
@@ -71,6 +73,11 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
     }
     return `x${currentExercise.reps ?? 0}`;
   }, [currentExercise, exerciseTimeLeft]);
+
+  const shouldPlayExerciseLoop =
+    isFocused && phase === 'exercise' && !paused && voiceQueue.length === 0;
+  const shouldPlayVoiceCue = isFocused && phase !== 'countdown' && voiceQueue.length > 0;
+  const shouldPlayCountdownAudio = isFocused && phase === 'countdown';
 
   const completeWorkout = useCallback(() => {
     navigation.replace('WorkoutComplete', {
@@ -227,6 +234,12 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
     previousPhaseRef.current = phase;
   }, [phase, currentIndex, exercises, enqueueVoiceCues]);
 
+  useEffect(() => {
+    return () => {
+      setVoiceQueue([]);
+    };
+  }, []);
+
   if (!program || !currentExercise) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -239,7 +252,7 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {voiceQueue[0] ? (
+      {shouldPlayVoiceCue && voiceQueue[0] ? (
         <Video
           key={`voice-cue-${voiceQueue[0]}-${voiceQueue.length}`}
           source={resolveVoiceCueSource(voiceQueue[0])}
@@ -256,53 +269,122 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
         />
       ) : null}
 
-      <Video
-        source={require('../assets/audio/exercise_loop.wav')}
-        paused={phase !== 'exercise' || paused}
-        repeat
-        muted={false}
-        volume={0.6}
-        controls={false}
-        playInBackground={false}
-        playWhenInactive={false}
-        ignoreSilentSwitch="ignore"
-        style={styles.hiddenAudio}
-      />
+      {shouldPlayExerciseLoop ? (
+        <Video
+          key="exercise-loop-active"
+          source={require('../assets/audio/exercise_loop.wav')}
+          paused={false}
+          repeat
+          muted={false}
+          volume={0.6}
+          controls={false}
+          playInBackground={false}
+          playWhenInactive={false}
+          ignoreSilentSwitch="ignore"
+          style={styles.hiddenAudio}
+        />
+      ) : null}
 
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <View style={styles.headerSpacer} />
-          <Text style={styles.programName}>{program.name.toUpperCase()}</Text>
-          {phase !== 'ready' ? (
-            <TouchableOpacity style={styles.finishButton} activeOpacity={0.85} onPress={handleFinishSession}>
-              <SimpleIcon name="x" size={16} color={Colors.error} />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.headerSpacer} />
-          )}
+          <View style={styles.headerTextWrap}>
+            <Text style={styles.programName}>{program.name}</Text>
+            <Text style={styles.programSubtitle}>{program.focus} workout</Text>
+          </View>
+          <TouchableOpacity style={styles.finishButton} activeOpacity={0.85} onPress={handleFinishSession}>
+            <SimpleIcon name="x" size={20} color={Colors.error} />
+          </TouchableOpacity>
         </View>
 
         {phase === 'ready' ? (
           <View style={styles.readyWrap}>
-            <View style={styles.readyCard}>
-              <View style={styles.readyBadge}>
-                <Text style={styles.readyBadgeText}>UP NEXT</Text>
+            <ScrollView
+              style={styles.readyScroll}
+              contentContainerStyle={styles.readyScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.readyContent}>
+                <View style={styles.readyTopMeta}>
+                  <View style={styles.readyEyebrowPill}>
+                    <Text style={styles.readyEyebrow}>Ready</Text>
+                  </View>
+                  <View style={styles.livePill}>
+                    <Text style={styles.livePillText}>Guided Session</Text>
+                  </View>
+                </View>
+
+              <Text style={styles.readyTitle}>{currentExercise.name}</Text>
+              <Text style={styles.readySub}>
+                {program.focus} workout with guided pacing and music
+              </Text>
+
+              <View style={styles.heroShell}>
+                <View style={styles.heroAccentOrb} />
+                <View style={styles.heroAccentOrbSecondary} />
+                <View style={styles.heroPanel}>
+                  <View style={styles.heroPanelGlow} />
+                  <WorkoutAnimation animation={currentExercise.animation} size={235} speed={currentExercise.type === 'timer' ? 1 : 0.9} />
+                </View>
               </View>
-              <WorkoutAnimation animation={currentExercise.animation} size={220} speed={currentExercise.type === 'timer' ? 1 : 0.9} />
-              <Text style={styles.readyTitle}>READY TO GO</Text>
-              <Text style={styles.readySub}>{currentExercise.name}</Text>
-              <View style={styles.previewTimer}>
-                <TimerCircle progress={1} label={currentExercise.type === 'timer' ? formatClock(currentExercise.duration ?? 20) : `x${currentExercise.reps ?? 0}`} />
+
+              <View style={styles.progressStrip}>
+                <View style={styles.progressPill}>
+                  <Text style={styles.progressLabel}>Program</Text>
+                  <Text style={styles.progressValue}>{program.name}</Text>
+                </View>
+                <View style={styles.progressPill}>
+                  <Text style={styles.progressLabel}>Up Next</Text>
+                  <Text style={styles.progressValue}>Exercise 1 of {exercises.length}</Text>
+                </View>
               </View>
-              <PrimaryButton
-                title="Start"
-                onPress={() => {
-                  setCountdown(3);
-                  setPhase('countdown');
-                }}
-                style={styles.readyButton}
-              />
-            </View>
+
+              <View style={styles.detailRow}>
+                <View style={styles.detailItem}>
+                  <SimpleIcon name="clock" size={16} color={Colors.primary} />
+                  <Text style={styles.detailValue}>{program.durationMinutes} min</Text>
+                    <Text style={styles.detailLabel}>Duration</Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <SimpleIcon name="list" size={16} color={Colors.primary} />
+                    <Text style={styles.detailValue}>{exercises.length}</Text>
+                    <Text style={styles.detailLabel}>Exercises</Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <SimpleIcon name="bar-chart-2" size={16} color={Colors.primary} />
+                    <Text style={styles.detailValue}>Beginner</Text>
+                    <Text style={styles.detailLabel}>Level</Text>
+                </View>
+              </View>
+
+              <View style={styles.previewBlock}>
+                <Text style={styles.previewLabel}>First exercise target</Text>
+                <View style={styles.previewCard}>
+                  <View style={styles.previewTimer}>
+                    <TimerCircle progress={1} label={currentExercise.type === 'timer' ? formatClock(currentExercise.duration ?? 20) : `x${currentExercise.reps ?? 0}`} />
+                  </View>
+                  <Text style={styles.previewCardTitle}>{currentExercise.type === 'timer' ? 'Timed exercise' : 'Rep-based exercise'}</Text>
+                  <Text style={styles.previewCardText}>
+                    {currentExercise.type === 'timer'
+                      ? 'Move with steady pace and maintain form until the timer ends.'
+                      : 'Complete the target reps with controlled movement and good form.'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.bottomCtaWrap}>
+                <Text style={styles.bottomHint}>Tap below when you are ready to begin</Text>
+              </View>
+
+                <PrimaryButton
+                  title="Start Workout"
+                  onPress={() => {
+                    setCountdown(3);
+                    setPhase('countdown');
+                  }}
+                  style={styles.readyButton}
+                />
+              </View>
+            </ScrollView>
           </View>
         ) : null}
 
@@ -334,7 +416,7 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
         ) : null}
       </View>
 
-      {phase === 'countdown' ? <CountdownOverlay count={countdown} /> : null}
+      {phase === 'countdown' ? <CountdownOverlay count={countdown} active={shouldPlayCountdownAudio} /> : null}
     </SafeAreaView>
   );
 };
@@ -365,84 +447,264 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: Spacing.md,
   },
-  headerSpacer: {
-    width: 34,
-    height: 34,
+  headerTextWrap: {
+    flex: 1,
+    paddingRight: Spacing.md,
   },
   programName: {
-    flexShrink: 1,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.card,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 4,
+    color: Colors.textPrimary,
+    fontSize: Typography.title,
+    fontWeight: FontWeight.heavy,
+  },
+  programSubtitle: {
+    marginTop: 2,
     color: Colors.textSecondary,
     fontSize: Typography.caption,
-    fontWeight: FontWeight.semi,
-    letterSpacing: 0.6,
-    textAlign: 'center',
   },
   finishButton: {
-    width: 34,
-    height: 34,
-    borderRadius: Radius.pill,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.card,
     borderWidth: 1,
-    borderColor: Colors.errorA38,
-    backgroundColor: Colors.errorA14,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   readyWrap: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: Spacing.lg,
+    paddingTop: Spacing.sm,
   },
-  readyCard: {
-    width: '100%',
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.card,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.md,
+  readyScroll: {
+    flex: 1,
+  },
+  readyScrollContent: {
     paddingBottom: Spacing.xl,
   },
-  readyBadge: {
-    alignSelf: 'center',
+  readyContent: {
+    width: '100%',
+    alignItems: 'center',
+    paddingBottom: Spacing.xl,
+  },
+  readyTopMeta: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  readyEyebrowPill: {
     borderRadius: Radius.pill,
     borderWidth: 1,
     borderColor: Colors.primaryA35,
     backgroundColor: Colors.primaryA12,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    marginBottom: Spacing.sm,
+    paddingVertical: 6,
   },
-  readyBadgeText: {
+  readyEyebrow: {
     color: Colors.primary,
     fontSize: Typography.caption,
     fontWeight: FontWeight.bold,
-    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  livePill: {
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+  },
+  livePillText: {
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.semi,
+  },
+  heroShell: {
+    width: '100%',
+    marginTop: Spacing.lg,
+    position: 'relative',
+  },
+  heroAccentOrb: {
+    position: 'absolute',
+    top: -12,
+    right: -4,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: Colors.primaryA12,
+  },
+  heroAccentOrbSecondary: {
+    position: 'absolute',
+    bottom: -8,
+    left: 6,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.primaryLightA14,
+  },
+  heroPanel: {
+    width: '100%',
+    borderRadius: 20,
+    minHeight: 250,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  heroPanelGlow: {
+    position: 'absolute',
+    top: -30,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: Colors.primaryA08,
   },
   readyTitle: {
     marginTop: Spacing.md,
     color: Colors.textPrimary,
-    fontSize: Typography.heading,
+    fontSize: 28,
     fontWeight: FontWeight.heavy,
+    textAlign: 'center',
   },
   readySub: {
     marginTop: Spacing.xs,
     color: Colors.textSecondary,
     fontSize: Typography.subtitle,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280,
+  },
+  detailRow: {
+    width: '100%',
+    marginTop: Spacing.md,
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  progressStrip: {
+    width: '100%',
+    marginTop: Spacing.lg,
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  progressPill: {
+    flex: 1,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  progressLabel: {
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.medium,
+  },
+  progressValue: {
+    marginTop: 4,
+    color: Colors.textPrimary,
+    fontSize: Typography.body,
+    fontWeight: FontWeight.bold,
+  },
+  detailItem: {
+    flex: 1,
+    minHeight: 88,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: Spacing.sm,
+  },
+  detailValue: {
+    marginTop: Spacing.xs,
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
+    textAlign: 'center',
+  },
+  detailLabel: {
+    marginTop: 2,
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+    textAlign: 'center',
+  },
+  previewBlock: {
+    width: '100%',
+    marginTop: Spacing.lg,
+    alignItems: 'center',
+  },
+  previewLabel: {
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.semi,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   previewTimer: {
-    marginTop: Spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewCard: {
+    width: '100%',
+    marginTop: Spacing.md,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.lg,
+    alignItems: 'center',
+    shadowColor: Colors.black,
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  },
+  previewCardTitle: {
+    marginTop: Spacing.md,
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
+  },
+  previewCardText: {
+    marginTop: Spacing.xs,
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 260,
+  },
+  bottomCtaWrap: {
+    width: '100%',
+    marginTop: Spacing.lg,
+    alignItems: 'center',
+  },
+  bottomHint: {
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+    textAlign: 'center',
   },
   readyButton: {
-    marginTop: Spacing.xl,
+    marginTop: Spacing.md,
     width: '100%',
+    minHeight: 54,
+    borderRadius: Radius.lg,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   hiddenAudio: {
     width: 0,

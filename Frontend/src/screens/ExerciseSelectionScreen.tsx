@@ -62,7 +62,7 @@ export const ExerciseSelectionScreen: React.FC = () => {
 
         <SectionHeader
           title="AI Workouts"
-          subtitle="Existing posture detection workouts (unchanged AI functionality)"
+          subtitle="Train with live camera guidance, posture feedback, and rep tracking"
           style={styles.sectionTop}
         />
 
@@ -121,11 +121,16 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.x2,
   },
   heroCard: {
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     borderWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.card,
     padding: Spacing.md,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   heroTopRow: {
     flexDirection: 'row',
@@ -195,12 +200,17 @@ const styles = StyleSheet.create({
   },
   gridCard: {
     width: '48.5%',
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     borderWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.card,
     minHeight: 138,
     padding: Spacing.sm,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
   },
   cardTopRow: {
     flexDirection: 'row',

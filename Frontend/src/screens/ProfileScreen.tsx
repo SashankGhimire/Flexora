@@ -15,15 +15,17 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { API_BASE_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { getLocalOnboardingProfile, getOnboardingProfile } from '../services/onboardingService';
 import { Colors } from '../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
-import { Card, PrimaryButton, SectionHeader, SimpleIcon, StatCard } from '../components/ui';
+import { Button, Card, PrimaryButton, SectionHeader, SimpleIcon, StatCard } from '../components/ui';
 
 export const ProfileScreen: React.FC = () => {
   const { user, updateProfile, logout } = useAuth();
   const { themeMode, toggleTheme } = useTheme();
   const { width } = useWindowDimensions();
   const compact = width <= 360;
+  const scrollRef = React.useRef<ScrollView>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name || '');
   const [avatarAsset, setAvatarAsset] = useState<{
@@ -32,6 +34,7 @@ export const ProfileScreen: React.FC = () => {
     type?: string;
   } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [weightLabel, setWeightLabel] = useState('--');
 
   // For button label
   const themeLabel = themeMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
@@ -41,6 +44,36 @@ export const ProfileScreen: React.FC = () => {
       setName(user?.name || '');
     }
   }, [user?.name, isEditing]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setWeightLabel('--');
+      return;
+    }
+
+    const hydrateWeight = async () => {
+      const localProfile = await getLocalOnboardingProfile(user.id);
+      let profile = localProfile;
+
+      if (!profile) {
+        try {
+          const remote = await getOnboardingProfile(user.id);
+          profile = remote?.profile || remote?.data || null;
+        } catch {
+          profile = null;
+        }
+      }
+
+      if (typeof profile?.weight === 'number' && profile.weight > 0) {
+        setWeightLabel(`${profile.weight.toFixed(1)} kg`);
+        return;
+      }
+
+      setWeightLabel('--');
+    };
+
+    hydrateWeight();
+  }, [user?.id]);
 
   const avatarUrl = useMemo(() => {
     if (!user?.avatarUrl) return '';
@@ -89,20 +122,38 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
+  const handleStartEditing = () => {
+    setIsEditing(true);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.bgOrbTop} />
-      <View style={styles.bgOrbBottom} />
-      <ScrollView contentContainerStyle={[styles.content, compact && styles.contentCompact]} showsVerticalScrollIndicator={false}>
-        <SectionHeader title="Profile" subtitle="Your fitness overview" />
-
-        <Card style={styles.profileCard}>
-          <View style={styles.profileBadge}>
-            <SimpleIcon name="award" size={12} color={Colors.primary} />
-            <Text style={styles.profileBadgeText}>Active member</Text>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[styles.content, compact && styles.contentCompact]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.headerCard}>
+          <View style={styles.headerGlowLarge} />
+          <View style={styles.headerGlowSmall} />
+          <View style={styles.headerTopRow}>
+            <View style={styles.memberPill}>
+              <SimpleIcon name="award" size={12} color={Colors.textOnPrimary} />
+              <Text style={styles.memberPillText}>Active member</Text>
+            </View>
+            {!isEditing ? (
+              <TouchableOpacity
+                style={styles.headerEditButton}
+                activeOpacity={0.8}
+                onPress={handleStartEditing}
+              >
+                <SimpleIcon name="edit" size={14} color={Colors.textOnPrimary} />
+              </TouchableOpacity>
+            ) : null}
           </View>
 
-          <View style={styles.profileTopRow}>
+          <View style={styles.headerCenter}>
             <View style={styles.avatarWrap}>
               {avatarAsset?.uri || avatarUrl ? (
                 <Image source={{ uri: avatarAsset?.uri || avatarUrl }} style={styles.avatarImage} />
@@ -118,61 +169,48 @@ export const ProfileScreen: React.FC = () => {
               )}
             </View>
 
-            <View style={styles.profileInfo}>
-              {isEditing ? (
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  style={styles.nameInput}
-                  placeholder="Your name"
-                  placeholderTextColor={Colors.textSecondary}
-                />
-              ) : (
-                <Text style={styles.name}>{user?.name || 'User'}</Text>
-              )}
-              <Text style={styles.email}>{user?.email || 'email@domain.com'}</Text>
-            </View>
-
-            {!isEditing ? (
-              <TouchableOpacity
-                style={styles.editButton}
-                activeOpacity={0.8}
-                onPress={() => setIsEditing(true)}
-              >
-                <SimpleIcon name="edit" size={14} color={Colors.error} />
-                <Text style={styles.editButtonText}>Edit Profile</Text>
-              </TouchableOpacity>
-            ) : null}
+            {isEditing ? (
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                style={styles.nameInput}
+                placeholder="Your name"
+                placeholderTextColor="rgba(255,255,255,0.72)"
+              />
+            ) : (
+              <Text style={styles.name}>{user?.name || 'User'}</Text>
+            )}
+            <Text style={styles.email}>{user?.email || 'email@domain.com'}</Text>
           </View>
 
           {isEditing ? (
             <View style={styles.editRow}>
-              <PrimaryButton title="Change Photo" onPress={handlePickAvatar} style={styles.editBtnHalf} />
+              <Button title="Change Photo" variant="secondary" onPress={handlePickAvatar} style={[styles.editBtnHalf, styles.editSecondaryButton]} />
               <PrimaryButton
                 title={saving ? 'Saving...' : 'Save'}
                 onPress={handleSave}
                 disabled={saving}
-                style={styles.editBtnHalf}
+                style={[styles.editBtnHalf, styles.editPrimaryButton]}
               />
             </View>
           ) : null}
-        </Card>
+        </View>
 
         <View style={[styles.statRow, compact && styles.statRowCompact]}>
           <StatCard
-            label="Workouts"
+            label="Workouts Completed"
             value="24"
             icon={<SimpleIcon name="activity" size={16} color={Colors.warning} />}
           />
           <StatCard
-            label="Total Reps"
-            value="1240"
-            icon={<SimpleIcon name="target" size={16} color={Colors.textSecondary} />}
+            label="Weight"
+            value={weightLabel}
+            icon={<SimpleIcon name="target" size={16} color={Colors.primary} />}
           />
           <StatCard
-            label="Accuracy"
-            value="92%"
-            icon={<SimpleIcon name="award" size={16} color={Colors.warning} />}
+            label="Total Time"
+            value="2h 45m"
+            icon={<SimpleIcon name="clock" size={16} color={Colors.textSecondary} />}
           />
         </View>
 
@@ -190,51 +228,106 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </Card>
 
-        {/* Prominent theme toggle button */}
-        <PrimaryButton
-          title={themeLabel}
-          onPress={toggleTheme}
-          style={{ marginTop: 24, marginBottom: 8 }}
-        />
+        <SectionHeader title="Settings" subtitle="Manage your profile and preferences" style={styles.sectionTop} />
+        <View style={styles.settingsShell}>
+          <View style={styles.settingsShellGlow} />
+          <View style={styles.settingsPanel}>
+            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8} onPress={handleStartEditing}>
+              <View style={styles.settingRowIconWrap}>
+                <SimpleIcon name="user" size={16} color={Colors.primary} />
+              </View>
+              <View style={styles.settingRowTextWrap}>
+                <Text style={styles.listLabel}>Edit Profile</Text>
+                <Text style={styles.listSubtitle}>Update your name and profile picture</Text>
+              </View>
+              <View style={styles.settingTrailingWrap}>
+                <Text style={styles.settingTrailingText}>Manage</Text>
+                <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+            <View style={styles.settingDivider} />
 
-        <SectionHeader title="Account" style={styles.sectionTop} />
-        <Card style={styles.listCard}>
-          <TouchableOpacity style={styles.listItem} activeOpacity={0.8} onPress={() => setIsEditing(true)}>
-            <Text style={styles.listLabel}>Edit Profile</Text>
-            <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
-          </TouchableOpacity>
-          <View style={styles.divider} />
-          <TouchableOpacity style={styles.listItem} activeOpacity={0.8}>
-            <Text style={styles.listLabel}>Goals</Text>
-            <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
-          </TouchableOpacity>
-          <View style={styles.divider} />
-          <TouchableOpacity style={styles.listItem} activeOpacity={0.8}>
-            <Text style={styles.listLabel}>Notifications</Text>
-            <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
-          </TouchableOpacity>
-          <View style={styles.divider} />
-          <TouchableOpacity style={styles.listItem} activeOpacity={0.8} onPress={toggleTheme}>
-            <Text style={styles.listLabel}>Theme</Text>
-            <View style={styles.themeValueWrap}>
-              <Text style={styles.themeValue}>{themeMode === 'dark' ? 'Dark' : 'Light'}</Text>
-              <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
-            </View>
-          </TouchableOpacity>
-        </Card>
+            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8}>
+              <View style={styles.settingRowIconWrap}>
+                <SimpleIcon name="target" size={16} color={Colors.primary} />
+              </View>
+              <View style={styles.settingRowTextWrap}>
+                <Text style={styles.listLabel}>Goals</Text>
+                <Text style={styles.listSubtitle}>Review and update your fitness targets</Text>
+              </View>
+              <View style={styles.settingTrailingWrap}>
+                <Text style={styles.settingTrailingText}>View</Text>
+                <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+            <View style={styles.settingDivider} />
 
-        <SectionHeader title="Support" style={styles.sectionTop} />
-        <Card style={styles.listCard}>
-          <TouchableOpacity style={styles.listItem} activeOpacity={0.8}>
-            <Text style={styles.listLabel}>Privacy & Security</Text>
-            <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
-          </TouchableOpacity>
-          <View style={styles.divider} />
-          <TouchableOpacity style={styles.listItem} activeOpacity={0.8}>
-            <Text style={styles.listLabel}>Help Center</Text>
-            <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
-          </TouchableOpacity>
-        </Card>
+            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8}>
+              <View style={[styles.settingRowIconWrap, styles.settingRowIconMuted]}>
+                <SimpleIcon name="bell" size={16} color={Colors.textSecondary} />
+              </View>
+              <View style={styles.settingRowTextWrap}>
+                <Text style={styles.listLabel}>Notifications</Text>
+                <Text style={styles.listSubtitle}>Control reminders and workout alerts</Text>
+              </View>
+              <View style={styles.settingTrailingWrap}>
+                <Text style={styles.settingTrailingText}>Alerts</Text>
+                <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+            <View style={styles.settingDivider} />
+
+            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8} onPress={toggleTheme}>
+              <View style={styles.settingRowIconWrap}>
+                <SimpleIcon
+                  name={themeMode === 'dark' ? 'moon' : 'sun'}
+                  size={16}
+                  color={themeMode === 'dark' ? Colors.primary : Colors.warning}
+                />
+              </View>
+              <View style={styles.settingRowTextWrap}>
+                <Text style={styles.listLabel}>Appearance</Text>
+                <Text style={styles.listSubtitle}>{themeLabel}</Text>
+              </View>
+              <View style={styles.themeToggleWrap}>
+                <View style={[styles.themeToggle, themeMode === 'dark' && styles.themeToggleActive]}>
+                  <Text style={styles.themeToggleIcon}>{themeMode === 'dark' ? 'D' : 'L'}</Text>
+                  <View style={[styles.themeToggleKnob, themeMode === 'dark' && styles.themeToggleKnobActive]} />
+                </View>
+              </View>
+            </TouchableOpacity>
+            <View style={styles.settingDivider} />
+
+            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8}>
+              <View style={[styles.settingRowIconWrap, styles.settingRowIconMuted]}>
+                <SimpleIcon name="shield" size={16} color={Colors.textSecondary} />
+              </View>
+              <View style={styles.settingRowTextWrap}>
+                <Text style={styles.listLabel}>Privacy & Security</Text>
+                <Text style={styles.listSubtitle}>Manage account safety and data privacy</Text>
+              </View>
+              <View style={styles.settingTrailingWrap}>
+                <Text style={styles.settingTrailingText}>Review</Text>
+                <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+            <View style={styles.settingDivider} />
+
+            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8}>
+              <View style={[styles.settingRowIconWrap, styles.settingRowIconMuted]}>
+                <SimpleIcon name="life-buoy" size={16} color={Colors.textSecondary} />
+              </View>
+              <View style={styles.settingRowTextWrap}>
+                <Text style={styles.listLabel}>Help Center</Text>
+                <Text style={styles.listSubtitle}>Get support and learn how to use Flexora</Text>
+              </View>
+              <View style={styles.settingTrailingWrap}>
+                <Text style={styles.settingTrailingText}>Support</Text>
+                <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <TouchableOpacity style={styles.signOutButton} activeOpacity={0.85} onPress={logout}>
           <SimpleIcon name="log-out" size={16} color={Colors.error} />
@@ -252,24 +345,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  bgOrbTop: {
-    position: 'absolute',
-    top: -90,
-    right: -40,
-    width: 220,
-    height: 220,
-    borderRadius: 999,
-    backgroundColor: Colors.primaryA1,
-  },
-  bgOrbBottom: {
-    position: 'absolute',
-    bottom: -110,
-    left: -80,
-    width: 230,
-    height: 230,
-    borderRadius: 999,
-    backgroundColor: Colors.primaryA08,
-  },
   content: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.x3 + Spacing.sm,
@@ -278,94 +353,124 @@ const styles = StyleSheet.create({
   contentCompact: {
     paddingHorizontal: Spacing.md,
   },
-  profileCard: {
-    marginTop: Spacing.md,
-    borderRadius: Radius.xl,
-    backgroundColor: Colors.card,
+  headerCard: {
+    marginTop: Spacing.sm,
+    borderRadius: 24,
+    overflow: 'hidden',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    backgroundColor: Colors.primary,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
   },
-  profileBadge: {
-    alignSelf: 'flex-start',
-    marginBottom: Spacing.sm,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    borderColor: Colors.primaryA32,
-    backgroundColor: Colors.primaryLightA14,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
+  headerGlowLarge: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+    width: 180,
+    height: 180,
+    borderRadius: 999,
+    backgroundColor: Colors.primaryLightA22,
+  },
+  headerGlowSmall: {
+    position: 'absolute',
+    bottom: -40,
+    left: -20,
+    width: 140,
+    height: 140,
+    borderRadius: 999,
+    backgroundColor: Colors.primaryLightA16,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  memberPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
   },
-  profileBadgeText: {
-    color: Colors.primaryDark,
+  memberPillText: {
+    color: Colors.textOnPrimary,
     fontSize: Typography.caption,
     fontWeight: FontWeight.semi,
   },
-  profileTopRow: {
-    flexDirection: 'row',
+  headerEditButton: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    marginTop: Spacing.lg,
     alignItems: 'center',
   },
   avatarWrap: {
-    width: 68,
-    height: 68,
-    borderRadius: Radius.xl,
-    backgroundColor: Colors.background,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    backgroundColor: Colors.primaryLight,
+    borderWidth: 4,
+    borderColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    shadowColor: Colors.black,
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
   avatarImage: {
     width: '100%',
     height: '100%',
   },
   avatarText: {
-    color: Colors.primary,
-    fontSize: Typography.title,
+    color: Colors.primaryDark,
+    fontSize: 30,
     fontWeight: FontWeight.heavy,
   },
-  profileInfo: {
-    flex: 1,
-    marginLeft: Spacing.md,
-  },
   name: {
-    color: Colors.textPrimary,
-    fontSize: 22,
-    fontWeight: FontWeight.bold,
+    marginTop: Spacing.md,
+    color: Colors.textOnPrimary,
+    fontSize: 26,
+    fontWeight: FontWeight.heavy,
+    textAlign: 'center',
   },
   email: {
     marginTop: Spacing.xs,
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.82)',
     fontSize: Typography.body,
+    textAlign: 'center',
   },
   nameInput: {
-    color: Colors.textPrimary,
-    fontSize: Typography.subtitle,
-    fontWeight: FontWeight.bold,
+    marginTop: Spacing.md,
+    minWidth: '72%',
+    color: Colors.textOnPrimary,
+    fontSize: Typography.title,
+    fontWeight: FontWeight.heavy,
     borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.background,
-    paddingHorizontal: Spacing.sm,
+    borderColor: 'rgba(255,255,255,0.28)',
+    borderRadius: Radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-  },
-  editButton: {
-    minHeight: 34,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    borderColor: Colors.errorA4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.errorA14,
-    flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: Spacing.sm,
-  },
-  editButtonText: {
-    color: Colors.error,
-    fontSize: Typography.caption,
-    fontWeight: FontWeight.semi,
+    textAlign: 'center',
   },
   editRow: {
     marginTop: Spacing.lg,
@@ -374,6 +479,14 @@ const styles = StyleSheet.create({
   },
   editBtnHalf: {
     flex: 1,
+  },
+  editSecondaryButton: {
+    backgroundColor: Colors.white,
+    borderColor: Colors.white,
+  },
+  editPrimaryButton: {
+    backgroundColor: Colors.primaryDark,
+    borderColor: Colors.primaryDark,
   },
   statRow: {
     marginTop: Spacing.md,
@@ -387,43 +500,125 @@ const styles = StyleSheet.create({
   sectionTop: {
     marginTop: Spacing.xl,
   },
-  listCard: {
-    marginTop: Spacing.sm,
-    borderRadius: Radius.xl,
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-    backgroundColor: Colors.card,
+  settingsShell: {
+    position: 'relative',
+    marginTop: Spacing.xs,
   },
-  listItem: {
-    paddingHorizontal: Spacing.lg,
+  settingsShellGlow: {
+    position: 'absolute',
+    top: -10,
+    right: 12,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: Colors.primaryA08,
+  },
+  settingsPanel: {
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingVertical: Spacing.xs,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  settingRow: {
+    paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  settingRowIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingRowIconMuted: {
+    backgroundColor: Colors.card,
+  },
+  settingRowTextWrap: {
+    flex: 1,
+    marginLeft: Spacing.md,
+  },
+  settingTrailingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginLeft: Spacing.sm,
+  },
+  settingTrailingText: {
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.semi,
+  },
+  settingDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginLeft: 56,
+    marginRight: Spacing.md,
   },
   listLabel: {
     color: Colors.textPrimary,
     fontSize: Typography.subtitle,
     fontWeight: FontWeight.semi,
   },
-  themeValueWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  themeValue: {
+  listSubtitle: {
+    marginTop: 3,
     color: Colors.textSecondary,
-    fontSize: Typography.body,
+    fontSize: Typography.caption,
     fontWeight: FontWeight.medium,
   },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginHorizontal: Spacing.lg,
+  themeToggle: {
+    width: 62,
+    height: 34,
+    borderRadius: 999,
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  themeToggleWrap: {
+    marginLeft: Spacing.sm,
+  },
+  themeToggleActive: {
+    backgroundColor: Colors.primary,
+  },
+  themeToggleIcon: {
+    position: 'absolute',
+    left: 10,
+    fontSize: 12,
+  },
+  themeToggleKnob: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Colors.white,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  themeToggleKnobActive: {
+    marginLeft: 'auto',
   },
   highlightCard: {
     marginTop: Spacing.sm,
     backgroundColor: Colors.card,
+    borderRadius: Radius.xl,
   },
   highlightRow: {
     flexDirection: 'row',

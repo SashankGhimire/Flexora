@@ -230,6 +230,16 @@ export const DashboardScreen: React.FC = () => {
           ))}
         </View>
 
+        <View style={styles.quickInsightCard}>
+          <View style={styles.quickInsightIconWrap}>
+            <SimpleIcon name="zap" size={18} color={Colors.primary} />
+          </View>
+          <View style={styles.quickInsightTextWrap}>
+            <Text style={styles.quickInsightTitle}>Today&apos;s Momentum</Text>
+            <Text style={styles.quickInsightText}>You&apos;re one workout away from extending your streak to 13 days.</Text>
+          </View>
+        </View>
+
         <View style={styles.bottomSpace} />
       </ScrollView>
     </SafeAreaView>
@@ -273,10 +283,15 @@ const styles = StyleSheet.create({
   },
   aiCard: {
     marginTop: Spacing.xl,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     backgroundColor: Colors.card,
     borderWidth: 1,
     borderColor: Colors.border,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   aiTopRow: {
     flexDirection: 'row',
@@ -375,20 +390,25 @@ const styles = StyleSheet.create({
   },
   planCard: {
     marginTop: Spacing.md,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     overflow: 'hidden',
     minHeight: 188,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
   heroSlider: {
     gap: Spacing.sm,
     paddingRight: Spacing.lg,
   },
   planImage: {
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
   },
   planOverlay: {
     flex: 1,
-    backgroundColor: Colors.blackA46,
+    backgroundColor: Colors.blackA45,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
   },
@@ -400,13 +420,13 @@ const styles = StyleSheet.create({
   },
   planTitle: {
     marginTop: Spacing.xs,
-    color: Colors.textPrimary,
+    color: Colors.textOnPrimary,
     fontSize: Typography.title,
     fontWeight: FontWeight.heavy,
   },
   planMeta: {
     marginTop: Spacing.xs,
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.8)',
     fontSize: Typography.body,
   },
   planButton: {
@@ -428,11 +448,16 @@ const styles = StyleSheet.create({
   focusProgramCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     borderWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.card,
     padding: Spacing.sm,
+    shadowColor: Colors.black,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
   },
   focusProgramImage: {
     width: 78,
@@ -483,6 +508,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.md,
+  },
+  quickInsightCard: {
+    marginTop: Spacing.md,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.primaryA34,
+    backgroundColor: Colors.card,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: Colors.black,
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  },
+  quickInsightIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryLightA16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickInsightTextWrap: {
+    flex: 1,
+    marginLeft: Spacing.md,
+  },
+  quickInsightTitle: {
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
+  },
+  quickInsightText: {
+    marginTop: 2,
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+    lineHeight: 17,
   },
   bottomSpace: {
     height: 94,

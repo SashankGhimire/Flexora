@@ -4,18 +4,18 @@ export type ThemeMode = 'light' | 'dark';
 export const THEME_MODE_STORAGE_KEY = '@flexora:theme_mode';
 
 const LightColors = {
-  primary: '#219150', // deeper green
-  primaryLight: '#5AC77A', // richer light green
-  primaryDark: '#17693A', // much deeper dark green
-  secondary: '#5AC77A',
+  primary: '#4CAF7D',
+  primaryLight: '#7ED1A8',
+  primaryDark: '#2F8F6B',
+  secondary: '#7ED1A8',
   accent: '#22D3EE',
 
-  background: '#F1F8F3',
+  background: '#F3FBF7',
   card: '#FFFFFF',
   surface: '#FFFFFF',
   input: '#FFFFFF',
-  border: '#D2E9DA',
-  divider: '#E0F2E6',
+  border: '#E6F4EA',
+  divider: '#E6F4EA',
 
   textPrimary: '#1F2937',
   textSecondary: '#6B7280',
@@ -27,25 +27,25 @@ const LightColors = {
   error: '#EF4444',
   info: '#22D3EE',
 
-  primaryA08: 'rgba(33, 145, 80, 0.08)',
-  primaryA1: 'rgba(33, 145, 80, 0.1)',
-  primaryA12: 'rgba(33, 145, 80, 0.12)',
-  primaryA14: 'rgba(33, 145, 80, 0.14)',
-  primaryA3: 'rgba(33, 145, 80, 0.3)',
-  primaryA32: 'rgba(33, 145, 80, 0.32)',
-  primaryA34: 'rgba(33, 145, 80, 0.34)',
-  primaryA35: 'rgba(33, 145, 80, 0.35)',
-  primaryA42: 'rgba(33, 145, 80, 0.42)',
-  primaryA5: 'rgba(33, 145, 80, 0.5)',
-  primaryA52: 'rgba(33, 145, 80, 0.52)',
+  primaryA08: 'rgba(76, 175, 125, 0.08)',
+  primaryA1: 'rgba(76, 175, 125, 0.1)',
+  primaryA12: 'rgba(76, 175, 125, 0.12)',
+  primaryA14: 'rgba(76, 175, 125, 0.14)',
+  primaryA3: 'rgba(76, 175, 125, 0.3)',
+  primaryA32: 'rgba(76, 175, 125, 0.32)',
+  primaryA34: 'rgba(76, 175, 125, 0.34)',
+  primaryA35: 'rgba(76, 175, 125, 0.35)',
+  primaryA42: 'rgba(76, 175, 125, 0.42)',
+  primaryA5: 'rgba(76, 175, 125, 0.5)',
+  primaryA52: 'rgba(76, 175, 125, 0.52)',
 
-  primaryLightA12: 'rgba(90, 199, 122, 0.12)',
-  primaryLightA14: 'rgba(90, 199, 122, 0.14)',
-  primaryLightA15: 'rgba(90, 199, 122, 0.15)',
-  primaryLightA16: 'rgba(90, 199, 122, 0.16)',
-  primaryLightA18: 'rgba(90, 199, 122, 0.18)',
-  primaryLightA2: 'rgba(90, 199, 122, 0.2)',
-  primaryLightA22: 'rgba(90, 199, 122, 0.22)',
+  primaryLightA12: 'rgba(126, 209, 168, 0.12)',
+  primaryLightA14: 'rgba(126, 209, 168, 0.14)',
+  primaryLightA15: 'rgba(126, 209, 168, 0.15)',
+  primaryLightA16: 'rgba(126, 209, 168, 0.16)',
+  primaryLightA18: 'rgba(126, 209, 168, 0.18)',
+  primaryLightA2: 'rgba(126, 209, 168, 0.2)',
+  primaryLightA22: 'rgba(126, 209, 168, 0.22)',
 
   errorA12: 'rgba(239, 68, 68, 0.12)',
   errorA14: 'rgba(239, 68, 68, 0.14)',
@@ -88,24 +88,24 @@ const LightColors = {
 
 const DarkColors = {
   ...LightColors,
-  primary: '#23B26D', // vivid green for dark
-  primaryLight: '#5AC77A',
-  primaryDark: '#17693A',
-  secondary: '#5AC77A',
+  primary: '#4CAF7D',
+  primaryLight: '#7ED1A8',
+  primaryDark: '#2F8F6B',
+  secondary: '#7ED1A8',
 
-  background: '#151A17', // deeper dark
-  card: '#1B2220',
-  surface: '#1B2220',
-  input: '#232B27',
-  border: '#233127',
-  divider: '#1E2822',
+  background: '#0F1111',
+  card: '#171A1A',
+  surface: '#171A1A',
+  input: '#1E2222',
+  border: '#2A3030',
+  divider: '#232828',
 
   textPrimary: '#E5E7EB',
-  textSecondary: '#9CA3AF',
-  textMuted: '#6B7280',
+  textSecondary: '#A1A1AA',
+  textMuted: '#71717A',
 
-  backgroundA82: 'rgba(21, 26, 23, 0.82)',
-  black: '#111827',
+  backgroundA82: 'rgba(15, 17, 17, 0.82)',
+  black: '#050707',
 } as const;
 
 const resolveInitialThemeMode = (): ThemeMode =>

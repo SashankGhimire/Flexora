@@ -23,12 +23,17 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     minHeight: 104,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     backgroundColor: Colors.card,
     borderWidth: 1,
     borderColor: Colors.border,
     padding: Spacing.md,
     justifyContent: 'space-between',
+    shadowColor: Colors.black,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
   },
   iconWrap: {
     width: 32,
