@@ -2,7 +2,7 @@
  * API Configuration and Endpoints
  */
 
-const LAPTOP_LAN_IP = '192.168.1.68';
+const LAPTOP_LAN_IP = '100.64.245.133';
 const BACKEND_PORT = 5000;
 
 export const API_BASE_URL = `http://${LAPTOP_LAN_IP}:${BACKEND_PORT}/api`;

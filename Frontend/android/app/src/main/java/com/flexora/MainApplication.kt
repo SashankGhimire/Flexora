@@ -1,6 +1,7 @@
 package com.flexora
 
 import android.app.Application
+import android.util.Log
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -10,6 +11,9 @@ import com.flexora.frameprocessors.MoveNetFrameProcessorPlugin
 import com.mrousavy.camera.frameprocessors.FrameProcessorPluginRegistry
 
 class MainApplication : Application(), ReactApplication {
+  companion object {
+    private const val TAG = "MainApplication"
+  }
 
   override val reactHost: ReactHost by lazy {
     getDefaultReactHost(
@@ -25,9 +29,11 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    Log.i(TAG, "Registering detectPose frame processor plugin")
     FrameProcessorPluginRegistry.addFrameProcessorPlugin("detectPose") { proxy, options ->
       MoveNetFrameProcessorPlugin(proxy, options)
     }
+    Log.i(TAG, "detectPose frame processor plugin registration complete")
     loadReactNative(this)
   }
 }

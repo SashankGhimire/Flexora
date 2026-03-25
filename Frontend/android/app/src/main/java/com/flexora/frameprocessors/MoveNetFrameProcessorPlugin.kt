@@ -2,6 +2,7 @@ package com.flexora.frameprocessors
 
 import android.graphics.ImageFormat
 import android.media.Image
+import android.util.Log
 import com.mrousavy.camera.frameprocessors.Frame
 import com.mrousavy.camera.frameprocessors.FrameProcessorPlugin
 import com.mrousavy.camera.frameprocessors.VisionCameraProxy
@@ -16,6 +17,7 @@ class MoveNetFrameProcessorPlugin(
 ) : FrameProcessorPlugin() {
 
   companion object {
+    private const val TAG = "MoveNetFrameProcessor"
     private const val INPUT_SIZE = 192
     private const val KEYPOINT_COUNT = 17
     private const val CHANNELS = 3
@@ -24,8 +26,15 @@ class MoveNetFrameProcessorPlugin(
     private val EMPTY_RESULT: List<Map<String, Double>> = emptyList()
   }
 
-  private val interpreter: Interpreter =
-    Interpreter(FileUtil.loadMappedFile(proxy.context, "movenet_lightning.tflite"))
+  private val interpreter: Interpreter? =
+    try {
+      val model = FileUtil.loadMappedFile(proxy.context, "movenet_lightning.tflite")
+      Log.i(TAG, "MoveNet model loaded from assets.")
+      Interpreter(model)
+    } catch (error: Throwable) {
+      Log.e(TAG, "Failed to load MoveNet model from assets.", error)
+      null
+    }
 
   private val inputBuffer: ByteBuffer =
     ByteBuffer.allocateDirect(INPUT_BYTES).order(ByteOrder.nativeOrder())
@@ -44,11 +53,18 @@ class MoveNetFrameProcessorPlugin(
 
   private var frameSkipCounter: Int = 0
   private var hasCachedResult: Boolean = false
+  private var loggedUnsupportedFormat: Boolean = false
 
   override fun callback(frame: Frame, params: Map<String, Any>?): Any {
     val image = frame.image
     try {
+      val currentInterpreter = interpreter ?: return EMPTY_RESULT
+
       if (image.format != ImageFormat.YUV_420_888) {
+        if (!loggedUnsupportedFormat) {
+          loggedUnsupportedFormat = true
+          Log.w(TAG, "Unsupported frame format: ${image.format}")
+        }
         return EMPTY_RESULT
       }
 
@@ -64,7 +80,7 @@ class MoveNetFrameProcessorPlugin(
       }
 
       fillInputFromYuv(image, frame.width, frame.height)
-      interpreter.run(inputBuffer, outputArray)
+      currentInterpreter.run(inputBuffer, outputArray)
 
       for (index in 0 until KEYPOINT_COUNT) {
         val point = outputArray[0][0][index]

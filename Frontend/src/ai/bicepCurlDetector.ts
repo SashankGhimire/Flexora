@@ -72,55 +72,55 @@ type BicepCurlOptions = {
 
 const MIN_CONFIDENCE = 0.2;
 const BASE_CONFIRMATION_FRAMES = 2;
-const ANALYSIS_INTERVAL_MS = 55;
-const ANGLE_SMOOTHING_ALPHA = 0.32;
-const FAST_SMOOTHING_ALPHA = 0.6;
-const SMOOTHING_WINDOW_SIZE = 4;
+const ANALYSIS_INTERVAL_MS = 35;
+const ANGLE_SMOOTHING_ALPHA = 0.4;
+const FAST_SMOOTHING_ALPHA = 0.72;
+const SMOOTHING_WINDOW_SIZE = 3;
 const FRAME_TIME_ALPHA = 0.35;
 const DEFAULT_FRAME_DELTA_MS = ANALYSIS_INTERVAL_MS;
 const MIN_FRAME_DELTA_MS = 28;
 const MAX_FRAME_DELTA_MS = 120;
-const FAST_MOVEMENT_DEG_PER_SEC = 180;
-const SLOW_MOVEMENT_DEG_PER_SEC = 70;
+const FAST_MOVEMENT_DEG_PER_SEC = 140;
+const SLOW_MOVEMENT_DEG_PER_SEC = 55;
 const ANGLE_NOISE_BUFFER_DEG = 3;
-const FAST_MOVEMENT_BUFFER_DEG = 4;
+const FAST_MOVEMENT_BUFFER_DEG = 6;
 const ARM_STICKY_CONFIDENCE_MARGIN = 0.06;
 const ARM_LOST_GRACE_UPDATES = 4;
 
 const BICEP_PROFILES: Record<BicepViewMode, BicepProfile> = {
   side: {
     // DOWN = arm extended, UP = arm curled.
-    extendedEnter: 154,
-    extendedExit: 149,
-    curledEnter: 66,
-    curledExit: 74,
+    extendedEnter: 148,
+    extendedExit: 142,
+    curledEnter: 74,
+    curledExit: 82,
     elbowDriftThreshold: 0.16,
     strict: {
-      maxAngle: 152,
-      minAngle: 68,
-      rom: 64,
+      maxAngle: 146,
+      minAngle: 78,
+      rom: 54,
     },
     assisted: {
-      maxAngle: 144,
-      minAngle: 88,
-      rom: 48,
+      maxAngle: 136,
+      minAngle: 98,
+      rom: 38,
     },
   },
   front: {
-    extendedEnter: 152,
-    extendedExit: 147,
-    curledEnter: 68,
-    curledExit: 76,
+    extendedEnter: 146,
+    extendedExit: 141,
+    curledEnter: 76,
+    curledExit: 84,
     elbowDriftThreshold: 0.2,
     strict: {
-      maxAngle: 150,
-      minAngle: 70,
-      rom: 60,
+      maxAngle: 144,
+      minAngle: 80,
+      rom: 52,
     },
     assisted: {
-      maxAngle: 142,
-      minAngle: 90,
-      rom: 42,
+      maxAngle: 134,
+      minAngle: 100,
+      rom: 36,
     },
   },
 };
@@ -251,8 +251,13 @@ const smoothAngle = (rawAngle: number): number => {
 };
 
 const getRequiredConfirmationFrames = (angleVelocity: number): number => {
-  // Keep confirmation lightweight (2-3 frames) while reacting faster on quicker curls.
-  return Math.abs(angleVelocity) <= SLOW_MOVEMENT_DEG_PER_SEC ? 3 : BASE_CONFIRMATION_FRAMES;
+  // Confirm very fast movements in 1 frame so rapid reps are not dropped.
+  const speed = Math.abs(angleVelocity);
+  if (speed >= FAST_MOVEMENT_DEG_PER_SEC) {
+    return 1;
+  }
+
+  return speed <= SLOW_MOVEMENT_DEG_PER_SEC ? 3 : BASE_CONFIRMATION_FRAMES;
 };
 
 const getSmoothedFrameDeltaMs = (rawDeltaMs: number): number => {

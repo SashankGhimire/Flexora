@@ -217,6 +217,7 @@ const PermissionScreen: React.FC<{
 export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation }) => {
   const { exerciseType: exercise } = route.params;
   const isFocused = useIsFocused();
+  const logTag = '[PostureScreen]';
 
   // Camera Devices
   const backCamera = useCameraDevice('back');
@@ -225,6 +226,7 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   // State Management
   const [permission, setPermission] = useState('loading');
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [isFrontCamera, setIsFrontCamera] = useState(false);
   const [reps, setReps] = useState(0);
   const [repPhase, setRepPhase] = useState('hold');
@@ -403,6 +405,7 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   const [detectPosePlugin, setDetectPosePlugin] = useState(() =>
     VisionCameraProxy.initFrameProcessorPlugin('detectPose', {})
   );
+  const visionPluginAvailable = detectPosePlugin != null;
 
   useEffect(() => {
     if (!isDetectingContinuous) {
@@ -411,6 +414,12 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
 
     if (detectPosePlugin != null) {
       return;
+    }
+
+    const pluginMissingSummary = 'Vision plugin unavailable. Check Frame Processor setup.';
+    if (lastDetectSummaryRef.current !== pluginMissingSummary) {
+      lastDetectSummaryRef.current = pluginMissingSummary;
+      setDetectSummary(pluginMissingSummary);
     }
 
     const retryId = setTimeout(() => {
@@ -1534,16 +1543,36 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   useEffect(() => {
     const checkPermission = async () => {
       try {
-        const status = await Camera.requestCameraPermission();
-        setPermission(status);
+        const status = await Camera.getCameraPermissionStatus();
+        console.log(`${logTag} Camera permission status:`, status);
+
+        if (status === 'granted') {
+          setPermission(status);
+          return;
+        }
+
+        const requested = await Camera.requestCameraPermission();
+        console.log(`${logTag} Camera permission requested result:`, requested);
+        setPermission(requested);
       } catch {
+        console.error(`${logTag} Camera permission request failed`);
         setCameraError('Failed to request camera permission');
         setPermission('denied');
       }
     };
 
     checkPermission();
-  }, []);
+  }, [logTag]);
+
+  useEffect(() => {
+    console.log(`${logTag} Device selection`, {
+      using: isFrontCamera ? 'front' : 'back',
+      backAvailable: backCamera != null,
+      frontAvailable: frontCamera != null,
+      selectedDeviceReady: device != null,
+      visionPluginAvailable,
+    });
+  }, [backCamera, device, frontCamera, isFrontCamera, logTag, visionPluginAvailable]);
 
   // Timer effect
   useEffect(() => {
@@ -1806,7 +1835,14 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
         isActive={isFocused && !isPaused}
         pixelFormat="yuv"
         photo
-        frameProcessor={frameProcessor}
+        frameProcessor={isDetectingContinuous && visionPluginAvailable ? frameProcessor : undefined}
+        onInitialized={() => {
+          console.log(`${logTag} Camera initialized`);
+        }}
+        onError={(error) => {
+          console.error(`${logTag} Camera runtime error:`, error.message);
+          setCameraError(error.message);
+        }}
       />
 
       <PoseOverlay keypoints={overlayKeypoints} />
@@ -1951,58 +1987,71 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
           {/* Center Feedback */}
           <View style={styles.feedbackContainer} pointerEvents="none">
             <Text style={styles.feedbackText}>{feedback}</Text>
-            <View
-              style={[
-                styles.motionStatusBadge,
-                motionStatus.detected
-                  ? styles.motionStatusBadgeDetected
-                  : styles.motionStatusBadgeIdle,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.motionStatusTitle,
-                  motionStatus.detected
-                    ? styles.motionStatusTitleDetected
-                    : styles.motionStatusTitleIdle,
-                ]}
-              >
-                Motion Detected: {motionStatus.detected ? 'YES' : 'NO'}
-              </Text>
-              <Text style={styles.motionStatusText}>{motionStatus.label}</Text>
-            </View>
-            <View
-              style={[
-                styles.motionStatusBadge,
-                activityStatus.detected
-                  ? styles.motionStatusBadgeDetected
-                  : styles.motionStatusBadgeIdle,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.motionStatusTitle,
-                  activityStatus.detected
-                    ? styles.motionStatusTitleDetected
-                    : styles.motionStatusTitleIdle,
-                ]}
-              >
-                Activity: {activityStatus.detected ? 'DETECTED' : 'IDLE'}
-              </Text>
-              <Text style={styles.motionStatusText}>{activityStatus.label}</Text>
-            </View>
-            <View style={styles.detectStatusBadge}>
-              <Text style={styles.detectStatusTitle}>Detect Result</Text>
-              <Text style={styles.detectStatusText}>{detectSummary}</Text>
-              <Text style={styles.detectStatusText}>{elbowScanSummary}</Text>
-              <Text style={styles.detectStatusText}>Rep phase: {repPhase}</Text>
-              <Text style={styles.detectStatusText}>{calibrationStatus}</Text>
-              <Text style={styles.detectStatusText}>{cameraGuide}</Text>
-            </View>
+
+            {showInfoPanel && (
+              <>
+                <View
+                  style={[
+                    styles.motionStatusBadge,
+                    motionStatus.detected
+                      ? styles.motionStatusBadgeDetected
+                      : styles.motionStatusBadgeIdle,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.motionStatusTitle,
+                      motionStatus.detected
+                        ? styles.motionStatusTitleDetected
+                        : styles.motionStatusTitleIdle,
+                    ]}
+                  >
+                    Motion Detected: {motionStatus.detected ? 'YES' : 'NO'}
+                  </Text>
+                  <Text style={styles.motionStatusText}>{motionStatus.label}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.motionStatusBadge,
+                    activityStatus.detected
+                      ? styles.motionStatusBadgeDetected
+                      : styles.motionStatusBadgeIdle,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.motionStatusTitle,
+                      activityStatus.detected
+                        ? styles.motionStatusTitleDetected
+                        : styles.motionStatusTitleIdle,
+                    ]}
+                  >
+                    Activity: {activityStatus.detected ? 'DETECTED' : 'IDLE'}
+                  </Text>
+                  <Text style={styles.motionStatusText}>{activityStatus.label}</Text>
+                </View>
+                <View style={styles.detectStatusBadge}>
+                  <Text style={styles.detectStatusTitle}>Detect Result</Text>
+                  <Text style={styles.detectStatusText}>Vision plugin: {visionPluginAvailable ? 'ready' : 'not available'}</Text>
+                  <Text style={styles.detectStatusText}>{detectSummary}</Text>
+                  <Text style={styles.detectStatusText}>{elbowScanSummary}</Text>
+                  <Text style={styles.detectStatusText}>Rep phase: {repPhase}</Text>
+                  <Text style={styles.detectStatusText}>{calibrationStatus}</Text>
+                  <Text style={styles.detectStatusText}>{cameraGuide}</Text>
+                </View>
+              </>
+            )}
           </View>
 
           {/* Bottom Controls */}
           <View>
+            <TouchableOpacity
+              style={styles.infoToggleButton}
+              activeOpacity={0.85}
+              onPress={() => setShowInfoPanel((previous) => !previous)}
+            >
+              <Text style={styles.infoToggleButtonText}>{showInfoPanel ? 'Hide Info' : 'Show Info'}</Text>
+            </TouchableOpacity>
             <View style={styles.bottomBar}>
               <TouchableOpacity
                 style={styles.secondaryButton}
@@ -2082,7 +2131,7 @@ const styles = StyleSheet.create({
     color: ACCENT,
   },
   bicepTitle: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 1,
@@ -2094,19 +2143,19 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   bicepMeta: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
     marginTop: 4,
   },
   bicepAngle: {
-    color: Colors.textSecondary,
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
     marginTop: 2,
   },
   bicepMetric: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
     marginTop: 2,
@@ -2140,7 +2189,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   lungeTitle: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 1,
@@ -2152,7 +2201,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   lungeMetric: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
     marginTop: 2,
@@ -2172,7 +2221,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pushupTitle: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 1,
@@ -2184,13 +2233,13 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   pushupMetric: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
     marginTop: 2,
   },
   jumpingJackTitle: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 1,
@@ -2202,13 +2251,13 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   jumpingJackMetric: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
     marginTop: 2,
   },
   squatTitle: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 1,
@@ -2220,7 +2269,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   squatMetric: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
     marginTop: 2,
@@ -2239,6 +2288,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: 10,
     backgroundColor: OVERLAY_LIGHT,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -2247,11 +2297,11 @@ const styles = StyleSheet.create({
   exerciseTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
   },
   timerText: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: '#FFFFFF',
     marginTop: 4,
   },
   topRight: {
@@ -2313,12 +2363,12 @@ const styles = StyleSheet.create({
   },
   cornerLabel: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: '#FFFFFF',
   },
   cornerValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     marginTop: 4,
   },
 
@@ -2331,7 +2381,7 @@ const styles = StyleSheet.create({
   feedbackText: {
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     backgroundColor: OVERLAY_LIGHT,
     paddingHorizontal: 20,
     paddingVertical: 10,
@@ -2347,6 +2397,24 @@ const styles = StyleSheet.create({
     borderColor: `${ACCENT}66`,
     minWidth: 220,
     alignItems: 'center',
+  },
+  infoToggleButton: {
+    marginTop: 10,
+    marginBottom: 10,
+    alignSelf: 'center',
+    backgroundColor: Colors.blackA62,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: `${ACCENT}66`,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minWidth: 150,
+    alignItems: 'center',
+  },
+  infoToggleButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
   motionStatusBadgeDetected: {
     borderColor: Colors.successA85,
@@ -2364,10 +2432,10 @@ const styles = StyleSheet.create({
     color: Colors.success,
   },
   motionStatusTitleIdle: {
-    color: Colors.textSecondary,
+    color: '#FFFFFF',
   },
   motionStatusText: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 12,
     marginTop: 3,
     fontWeight: '600',
@@ -2389,7 +2457,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   detectStatusText: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 12,
     marginTop: 3,
     fontWeight: '600',
@@ -2411,7 +2479,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   debugText: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 11,
     marginTop: 2,
   },
@@ -2443,7 +2511,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   secondaryButtonText: {
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
   },

@@ -6,7 +6,16 @@
 const express = require('express');
 const path = require('path');
 const multer = require('multer');
-const { register, login, getMe, updateMe } = require('../controllers/authController');
+const {
+	register,
+	login,
+	getMe,
+	updateMe,
+	listUsers,
+	getUserById,
+	updateUserById,
+	deleteUserById,
+} = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -50,6 +59,22 @@ router.post('/register', register);
 // POST /api/auth/login
 // body: { email, password }
 router.post('/login', login);
+
+// Get Users List (admin dashboard data)
+// GET /api/auth/users
+router.get('/users', listUsers);
+
+// Get User Details (admin dashboard)
+// GET /api/auth/users/:id
+router.get('/users/:id', getUserById);
+
+// Update User (admin dashboard)
+// PUT /api/auth/users/:id
+router.put('/users/:id', updateUserById);
+
+// Delete User (admin dashboard)
+// DELETE /api/auth/users/:id
+router.delete('/users/:id', deleteUserById);
 
 /**
  * Protected Routes (require valid JWT token)

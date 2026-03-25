@@ -216,3 +216,126 @@ exports.updateMe = async (req, res) => {
     });
   }
 };
+
+/**
+ * List Users
+ * GET /api/auth/users
+ */
+exports.listUsers = async (req, res) => {
+  try {
+    const users = await User.find({})
+      .select('_id name email avatarUrl completedOnboarding createdAt')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      message: 'Users fetched successfully',
+      users,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error fetching users',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get User By ID
+ * GET /api/auth/users/:id
+ */
+exports.getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('_id name email avatarUrl completedOnboarding createdAt updatedAt');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json({
+      message: 'User fetched successfully',
+      user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error fetching user',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Update User By ID
+ * PUT /api/auth/users/:id
+ */
+exports.updateUserById = async (req, res) => {
+  try {
+    const { name, email, completedOnboarding } = req.body;
+    const updates = {};
+
+    if (typeof name === 'string') {
+      updates.name = name.trim();
+    }
+
+    if (typeof email === 'string') {
+      updates.email = email.trim().toLowerCase();
+    }
+
+    if (typeof completedOnboarding === 'boolean') {
+      updates.completedOnboarding = completedOnboarding;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        message: 'No valid fields provided for update',
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(req.params.id, updates, {
+      new: true,
+      runValidators: true,
+    }).select('_id name email avatarUrl completedOnboarding createdAt updatedAt');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json({
+      message: 'User updated successfully',
+      user,
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'Email already exists. Please use a different email.',
+      });
+    }
+
+    res.status(500).json({
+      message: 'Error updating user',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Delete User By ID
+ * DELETE /api/auth/users/:id
+ */
+exports.deleteUserById = async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json({
+      message: 'User deleted successfully',
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error deleting user',
+      error: error.message,
+    });
+  }
+};

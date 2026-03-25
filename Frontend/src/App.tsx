@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import 'react-native-gesture-handler';
-import { ActivityIndicator, StatusBar, View, StyleSheet } from 'react-native';
+import { Animated, StatusBar, View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import AppLaunchSplash from './components/ui/AppLaunchSplash';
 import {
   Colors,
   ThemeMode,
@@ -16,9 +17,13 @@ import {
 
 function App() {
   const [AppNavigatorComponent, setAppNavigatorComponent] = useState<React.ComponentType | null>(null);
+  const [showSplash, setShowSplash] = useState(true);
+  const splashOpacity = useState(() => new Animated.Value(1))[0];
 
   useEffect(() => {
     let mounted = true;
+    const launchStartedAt = Date.now();
+    const minSplashMs = 1100;
 
     const bootstrapThemeAndNavigator = async () => {
       const storedMode = await AsyncStorage.getItem(THEME_MODE_STORAGE_KEY);
@@ -29,6 +34,24 @@ function App() {
       const navigationModule = await import('./navigation/AppNavigator');
       if (mounted) {
         setAppNavigatorComponent(() => navigationModule.AppNavigator);
+
+        const elapsed = Date.now() - launchStartedAt;
+        const waitRemaining = Math.max(0, minSplashMs - elapsed);
+        setTimeout(() => {
+          if (!mounted) {
+            return;
+          }
+
+          Animated.timing(splashOpacity, {
+            toValue: 0,
+            duration: 320,
+            useNativeDriver: true,
+          }).start(() => {
+            if (mounted) {
+              setShowSplash(false);
+            }
+          });
+        }, waitRemaining);
       }
     };
 
@@ -41,9 +64,7 @@ function App() {
   if (!AppNavigatorComponent) {
     return (
       <SafeAreaProvider>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color={Colors.primary} />
-        </View>
+        <AppLaunchSplash />
       </SafeAreaProvider>
     );
   }
@@ -59,6 +80,12 @@ function App() {
           />
           <View style={styles.container}>
             <AppNavigatorComponent />
+
+            {showSplash && (
+              <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]}>
+                <AppLaunchSplash />
+              </Animated.View>
+            )}
           </View>
         </AuthProvider>
       </ThemeProvider>
@@ -67,15 +94,13 @@ function App() {
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  splashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
   },
 });
 

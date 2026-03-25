@@ -83,7 +83,7 @@ const HomeTabs: React.FC = () => {
   const compact = height < 700;
 
   const tabBarHeight = compact ? 60 : 64;
-  const tabBarBottom = insets.bottom > 0 ? Math.max(10, insets.bottom + 8) : 14;
+  const tabBarBottom = insets.bottom > 0 ? Math.max(6, insets.bottom + 4) : 8;
 
   return (
     <Tab.Navigator
