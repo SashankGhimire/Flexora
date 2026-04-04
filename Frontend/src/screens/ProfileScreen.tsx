@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { API_BASE_URL } from '../services/api';
+import { getApiServerOrigin } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { getLocalOnboardingProfile, getOnboardingProfile } from '../services/onboardingService';
@@ -77,7 +77,7 @@ export const ProfileScreen: React.FC = () => {
 
   const avatarUrl = useMemo(() => {
     if (!user?.avatarUrl) return '';
-    return `${API_BASE_URL.replace('/api', '')}${user.avatarUrl}`;
+    return `${getApiServerOrigin()}${user.avatarUrl}`;
   }, [user?.avatarUrl]);
 
   const handlePickAvatar = async () => {
@@ -218,7 +218,7 @@ export const ProfileScreen: React.FC = () => {
         <Card style={styles.highlightCard}>
           <View style={styles.highlightRow}>
             <View style={styles.highlightPill}>
-              <SimpleIcon name="fire" size={14} color={Colors.warning} />
+              <SimpleIcon name="flame" size={14} color={Colors.warning} />
               <Text style={styles.highlightText}>12-day streak</Text>
             </View>
             <View style={styles.highlightPill}>

@@ -2,10 +2,17 @@
  * API Configuration and Endpoints
  */
 
-const LAPTOP_LAN_IP = '100.64.245.133';
-const BACKEND_PORT = 5000;
-
-export const API_BASE_URL = `http://${LAPTOP_LAN_IP}:${BACKEND_PORT}/api`;
+export {
+  API_BASE_URL,
+  API_URL_LOCAL,
+  API_URL_NGROK,
+  DEMO_MODE,
+  resolveApiBaseUrl,
+  getApiBaseUrlSync,
+  getApiServerOrigin,
+  resetResolvedApiBaseUrl,
+  createServerNotReachableError,
+} from '../config/api';
 
 export const AUTH_ENDPOINTS = {
   REGISTER: '/auth/register',
@@ -21,7 +28,6 @@ export const ONBOARDING_ENDPOINTS = {
 };
 
 export const API_CONFIG = {
-  BASE_URL: API_BASE_URL,
   TIMEOUT: 10000,
   IS_DEVELOPMENT: true,
 };

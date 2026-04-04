@@ -2,6 +2,7 @@ import { calculateAngle, PoseKeypoint } from './motionIntelligence';
 
 type SquatPhase = 'up' | 'down';
 export type SquatViewMode = 'front' | 'side';
+type RepSpeedFeedback = 'Too fast' | 'Too slow' | 'Controlled';
 
 type SquatState = {
   repCount: number;
@@ -23,6 +24,8 @@ type SquatState = {
   totalAccuracy: number;
   scoredReps: number;
   averageAccuracy: number;
+  lastRepSpeedSec: number;
+  lastSpeedFeedback: RepSpeedFeedback;
 };
 
 export type SquatResult = {
@@ -31,12 +34,15 @@ export type SquatResult = {
   kneeAngle: number;
   rom: number;
   accuracy: number;
+  speedFeedback: RepSpeedFeedback;
 };
 
 type SquatProfile = {
   goodRomThreshold: number;
   goodHipDrop: number;
   maxKneeSymmetryDelta: number;
+  strict: { minAngle: number; rom: number };
+  assisted: { minAngle: number; rom: number };
 };
 
 type SquatOptions = {
@@ -54,11 +60,15 @@ const SQUAT_PROFILES: Record<SquatViewMode, SquatProfile> = {
     goodRomThreshold: 70,
     goodHipDrop: 0.06,
     maxKneeSymmetryDelta: 20,
+    strict: { minAngle: 75, rom: 70 },
+    assisted: { minAngle: 95, rom: 50 },
   },
   front: {
     goodRomThreshold: 60,
     goodHipDrop: 0.045,
     maxKneeSymmetryDelta: 28,
+    strict: { minAngle: 80, rom: 65 },
+    assisted: { minAngle: 100, rom: 48 },
   },
 };
 
@@ -91,6 +101,8 @@ const state: SquatState = {
   totalAccuracy: 0,
   scoredReps: 0,
   averageAccuracy: 0,
+  lastRepSpeedSec: 0,
+  lastSpeedFeedback: 'Controlled',
 };
 
 const hasConfidence = (point: PoseKeypoint | undefined): point is PoseKeypoint => {
@@ -200,7 +212,7 @@ const updateRepWindow = (
   }
 };
 
-const scoreRep = (profile: SquatProfile): number => {
+const scoreRep = (profile: SquatProfile, repSpeed: number): number => {
   const rom = calculateROM(state.maxKneeAngle, state.minKneeAngle);
   const romScore = Math.max(0, Math.min(100, (rom / profile.goodRomThreshold) * 100));
 
@@ -214,15 +226,44 @@ const scoreRep = (profile: SquatProfile): number => {
     : 0;
   const stabilityScore = Math.max(0, 100 - stabilityPenaltyRatio * 100);
 
-  const accuracy = romScore * 0.5 + hipMovementScore * 0.25 + stabilityScore * 0.25;
+  // Speed feedback
+  let speedScore = 70;
+  let speedFeedback: RepSpeedFeedback = 'Controlled';
+  if (repSpeed < 1.5) {
+    speedScore = 40;
+    speedFeedback = 'Too fast';
+  } else if (repSpeed > 6.0) {
+    speedScore = 45;
+    speedFeedback = 'Too slow';
+  } else if (repSpeed >= 2.5 && repSpeed <= 5.0) {
+    speedScore = 100;
+    speedFeedback = 'Controlled';
+  }
+
+  state.lastRepSpeedSec = repSpeed;
+  state.lastSpeedFeedback = speedFeedback;
+
+  const accuracy = romScore * 0.4 + hipMovementScore * 0.3 + stabilityScore * 0.2 + speedScore * 0.1;
   return Math.max(0, Math.min(100, accuracy));
 };
 
-const finalizeRep = (profile: SquatProfile): void => {
-  state.lastCompletedRom = calculateROM(state.maxKneeAngle, state.minKneeAngle);
-  state.repCount += 1;
+const finalizeRep = (profile: SquatProfile, repSpeed: number): void => {
+  const rom = calculateROM(state.maxKneeAngle, state.minKneeAngle);
+  state.lastCompletedRom = rom;
+  
+  // Check if rep meets strict or assisted criteria
+  const hasStrictRep = 
+    state.minKneeAngle <= profile.strict.minAngle &&
+    rom >= profile.strict.rom;
+  const hasAssistedRep =
+    state.minKneeAngle <= profile.assisted.minAngle &&
+    rom >= profile.assisted.rom;
+  
+  if (hasStrictRep || hasAssistedRep) {
+    state.repCount += 1;
+  }
 
-  const accuracy = scoreRep(profile);
+  const accuracy = scoreRep(profile, repSpeed);
   state.scoredReps += 1;
   state.totalAccuracy += accuracy;
   state.averageAccuracy = state.totalAccuracy / state.scoredReps;
@@ -265,7 +306,8 @@ const applyPhaseTransition = (
   }
 
   if (previous === 'down' && nextPhase === 'up') {
-    finalizeRep(profile);
+    const repSpeed = state.repStartTime ? (now - state.repStartTime) / 1000 : 0;
+    finalizeRep(profile, repSpeed);
     state.maxKneeAngle = kneeAngle;
     state.minKneeAngle = kneeAngle;
     state.baselineHipY = hipCenterY;
@@ -294,6 +336,7 @@ const toResult = (): SquatResult => ({
   kneeAngle: state.lastKneeAngle,
   rom: state.lastCompletedRom,
   accuracy: state.averageAccuracy,
+  speedFeedback: state.lastSpeedFeedback,
 });
 
 export const updateSquat = (

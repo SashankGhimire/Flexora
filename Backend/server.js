@@ -63,8 +63,55 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Flexora Backend Server running on port ${PORT}`);
+const listenOnPort = (port) => {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, () => {
+      resolve(server);
+    });
+
+    server.once('error', (error) => {
+      reject(error);
+    });
+  });
+};
+
+const startServer = async () => {
+  const preferredPort = Number(process.env.PORT) || 5000;
+  const maxAttempts = 20;
+  let server = null;
+  let port = preferredPort;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      server = await listenOnPort(port);
+      break;
+    } catch (error) {
+      if (error && error.code === 'EADDRINUSE') {
+        port += 1;
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  if (!server) {
+    throw new Error(`No available port found in range ${preferredPort}-${preferredPort + maxAttempts - 1}`);
+  }
+
+  if (port !== preferredPort) {
+    console.warn(`Port ${preferredPort} is busy. Starting server on ${port} instead.`);
+  }
+
+  console.log(`Flexora Backend Server running on port ${port}`);
+
+  server.on('error', (error) => {
+    console.error('Server failed to start:', error);
+    process.exit(1);
+  });
+};
+
+startServer().catch((error) => {
+  console.error('Unable to start server:', error.message);
+  process.exit(1);
 });

@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
+    "android:install": "react-native run-android",
+    "android:dev": "node scripts/android-dev.js",
+    "android:open": "adb shell monkey -p com.flexora -c android.intent.category.LAUNCHER 1",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",

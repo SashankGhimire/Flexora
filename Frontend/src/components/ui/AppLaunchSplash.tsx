@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { Logo } from './Logo';
-import { Colors, isDarkMode } from '../../theme/colors';
+import { isDarkMode } from '../../theme/colors';
 
 export const AppLaunchSplash: React.FC = () => {
   const shimmer = useRef(new Animated.Value(0)).current;
@@ -11,35 +11,28 @@ export const AppLaunchSplash: React.FC = () => {
   const introOpacity = useRef(new Animated.Value(0)).current;
   const introTranslateY = useRef(new Animated.Value(18)).current;
   const logoFloat = useRef(new Animated.Value(0)).current;
-  const blobDrift = useRef(new Animated.Value(0)).current;
   const palette = useMemo(() => {
     if (isDarkMode) {
       return {
         background: '#121414',
-        cardBg: 'rgba(27, 31, 31, 0.92)',
-        cardBorder: 'rgba(63, 175, 115, 0.28)',
+        cardBg: 'transparent',
         badgeText: '#9BE3BE',
-        loadingTrack: 'rgba(63, 175, 115, 0.26)',
-        loadingShimmer: 'rgba(56, 189, 248, 0.78)',
+        loadingTrack: 'rgba(63, 175, 115, 0.18)',
+        loadingShimmer: 'rgba(56, 189, 248, 0.85)',
         loadingLabel: '#C8D2D8',
         dot: '#67C8F2',
-        blobTop: 'rgba(63, 175, 115, 0.2)',
-        blobBottom: 'rgba(56, 189, 248, 0.16)',
         shadowColor: '#000000',
       };
     }
 
     return {
       background: '#F6FBF9',
-      cardBg: 'rgba(255, 255, 255, 0.88)',
-      cardBorder: 'rgba(63, 175, 115, 0.14)',
+      cardBg: 'transparent',
       badgeText: '#2E7D5B',
-      loadingTrack: 'rgba(63, 175, 115, 0.14)',
-      loadingShimmer: 'rgba(56, 189, 248, 0.65)',
+      loadingTrack: 'rgba(63, 175, 115, 0.12)',
+      loadingShimmer: 'rgba(56, 189, 248, 0.72)',
       loadingLabel: '#6B7280',
       dot: '#38BDF8',
-      blobTop: 'rgba(63, 175, 115, 0.1)',
-      blobBottom: 'rgba(56, 189, 248, 0.1)',
       shadowColor: '#0f172a',
     };
   }, []);
@@ -72,23 +65,6 @@ export const AppLaunchSplash: React.FC = () => {
       ])
     );
 
-    const blobDriftLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(blobDrift, {
-          toValue: 1,
-          duration: 2600,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(blobDrift, {
-          toValue: 0,
-          duration: 2600,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
     const dotWave = (dot: Animated.Value, delay: number) =>
       Animated.loop(
         Animated.sequence([
@@ -114,7 +90,6 @@ export const AppLaunchSplash: React.FC = () => {
 
     shimmerLoop.start();
     logoFloatLoop.start();
-    blobDriftLoop.start();
     dot1Loop.start();
     dot2Loop.start();
     dot3Loop.start();
@@ -137,12 +112,11 @@ export const AppLaunchSplash: React.FC = () => {
     return () => {
       shimmerLoop.stop();
       logoFloatLoop.stop();
-      blobDriftLoop.stop();
       dot1Loop.stop();
       dot2Loop.stop();
       dot3Loop.stop();
     };
-  }, [blobDrift, dot1, dot2, dot3, introOpacity, introTranslateY, logoFloat, shimmer]);
+  }, [dot1, dot2, dot3, introOpacity, introTranslateY, logoFloat, shimmer]);
 
   const shimmerX = shimmer.interpolate({
     inputRange: [0, 1],
@@ -154,21 +128,8 @@ export const AppLaunchSplash: React.FC = () => {
     outputRange: [0, -5],
   });
 
-  const blobShiftX = blobDrift.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 12],
-  });
-
-  const blobShiftXReverse = blobDrift.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -10],
-  });
-
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.View style={[styles.backgroundBlobTop, { transform: [{ translateX: blobShiftX }] }]} />
-      <Animated.View style={[styles.backgroundBlobBottom, { transform: [{ translateX: blobShiftXReverse }] }]} />
-
       <Animated.View
         style={[
           styles.splashCard,
@@ -180,8 +141,9 @@ export const AppLaunchSplash: React.FC = () => {
       >
         <View style={styles.centerWrap}>
           <Animated.View style={{ transform: [{ translateY: logoFloatY }] }}>
-            <Logo size={62} />
+            <Logo size={88} animated={false} />
           </Animated.View>
+          <Text style={styles.flexoraText}>Flexora</Text>
           <Text style={styles.badgeText}>AI FITNESS TRAINER</Text>
 
           <View style={styles.loadingBarTrack}>
@@ -203,14 +165,11 @@ export const AppLaunchSplash: React.FC = () => {
 const createStyles = (palette: {
   background: string;
   cardBg: string;
-  cardBorder: string;
   badgeText: string;
   loadingTrack: string;
   loadingShimmer: string;
   loadingLabel: string;
   dot: string;
-  blobTop: string;
-  blobBottom: string;
   shadowColor: string;
 }) =>
   StyleSheet.create({
@@ -223,80 +182,70 @@ const createStyles = (palette: {
     splashCard: {
       width: '88%',
       maxWidth: 360,
-      borderRadius: 24,
-      paddingVertical: 24,
+      borderRadius: 0,
+      paddingVertical: 48,
       paddingHorizontal: 20,
       backgroundColor: palette.cardBg,
-      borderWidth: 1,
-      borderColor: palette.cardBorder,
       shadowColor: palette.shadowColor,
-      shadowOpacity: 0.14,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 8,
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 0,
     },
     centerWrap: {
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 10,
     },
-    badgeText: {
-      marginTop: -8,
-      fontSize: 11,
-      letterSpacing: 1.2,
+    flexoraText: {
+      marginTop: 12,
+      fontSize: 28,
+      letterSpacing: 0.3,
       color: palette.badgeText,
       fontWeight: '700',
-      marginBottom: 14,
+      marginBottom: 6,
     },
-    backgroundBlobTop: {
-      position: 'absolute',
-      top: -70,
-      right: -80,
-      width: 230,
-      height: 230,
-      borderRadius: 115,
-      backgroundColor: palette.blobTop,
-    },
-    backgroundBlobBottom: {
-      position: 'absolute',
-      bottom: -90,
-      left: -70,
-      width: 220,
-      height: 220,
-      borderRadius: 110,
-      backgroundColor: palette.blobBottom,
+    badgeText: {
+      marginTop: 0,
+      fontSize: 12,
+      letterSpacing: 1.3,
+      color: palette.badgeText,
+      fontWeight: '600',
+      marginBottom: 24,
+      opacity: 0.8,
     },
     loadingBarTrack: {
-      marginTop: 8,
-      width: '84%',
-      height: 7,
+      marginTop: 6,
+      width: '100%',
+      height: 6,
       borderRadius: 999,
       backgroundColor: palette.loadingTrack,
       overflow: 'hidden',
     },
     loadingBarShimmer: {
       position: 'absolute',
-      width: 110,
-      height: 7,
+      width: 120,
+      height: 6,
       borderRadius: 999,
       backgroundColor: palette.loadingShimmer,
     },
     loadingRow: {
-      marginTop: 14,
+      marginTop: 16,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
     },
     loadingLabel: {
-      marginLeft: 8,
-      fontSize: 11,
+      marginLeft: 10,
+      fontSize: 12,
       color: palette.loadingLabel,
       fontWeight: '500',
+      letterSpacing: 0.2,
     },
     dot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
+      width: 6,
+      height: 6,
+      borderRadius: 3,
       backgroundColor: palette.dot,
     },
   });

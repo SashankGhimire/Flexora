@@ -62,6 +62,33 @@ If everything is set up correctly, you should see your new app running in the An
 
 This is one way to run your app — you can also build it directly from Android Studio or Xcode.
 
+## Faster Android workflow (no reinstall every time)
+
+After the app is installed once, you do not need to run `npm run android` for every code change.
+
+First install only:
+
+```sh
+npm run android:install
+```
+
+Daily development:
+
+```sh
+npm run android:dev
+```
+
+`android:dev` will:
+- Start ADB and bind Metro (`adb reverse tcp:8081 tcp:8081`)
+- Launch the already installed app on device/emulator
+- Start Metro
+
+Optional app launch only:
+
+```sh
+npm run android:open
+```
+
 ## Step 3: Modify your app
 
 Now that you have successfully run the app, let's make changes!

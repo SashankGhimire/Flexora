@@ -23,7 +23,7 @@ function App() {
   useEffect(() => {
     let mounted = true;
     const launchStartedAt = Date.now();
-    const minSplashMs = 1100;
+    const minSplashMs = 1500;
 
     const bootstrapThemeAndNavigator = async () => {
       const storedMode = await AsyncStorage.getItem(THEME_MODE_STORAGE_KEY);
@@ -44,7 +44,7 @@ function App() {
 
           Animated.timing(splashOpacity, {
             toValue: 0,
-            duration: 320,
+            duration: 220,
             useNativeDriver: true,
           }).start(() => {
             if (mounted) {

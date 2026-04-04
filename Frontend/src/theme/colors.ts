@@ -126,8 +126,7 @@ const DarkColors = {
   black: '#050707',
 } as const;
 
-const resolveInitialThemeMode = (): ThemeMode =>
-  Appearance.getColorScheme() === 'dark' ? 'dark' : 'light';
+const resolveInitialThemeMode = (): ThemeMode => 'light';
 
 let currentThemeMode: ThemeMode = resolveInitialThemeMode();
 

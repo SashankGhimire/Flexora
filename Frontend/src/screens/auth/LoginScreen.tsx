@@ -73,9 +73,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.topAura} />
-      <View style={styles.bottomAura} />
-
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -155,24 +152,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
-  },
-  topAura: {
-    position: 'absolute',
-    top: -120,
-    right: -90,
-    width: 250,
-    height: 250,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.primaryA12,
-  },
-  bottomAura: {
-    position: 'absolute',
-    bottom: -130,
-    left: -90,
-    width: 220,
-    height: 220,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.primaryLightA12,
   },
   flex: {
     flex: 1,

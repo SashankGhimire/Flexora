@@ -35,6 +35,7 @@ const ICON_MAP: Record<string, string> = {
   'help-circle': 'help-circle',
   'life-buoy': 'life-buoy',
   fire: 'fire',
+  flame: 'fire',
   lock: 'lock',
   cpu: 'cpu',
   sun: 'sun',

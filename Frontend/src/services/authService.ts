@@ -5,7 +5,12 @@
 
 import axios from 'axios';
 import type { AxiosError } from 'axios';
-import { API_BASE_URL, AUTH_ENDPOINTS, API_CONFIG } from './api';
+import {
+  AUTH_ENDPOINTS,
+  API_CONFIG,
+  createServerNotReachableError,
+  resolveApiBaseUrl,
+} from './api';
 
 // Simple in-memory token storage
 let authToken: string | null = null;
@@ -16,25 +21,53 @@ let authToken: string | null = null;
  * Works universally across Android emulator, real device, and iOS
  */
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
   timeout: API_CONFIG.TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
   },
 });
 
 // Add token to requests
 apiClient.interceptors.request.use(
   async (config) => {
+    config.baseURL = await resolveApiBaseUrl();
+
     if (authToken) {
       config.headers.Authorization = `Bearer ${authToken}`;
     }
+
     return config;
   },
   (error: AxiosError) => {
     return Promise.reject(error);
   }
 );
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as (typeof error.config & {
+      __retryWithFallback?: boolean;
+    }) | null;
+
+    if (!error.response && originalRequest && !originalRequest.__retryWithFallback) {
+      originalRequest.__retryWithFallback = true;
+      originalRequest.baseURL = await resolveApiBaseUrl(true);
+      return apiClient.request(originalRequest);
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+const throwNormalizedApiError = (error: any): never => {
+  if (!error?.response) {
+    throw createServerNotReachableError(error);
+  }
+
+  throw error.response?.data || { message: error.message };
+};
 
 /**
  * User Registration API Call
@@ -54,14 +87,7 @@ export const registerUser = async (userData: {
     }
     return response.data;
   } catch (error: any) {
-    // Handle network errors
-    if (!error.response) {
-      throw {
-        message: `Network Error: Cannot connect to backend at ${API_BASE_URL}. Make sure the backend server is running.`,
-      };
-    }
-    
-    throw error.response?.data || { message: error.message };
+    throwNormalizedApiError(error);
   }
 };
 
@@ -82,14 +108,7 @@ export const loginUser = async (credentials: {
     }
     return response.data;
   } catch (error: any) {
-    // Handle network errors
-    if (!error.response) {
-      throw {
-        message: `Network Error: Cannot connect to backend at ${API_BASE_URL}. Make sure the backend server is running.`,
-      };
-    }
-    
-    throw error.response?.data || { message: error.message };
+    throwNormalizedApiError(error);
   }
 };
 
@@ -103,7 +122,7 @@ export const getCurrentUser = async () => {
     const response = await apiClient.get(AUTH_ENDPOINTS.GET_ME);
     return response.data;
   } catch (error: any) {
-    throw error.response?.data || error;
+    throwNormalizedApiError(error);
   }
 };
 
@@ -139,7 +158,7 @@ export const updateProfile = async (data: {
     });
     return response.data;
   } catch (error: any) {
-    throw error.response?.data || error;
+    throwNormalizedApiError(error);
   }
 };
 

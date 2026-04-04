@@ -3,7 +3,7 @@ import { Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'r
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../services/api';
+import { getApiServerOrigin } from '../services/api';
 import { Colors } from '../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
 import { PrimaryButton, SimpleIcon } from '../components/ui';
@@ -19,7 +19,7 @@ const formatTotalTime = (seconds: number): string => {
 export const WorkoutCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
   const { user } = useAuth();
   const { completedExercises, totalSeconds } = route.params;
-  const avatarUrl = user?.avatarUrl ? `${API_BASE_URL.replace('/api', '')}${user.avatarUrl}` : '';
+  const avatarUrl = user?.avatarUrl ? `${getApiServerOrigin()}${user.avatarUrl}` : '';
   const initials = (user?.name || 'User')
     .split(' ')
     .map((part) => part[0])
