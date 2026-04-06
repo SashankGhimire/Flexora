@@ -25,6 +25,12 @@ if (!process.env.JWT_EXPIRE) {
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const onboardingRoutes = require('./routes/onboardingRoutes');
+const userRoutes = require('./routes/userRoutes');
+const workoutRoutes = require('./routes/workoutRoutes');
+const exerciseRoutes = require('./routes/exerciseRoutes');
+const sessionRoutes = require('./routes/sessionRoutes');
+const progressRoutes = require('./routes/progressRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Initialize Express app
 const app = express();
@@ -43,6 +49,20 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/workouts', workoutRoutes);
+app.use('/api/exercises', exerciseRoutes);
+app.use('/api/session', sessionRoutes);
+app.use('/api/progress', progressRoutes);
+app.use('/api/admin', adminRoutes);
+
+// Health route for clients to validate they resolved the correct backend host.
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    service: 'flexora-backend',
+    status: 'ok',
+  });
+});
 
 // Basic route for testing server
 app.get('/', (req, res) => {

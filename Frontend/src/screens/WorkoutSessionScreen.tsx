@@ -1,10 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/native';
 import Video from 'react-native-video';
 import { HomeStackParamList } from '../types';
-import { getExercisesForProgram, getProgramById } from '../data/workoutData';
+import { useAppData } from '../context/AppDataContext';
+import { startWorkoutSession, saveWorkoutSession } from '../services/sessionService';
+import { resolveExerciseAnimation, resolveExercisePreview, resolveExerciseForWorkout } from '../data/workoutData';
 import { Colors } from '../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
 import { PrimaryButton, SimpleIcon } from '../components/ui';
@@ -14,6 +16,7 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'WorkoutSession'>;
 type SessionPhase = 'ready' | 'countdown' | 'exercise' | 'rest';
 
 const REST_DEFAULT = 30;
+const WORKOUT_LOOP_SOURCE = require('../assets/audio/exercise_loop.wav');
 
 const SYSTEM_VOICE_AUDIO: Record<'start' | 'rest' | 'coming_up_next', any> = {
   start: require('../assets/audio/start.wav'),
@@ -41,17 +44,86 @@ const EXERCISE_NAME_AUDIO: Record<string, any> = {
 const resolveVoiceCueSource = (cue: string): any =>
   SYSTEM_VOICE_AUDIO[cue as keyof typeof SYSTEM_VOICE_AUDIO] ?? EXERCISE_NAME_AUDIO[cue];
 
+const EXERCISE_AUDIO_ALIASES: Record<string, string> = {
+  jumpingjacks: 'jumping-jacks',
+  jumpingjack: 'jumping-jacks',
+  russiantwist: 'russian-twist',
+  mountainclimbers: 'mountain-climbers',
+  plank: 'plank-hold',
+  armcircles: 'arm-circles',
+  tricepdips: 'tricep-dips',
+  inclinepushups: 'incline-pushups',
+  bodyweightsquats: 'bodyweight-squats',
+  reverselunges: 'reverse-lunges',
+  highknees: 'high-knees',
+  glutebridge: 'glute-bridge',
+  shouldertaps: 'shoulder-taps',
+};
+
+const normalizeCueKey = (value: string): string =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+const resolveExerciseVoiceCueKey = (exercise?: { id: string; name: string; animation: string }): string | null => {
+  if (!exercise) {
+    return null;
+  }
+
+  const candidates = [exercise.id, exercise.name, exercise.animation]
+    .filter(Boolean)
+    .map((value) => normalizeCueKey(value));
+
+  for (const candidate of candidates) {
+    if (EXERCISE_NAME_AUDIO[candidate]) {
+      return candidate;
+    }
+
+    const alias = EXERCISE_AUDIO_ALIASES[candidate.replace(/-/g, '')] || EXERCISE_AUDIO_ALIASES[candidate];
+    if (alias && EXERCISE_NAME_AUDIO[alias]) {
+      return alias;
+    }
+  }
+
+  return null;
+};
+
 const formatClock = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
   const sec = seconds % 60;
   return `${String(mins).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 };
 
+const isMongoObjectId = (value?: string): boolean => !!value && /^[a-f\d]{24}$/i.test(value);
+
 export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => {
   const { programId } = route.params;
   const isFocused = useIsFocused();
-  const program = getProgramById(programId);
-  const exercises = getExercisesForProgram(programId);
+  const { getWorkout, setSessionState } = useAppData();
+
+  const [loadingProgram, setLoadingProgram] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [program, setProgram] = useState<{
+    id: string;
+    name: string;
+    focus: string;
+    durationMinutes: number;
+  } | null>(null);
+  const [exercises, setExercises] = useState<
+    Array<{
+      id: string;
+      name: string;
+      type: 'timer' | 'reps';
+      duration: number | null;
+      reps: number | null;
+      animation: string;
+      focus: string[];
+      instructions: string;
+      mistakes: string[];
+    }>
+  >([]);
 
   const [phase, setPhase] = useState<SessionPhase>('ready');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -74,18 +146,40 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
     return `x${currentExercise.reps ?? 0}`;
   }, [currentExercise, exerciseTimeLeft]);
 
-  const shouldPlayExerciseLoop =
-    isFocused && phase === 'exercise' && !paused && voiceQueue.length === 0;
+  const shouldPlayExerciseLoop = isFocused && phase === 'exercise' && !paused && !!currentExercise;
   const shouldPlayVoiceCue = isFocused && phase !== 'countdown' && voiceQueue.length > 0;
   const shouldPlayCountdownAudio = isFocused && phase === 'countdown';
 
   const completeWorkout = useCallback(() => {
-    navigation.replace('WorkoutComplete', {
-      programId,
-      completedExercises: exercises.length,
-      totalSeconds,
-    });
-  }, [navigation, programId, exercises.length, totalSeconds]);
+    const persistSession = async () => {
+      try {
+        const performed = exercises.map((exercise) => ({
+          exercise: exercise.id,
+          reps: exercise.type === 'reps' ? Number(exercise.reps || 0) : 0,
+          duration: exercise.type === 'timer' ? Number(exercise.duration || 0) : 0,
+          accuracy: 88,
+        }));
+
+        await saveWorkoutSession({
+          sessionId: sessionId || undefined,
+          workoutProgramId: isMongoObjectId(programId) ? programId : undefined,
+          exercisesPerformed: performed,
+          durationSeconds: totalSeconds,
+        });
+      } catch {
+        // Keep UX smooth even if save fails; stats can be retried later.
+      }
+
+      setSessionState({ sessionId: null, workoutProgramId: null });
+      navigation.replace('WorkoutComplete', {
+        programId,
+        completedExercises: exercises.length,
+        totalSeconds,
+      });
+    };
+
+    persistSession();
+  }, [navigation, programId, exercises, totalSeconds, sessionId, setSessionState]);
 
   const goToRestPhase = useCallback(() => {
     if (currentIndex >= exercises.length - 1) {
@@ -93,6 +187,7 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
       return;
     }
 
+    setVoiceQueue([]);
     setRestTimeLeft(REST_DEFAULT);
     setRestTotal(REST_DEFAULT);
     setPaused(false);
@@ -105,6 +200,7 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
       return;
     }
 
+    setVoiceQueue([]);
     setCurrentIndex((prev) => prev + 1);
     setCountdown(3);
     setPaused(false);
@@ -113,16 +209,18 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
 
   const moveToPreviousExercise = () => {
     if (currentIndex <= 0) return;
+    setVoiceQueue([]);
     setCurrentIndex((prev) => prev - 1);
     setPhase('exercise');
     setPaused(false);
   };
 
-  const enqueueVoiceCues = useCallback((cues: string[]) => {
+  const replaceVoiceCues = useCallback((cues: string[]) => {
     if (!cues.length) {
+      setVoiceQueue([]);
       return;
     }
-    setVoiceQueue((prev) => [...prev, ...cues]);
+    setVoiceQueue(cues);
   }, []);
 
   const handleVoiceCueComplete = useCallback(() => {
@@ -144,6 +242,76 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
       ]
     );
   };
+
+  useEffect(() => {
+    const hydrateSession = async () => {
+      setLoadingProgram(true);
+
+      try {
+        const workout = await getWorkout(programId);
+        if (!workout) {
+          Alert.alert('Session Error', 'Could not load workout details. Please try again.');
+          navigation.goBack();
+          return;
+        }
+
+        setProgram({
+          id: workout._id,
+          name: workout.title,
+          focus: workout.category,
+          durationMinutes: workout.duration,
+        });
+
+        const mappedExercises = workout.exercises
+          .sort((a, b) => a.order - b.order)
+          .map((item) => {
+            const fallbackExercise = resolveExerciseForWorkout(workout.category, item.exercise?.name || '', item.order - 1);
+
+            return {
+              id: item.exercise?._id || `${workout._id}-${item.order}`,
+              name: item.exercise?.name || fallbackExercise?.name || 'Exercise',
+              type: item.duration || item.exercise?.duration ? ('timer' as const) : ('reps' as const),
+              duration: item.duration ?? item.exercise?.duration ?? fallbackExercise?.duration ?? null,
+              reps: item.reps ?? item.exercise?.reps ?? fallbackExercise?.reps ?? null,
+              animation: fallbackExercise?.animation || resolveExerciseAnimation(item.exercise?.name || item.exercise?._id || 'jumping-jacks'),
+              focus: item.exercise?.targetMuscle || fallbackExercise?.focus || ['general'],
+              instructions:
+                item.exercise?.instructions || fallbackExercise?.instructions || resolveExercisePreview(item.exercise?.name || '')?.instructions || 'Move with control.',
+              mistakes:
+                item.exercise?.postureTips || fallbackExercise?.mistakes || resolveExercisePreview(item.exercise?.name || '')?.mistakes || ['Keep a stable posture.'],
+            };
+          });
+
+        setExercises(mappedExercises);
+
+        // Backend session start should not block workout screen rendering.
+        if (isMongoObjectId(programId)) {
+          try {
+            const started = await startWorkoutSession(programId);
+            setSessionId(started?._id || null);
+            setSessionState({ sessionId: started?._id || null, workoutProgramId: programId });
+          } catch (sessionStartError) {
+            console.warn('[WorkoutSessionScreen] Session start failed, continuing locally', sessionStartError);
+            setSessionId(null);
+            setSessionState({ sessionId: null, workoutProgramId: programId });
+          }
+        } else {
+          setSessionId(null);
+          setSessionState({ sessionId: null, workoutProgramId: programId });
+        }
+      } catch (error) {
+        console.warn('[WorkoutSessionScreen] Failed to prepare session', error);
+        Alert.alert('Session Error', 'Could not load workout session. Please try again.');
+        navigation.goBack();
+      } finally {
+        setLoadingProgram(false);
+      }
+    };
+
+    hydrateSession().catch((error) => {
+      console.warn('[WorkoutSessionScreen] Unhandled hydrateSession error', error);
+    });
+  }, [getWorkout, programId, setSessionState, navigation]);
 
   useEffect(() => {
     if (!currentExercise || phase !== 'exercise') return;
@@ -219,20 +387,26 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
     const previousPhase = previousPhaseRef.current;
 
     if (phase === 'exercise' && previousPhase !== 'exercise') {
-      enqueueVoiceCues(['start']);
+      const startQueue = ['start'];
+      const exerciseCue = resolveExerciseVoiceCueKey(currentExercise);
+      if (exerciseCue) {
+        startQueue.push(exerciseCue);
+      }
+      replaceVoiceCues(startQueue);
     }
 
     if (phase === 'rest' && previousPhase !== 'rest') {
-      const nextExerciseId = exercises[currentIndex + 1]?.id;
+      const nextExercise = exercises[currentIndex + 1];
       const nextQueue = ['rest', 'coming_up_next'];
-      if (nextExerciseId && EXERCISE_NAME_AUDIO[nextExerciseId]) {
-        nextQueue.push(nextExerciseId);
+      const nextExerciseCue = resolveExerciseVoiceCueKey(nextExercise);
+      if (nextExerciseCue) {
+        nextQueue.push(nextExerciseCue);
       }
-      enqueueVoiceCues(nextQueue);
+      replaceVoiceCues(nextQueue);
     }
 
     previousPhaseRef.current = phase;
-  }, [phase, currentIndex, exercises, enqueueVoiceCues]);
+  }, [phase, currentIndex, exercises, currentExercise, replaceVoiceCues]);
 
   useEffect(() => {
     return () => {
@@ -240,11 +414,11 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
     };
   }, []);
 
-  if (!program || !currentExercise) {
+  if (loadingProgram || !program || !currentExercise) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centerWrap}>
-          <Text style={styles.fallbackText}>Session data unavailable.</Text>
+          <Text style={styles.fallbackText}>{loadingProgram ? 'Preparing session...' : 'Session data unavailable.'}</Text>
         </View>
       </SafeAreaView>
     );
@@ -271,15 +445,13 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
 
       {shouldPlayExerciseLoop ? (
         <Video
-          key="exercise-loop-active"
-          source={require('../assets/audio/exercise_loop.wav')}
+          source={WORKOUT_LOOP_SOURCE}
           paused={false}
-          repeat
-          muted={false}
-          volume={0.6}
+          repeat={true}
+          muted={shouldPlayVoiceCue}
           controls={false}
-          playInBackground={false}
-          playWhenInactive={false}
+          playInBackground={true}
+          playWhenInactive={true}
           ignoreSilentSwitch="ignore"
           style={styles.hiddenAudio}
         />
@@ -707,8 +879,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   hiddenAudio: {
-    width: 0,
-    height: 0,
+    width: 1,
+    height: 1,
+    opacity: 0,
     position: 'absolute',
   },
 });

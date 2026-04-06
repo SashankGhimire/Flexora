@@ -57,12 +57,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const handleLogin = async () => {
     if (!validate()) return;
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     setLoading(true);
     try {
-      await login(email, password);
+      await login(normalizedEmail, password);
       Alert.alert('Success', 'Login successful!');
     } catch (error: any) {
-      const errorMessage = error?.message || 'Login failed. Please try again.';
+      const firstValidationError =
+        Array.isArray(error?.errors) && error.errors.length > 0
+          ? String(error.errors[0])
+          : undefined;
+      const errorMessage =
+        error?.message ||
+        error?.error ||
+        firstValidationError ||
+        'Login failed. Please try again.';
       Alert.alert('Login Error', errorMessage);
     } finally {
       setLoading(false);

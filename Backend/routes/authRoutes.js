@@ -4,6 +4,7 @@
  */
 
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const {
@@ -21,6 +22,10 @@ const { protect } = require('../middleware/authMiddleware');
 const router = express.Router();
 
 const avatarsDir = path.join(__dirname, '..', 'uploads', 'avatars');
+
+if (!fs.existsSync(avatarsDir)) {
+	fs.mkdirSync(avatarsDir, { recursive: true });
+}
 
 const storage = multer.diskStorage({
 	destination: (req, file, cb) => {

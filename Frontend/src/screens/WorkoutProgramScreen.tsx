@@ -2,13 +2,26 @@ import React from 'react';
 import { ImageBackground, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../types';
-import { WorkoutExercise, getExercisesForProgram, getProgramById } from '../data/workoutData';
+import { useAppData } from '../context/AppDataContext';
+import { resolveExerciseAnimation, resolveExercisePreview, resolveExerciseForWorkout } from '../data/workoutData';
 import { Colors } from '../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
 import { PrimaryButton, SimpleIcon } from '../components/ui';
 import { WorkoutAnimation } from '../components/workout';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'WorkoutProgram'>;
+
+type WorkoutExerciseView = {
+  id: string;
+  name: string;
+  type: 'timer' | 'reps';
+  duration: number | null;
+  reps: number | null;
+  animation: string;
+  focus: string[];
+  instructions: string;
+  mistakes: string[];
+};
 
 const PROGRAM_COVER: Record<string, string> = {
   Abs: 'https://images.unsplash.com/photo-1571019613914-85f342c6a11e?auto=format&fit=crop&w=1200&q=70',
@@ -20,7 +33,7 @@ const PROGRAM_COVER: Record<string, string> = {
   'Full Body': 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=70',
 };
 
-const getExerciseMeta = (exercise: WorkoutExercise): string => {
+const getExerciseMeta = (exercise: WorkoutExerciseView): string => {
   if (exercise.type === 'timer') {
     return `${exercise.duration ?? 0}s timer`;
   }
@@ -29,27 +42,97 @@ const getExerciseMeta = (exercise: WorkoutExercise): string => {
 
 export const WorkoutProgramScreen: React.FC<Props> = ({ route, navigation }) => {
   const { programId } = route.params;
-  const program = getProgramById(programId);
-  const exercises = getExercisesForProgram(programId);
-  const [selectedExercise, setSelectedExercise] = React.useState<WorkoutExercise | null>(null);
+  const { getWorkout } = useAppData();
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [program, setProgram] = React.useState<{ _id: string; title: string; category: string; duration: number } | null>(null);
+  const [exercises, setExercises] = React.useState<WorkoutExerciseView[]>([]);
+  const [selectedExercise, setSelectedExercise] = React.useState<WorkoutExerciseView | null>(null);
 
-  if (!program) {
+  React.useEffect(() => {
+    const hydrateWorkout = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const workout = await getWorkout(programId);
+        if (!workout) {
+          setProgram(null);
+          setExercises([]);
+          setError('Workout not found');
+          return;
+        }
+
+        setProgram({
+          _id: workout._id,
+          title: workout.title,
+          category: workout.category,
+          duration: workout.duration,
+        });
+
+        const mappedExercises: WorkoutExerciseView[] = workout.exercises
+          .sort((a, b) => a.order - b.order)
+          .map((item) => {
+            const fallbackExercise = resolveExerciseForWorkout(workout.category, item.exercise?.name || '', item.order - 1);
+
+            return {
+              id: item.exercise?._id || `${workout._id}-${item.order}`,
+              name: item.exercise?.name || fallbackExercise?.name || 'Exercise',
+              type: item.duration || item.exercise?.duration ? 'timer' : 'reps',
+              duration: item.duration ?? item.exercise?.duration ?? fallbackExercise?.duration ?? null,
+              reps: item.reps ?? item.exercise?.reps ?? fallbackExercise?.reps ?? null,
+              animation: fallbackExercise?.animation || resolveExerciseAnimation(item.exercise?.name || item.exercise?._id || 'jumping-jacks'),
+              focus: item.exercise?.targetMuscle || fallbackExercise?.focus || ['general'],
+              instructions:
+                item.exercise?.instructions || fallbackExercise?.instructions || resolveExercisePreview(item.exercise?.name || '')?.instructions || 'Follow proper form and controlled movement.',
+              mistakes:
+                item.exercise?.postureTips || fallbackExercise?.mistakes || resolveExercisePreview(item.exercise?.name || '')?.mistakes || ['Keep your posture aligned and controlled.'],
+            };
+          });
+
+        setExercises(mappedExercises);
+      } catch (loadError: any) {
+        setError(loadError?.message || 'Failed to load workout');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    hydrateWorkout();
+  }, [getWorkout, programId]);
+
+  if (!program && !loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centerWrap}>
-          <Text style={styles.notFound}>Program not found.</Text>
+          <Text style={styles.notFound}>{error || 'Program not found.'}</Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  if (!program || loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centerWrap}>
+          <Text style={styles.notFound}>Loading workout...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const displayFocus =
+    program.category === 'full body'
+      ? 'Full Body'
+      : `${program.category.charAt(0).toUpperCase()}${program.category.slice(1)}`;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <ImageBackground source={{ uri: PROGRAM_COVER[program.focus] }} style={styles.heroCard} imageStyle={styles.heroImage}>
+        <ImageBackground source={{ uri: PROGRAM_COVER[displayFocus] }} style={styles.heroCard} imageStyle={styles.heroImage}>
           <View style={styles.heroOverlay}>
-            <Text style={styles.heroTag}>{program.focus.toUpperCase()}</Text>
-            <Text style={styles.heroTitle}>{program.name}</Text>
+            <Text style={styles.heroTag}>{displayFocus.toUpperCase()}</Text>
+            <Text style={styles.heroTitle}>{program.title}</Text>
             <Text style={styles.heroSub}>Structured beginner workout</Text>
           </View>
         </ImageBackground>
@@ -57,7 +140,7 @@ export const WorkoutProgramScreen: React.FC<Props> = ({ route, navigation }) => 
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryPill}>
-              <Text style={styles.summaryValue}>{program.durationMinutes} min</Text>
+              <Text style={styles.summaryValue}>{program.duration} min</Text>
               <Text style={styles.summaryLabel}>Duration</Text>
             </View>
             <View style={styles.summaryPill}>

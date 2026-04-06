@@ -11,8 +11,8 @@ const jwt = require('jsonwebtoken');
  * @param {string} userId - User ID from MongoDB
  * @returns {string} JWT token
  */
-const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+const generateToken = (user) => {
+  return jwt.sign({ id: user._id, role: user.role || 'user' }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || '7d',
   });
 };
@@ -24,7 +24,14 @@ const generateToken = (userId) => {
  */
 exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const { password } = req.body;
+    const age = req.body?.age !== undefined ? Number(req.body.age) : undefined;
+    const height = req.body?.height !== undefined ? Number(req.body.height) : undefined;
+    const weight = req.body?.weight !== undefined ? Number(req.body.weight) : undefined;
+    const goal = typeof req.body?.goal === 'string' ? req.body.goal.trim() : '';
+    const activityLevel = typeof req.body?.activityLevel === 'string' ? req.body.activityLevel.trim() : '';
 
     // Validation - check if all fields are provided
     if (!name || !email || !password) {
@@ -46,25 +53,24 @@ exports.register = async (req, res) => {
       name,
       email,
       password,
+      age,
+      height,
+      weight,
+      goal,
+      activityLevel,
     });
 
     // Save user to database (password will be hashed in the pre-save middleware)
     await user.save();
 
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user);
 
     // Send success response
     res.status(201).json({
       message: 'User registered successfully',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-        completedOnboarding: user.completedOnboarding,
-      },
+      user: user.toSafeObject(),
     });
   } catch (error) {
     // Handle validation errors
@@ -91,7 +97,8 @@ exports.register = async (req, res) => {
  */
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const { password } = req.body;
 
     // Validation - check if email and password are provided
     if (!email || !password) {
@@ -119,19 +126,13 @@ exports.login = async (req, res) => {
     }
 
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user);
 
     // Send success response
     res.status(200).json({
       message: 'Login successful',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-        completedOnboarding: user.completedOnboarding,
-      },
+      user: user.toSafeObject(),
     });
   } catch (error) {
     res.status(500).json({
@@ -153,13 +154,7 @@ exports.getMe = async (req, res) => {
 
     res.status(200).json({
       message: 'User data retrieved successfully',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-        completedOnboarding: user.completedOnboarding,
-      },
+      user: user.toSafeObject(),
     });
   } catch (error) {
     res.status(500).json({
@@ -178,10 +173,30 @@ exports.getMe = async (req, res) => {
 exports.updateMe = async (req, res) => {
   try {
     const updates = {};
-    const { name } = req.body;
+    const { name, age, height, weight, goal, activityLevel } = req.body;
 
     if (name) {
       updates.name = name;
+    }
+
+    if (age !== undefined) {
+      updates.age = Number(age);
+    }
+
+    if (height !== undefined) {
+      updates.height = Number(height);
+    }
+
+    if (weight !== undefined) {
+      updates.weight = Number(weight);
+    }
+
+    if (typeof goal === 'string') {
+      updates.goal = goal.trim();
+    }
+
+    if (typeof activityLevel === 'string') {
+      updates.activityLevel = activityLevel.trim();
     }
 
     if (req.file) {
@@ -201,13 +216,7 @@ exports.updateMe = async (req, res) => {
 
     res.status(200).json({
       message: 'Profile updated successfully',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-        completedOnboarding: user.completedOnboarding,
-      },
+      user: user.toSafeObject(),
     });
   } catch (error) {
     res.status(500).json({

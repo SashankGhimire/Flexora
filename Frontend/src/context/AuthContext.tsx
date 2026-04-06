@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  getCurrentUser,
   loginUser,
   registerUser,
   logout as logoutApi,
@@ -37,6 +38,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
 
+  React.useEffect(() => {
+    const bootstrapAuth = async () => {
+      try {
+        const response = await getCurrentUser();
+        const completedOnboarding = await resolveOnboardingStatus(response.user);
+        setUser({ ...response.user, completedOnboarding });
+        setIsLoggedIn(true);
+      } catch {
+        setUser(null);
+        setIsLoggedIn(false);
+      }
+    };
+
+    bootstrapAuth();
+  }, []);
+
   const resolveOnboardingStatus = async (nextUser: AuthUser): Promise<boolean> => {
     if (nextUser.completedOnboarding) {
       await AsyncStorage.setItem(onboardingKey(nextUser.id), 'true');
@@ -62,7 +79,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async (email: string, password: string): Promise<void> => {
-    const response = await loginUser({ email, password });
+    const normalizedEmail = email.trim().toLowerCase();
+    const response = await loginUser({ email: normalizedEmail, password });
     const completedOnboarding = await resolveOnboardingStatus(response.user);
     setUser({ ...response.user, completedOnboarding });
     setIsLoggedIn(true);
@@ -75,7 +93,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (email: string, password: string, name: string): Promise<void> => {
-    const response = await registerUser({ email, password, name });
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedName = name.trim();
+    const response = await registerUser({ email: normalizedEmail, password, name: normalizedName });
     const completedOnboarding = await resolveOnboardingStatus(response.user);
     setUser({ ...response.user, completedOnboarding });
     setIsLoggedIn(true);
@@ -95,7 +115,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     avatar?: { uri: string; name?: string; type?: string } | null;
   }): Promise<void> => {
     const response = await updateProfileApi(data);
-    setUser(response.user);
+    const completedOnboarding = await resolveOnboardingStatus(response.user);
+    setUser({ ...response.user, completedOnboarding });
   };
 
   const value: AuthContextType = {

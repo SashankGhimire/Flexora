@@ -52,6 +52,8 @@ const ICON_MAP: Record<string, string> = {
   lightbulb: 'sun',
   users: 'users',
   'arrow-down': 'chevron-down',
+  'arrow-left': 'arrow-left',
+  'more-horizontal': 'more-horizontal',
   
   // General icons
   menu: 'menu',

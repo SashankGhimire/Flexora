@@ -4,16 +4,43 @@ import { Animated, StatusBar, View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider } from './context/AuthContext';
-import { ThemeProvider } from './context/ThemeContext';
+import { AppDataProvider } from './context/AppDataContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import AppLaunchSplash from './components/ui/AppLaunchSplash';
 import {
   Colors,
   ThemeMode,
   THEME_MODE_STORAGE_KEY,
   getThemeMode,
-  isDarkMode,
   setThemeMode,
 } from './theme/colors';
+
+const ThemedRoot: React.FC<{
+  AppNavigatorComponent: React.ComponentType;
+  showSplash: boolean;
+  splashOpacity: Animated.Value;
+}> = ({ AppNavigatorComponent, showSplash, splashOpacity }) => {
+  const { themeMode } = useTheme();
+
+  return (
+    <>
+      <StatusBar
+        barStyle={themeMode === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={Colors.background}
+        translucent={false}
+      />
+      <View style={[styles.container, { backgroundColor: Colors.background }]}> 
+        <AppNavigatorComponent />
+
+        {showSplash && (
+          <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]}>
+            <AppLaunchSplash />
+          </Animated.View>
+        )}
+      </View>
+    </>
+  );
+};
 
 function App() {
   const [AppNavigatorComponent, setAppNavigatorComponent] = useState<React.ComponentType | null>(null);
@@ -73,20 +100,13 @@ function App() {
     <SafeAreaProvider>
       <ThemeProvider initialMode={getThemeMode()}>
         <AuthProvider>
-          <StatusBar
-            barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-            backgroundColor={Colors.background}
-            translucent={false}
-          />
-          <View style={styles.container}>
-            <AppNavigatorComponent />
-
-            {showSplash && (
-              <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]}>
-                <AppLaunchSplash />
-              </Animated.View>
-            )}
-          </View>
+          <AppDataProvider>
+            <ThemedRoot
+              AppNavigatorComponent={AppNavigatorComponent}
+              showSplash={showSplash}
+              splashOpacity={splashOpacity}
+            />
+          </AppDataProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

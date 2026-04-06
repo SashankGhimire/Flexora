@@ -15,27 +15,56 @@ export const DEMO_MODE = true;
 export const API_URL_NGROK = 'https://nonpreventive-trieciously-tawnya.ngrok-free.dev';
 
 // Replace with your machine LAN IP and backend port.
-export const API_URL_LOCAL = 'http://100.64.225.220:5000';
+export const API_URL_LOCAL = 'http://192.168.1.68:5000';
 export const API_URL_ANDROID_EMULATOR = 'http://10.0.2.2:5000';
 export const API_URL_LOCALHOST = 'http://localhost:5000';
 
 const API_PATH = '/api';
+const HEALTH_PATH = '/api/health';
 const PROBE_TIMEOUT_MS = 3500;
+const PRIMARY_BACKEND_PORT = 5000;
+const MAX_BACKEND_PORT_SCAN = 5020;
+const LOCAL_PORT_CANDIDATES = Array.from(
+  { length: MAX_BACKEND_PORT_SCAN - PRIMARY_BACKEND_PORT + 1 },
+  (_, index) => PRIMARY_BACKEND_PORT + index
+);
 
 const normalizeOrigin = (url: string): string => url.replace(/\/$/, '');
 
 const toApiBaseUrl = (origin: string): string => `${normalizeOrigin(origin)}${API_PATH}`;
 
+const buildLocalPortVariants = (origin: string): string[] => {
+  try {
+    const parsed = new URL(origin);
+
+    if (!parsed.port) {
+      return [origin];
+    }
+
+    const variants = LOCAL_PORT_CANDIDATES.map((port) => `${parsed.protocol}//${parsed.hostname}:${port}`);
+    return Array.from(new Set([origin, ...variants]));
+  } catch {
+    return [origin];
+  }
+};
+
 const getOriginCandidates = (): string[] => {
   const preferred = DEMO_MODE
-    ? [API_URL_NGROK, API_URL_LOCAL]
-    : [API_URL_LOCAL, API_URL_ANDROID_EMULATOR, API_URL_LOCALHOST];
+    ? [API_URL_NGROK, ...buildLocalPortVariants(API_URL_LOCAL)]
+    : [
+        ...buildLocalPortVariants(API_URL_LOCAL),
+        ...buildLocalPortVariants(API_URL_ANDROID_EMULATOR),
+        ...buildLocalPortVariants(API_URL_LOCALHOST),
+      ];
 
   const fallback = DEMO_MODE
-    ? [API_URL_ANDROID_EMULATOR, API_URL_LOCALHOST]
+    ? [
+        ...buildLocalPortVariants(API_URL_ANDROID_EMULATOR),
+        ...buildLocalPortVariants(API_URL_LOCALHOST),
+      ]
     : [API_URL_NGROK];
 
-  return [...preferred, ...fallback];
+  return Array.from(new Set([...preferred, ...fallback]));
 };
 
 let resolvedApiBaseUrl: string | null = null;
@@ -63,7 +92,7 @@ const isJsonResponse = (contentType: string | null): boolean => {
 const isOriginReachable = async (origin: string): Promise<boolean> => {
   try {
     const response = await withTimeout(
-      fetch(`${normalizeOrigin(origin)}/`, {
+      fetch(`${normalizeOrigin(origin)}${HEALTH_PATH}`, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
@@ -82,7 +111,8 @@ const isOriginReachable = async (origin: string): Promise<boolean> => {
       return false;
     }
 
-    return true;
+    const payload = (await response.json()) as { service?: string; status?: string };
+    return payload?.service === 'flexora-backend' && payload?.status === 'ok';
   } catch {
     return false;
   }
@@ -102,9 +132,9 @@ export const resolveApiBaseUrl = async (forceRefresh = false): Promise<string> =
     }
   }
 
-  // If none are reachable, keep deterministic default based on current mode.
-  resolvedApiBaseUrl = toApiBaseUrl(candidates[0]);
-  return resolvedApiBaseUrl;
+  throw createServerNotReachableError(
+    new Error(`No verified Flexora backend found. Tried: ${candidates.join(', ')}`)
+  );
 };
 
 export const resetResolvedApiBaseUrl = (): void => {

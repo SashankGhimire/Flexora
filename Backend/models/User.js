@@ -32,6 +32,36 @@ const userSchema = new mongoose.Schema(
       minlength: [6, 'Password must be at least 6 characters'],
       select: false, // Don't return password by default
     },
+    age: {
+      type: Number,
+      min: 13,
+      max: 100,
+    },
+    height: {
+      type: Number,
+      min: 100,
+      max: 260,
+    },
+    weight: {
+      type: Number,
+      min: 25,
+      max: 300,
+    },
+    goal: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    activityLevel: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user',
+    },
     avatarUrl: {
       type: String,
       default: '',
@@ -65,6 +95,24 @@ userSchema.pre('save', async function (next) {
 // Method to compare password during login
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcryptjs.compare(enteredPassword, this.password);
+};
+
+userSchema.methods.toSafeObject = function toSafeObject() {
+  return {
+    id: this._id,
+    name: this.name,
+    email: this.email,
+    age: this.age,
+    height: this.height,
+    weight: this.weight,
+    goal: this.goal,
+    activityLevel: this.activityLevel,
+    avatarUrl: this.avatarUrl,
+    completedOnboarding: this.completedOnboarding,
+    role: this.role,
+    createdAt: this.createdAt,
+    updatedAt: this.updatedAt,
+  };
 };
 
 // Create and export User model

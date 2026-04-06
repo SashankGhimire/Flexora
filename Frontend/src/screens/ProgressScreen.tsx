@@ -3,6 +3,7 @@ import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Card, SectionHeader, SimpleIcon, StatCard } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
+import { useAppData } from '../context/AppDataContext';
 import {
   getLocalOnboardingProfile,
   getOnboardingProfile,
@@ -16,10 +17,15 @@ const DEFAULT_WEIGHT_DATA = [75.2, 75.1, 75, 74.9, 74.8, 74.8, 74.9];
 const BMI_MIN = 15;
 const BMI_MAX = 40;
 const BMI_TICKS = [15, 18.5, 25, 30, 40] as const;
-const DAYS = ['01', '02', '03', '04', '05', '06', '07'];
-const CALENDAR_DAYS = Array.from({ length: 30 }, (_, i) => i + 1);
-const ACTIVE_STREAK_DAYS = new Set([1, 2, 4, 5, 6, 9, 10, 11, 14, 15, 16, 18, 20, 21, 23, 24, 25, 27]);
 const BMI_SEGMENTS = [3.5, 6.5, 5, 10];
+const DAYS = ['01', '02', '03', '04', '05', '06', '07'];
+
+const getDaysInMonth = (date: Date): number => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+
+const formatDayKey = (date: Date): string => date.toISOString().slice(0, 10);
+
+const sameMonth = (left: Date, right: Date): boolean =>
+  left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth();
 
 const getBmiCategory = (bmi: number): string => {
   if (bmi < 18.5) return 'Underweight';
@@ -62,6 +68,7 @@ const getBmiCategoryTheme = (category: string) => {
 
 export const ProgressScreen: React.FC = () => {
   const { user } = useAuth();
+  const { getProgressForUser } = useAppData();
   const { width } = useWindowDimensions();
   const compact = width <= 360;
   const calendarCellWidth = compact ? 31 : 36;
@@ -72,6 +79,12 @@ export const ProgressScreen: React.FC = () => {
   const [weightData, setWeightData] = useState(DEFAULT_WEIGHT_DATA);
   const [savingProfile, setSavingProfile] = useState(false);
   const [bmiModalVisible, setBmiModalVisible] = useState(false);
+  const [progressStats, setProgressStats] = useState({
+    totalWorkouts: 0,
+    avgAccuracy: 0,
+    totalWorkoutMinutes: 0,
+  });
+  const [workoutDates, setWorkoutDates] = useState<string[]>([]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -112,6 +125,45 @@ export const ProgressScreen: React.FC = () => {
 
     hydrateProfile();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    const loadProgress = async () => {
+      const progress = await getProgressForUser(user.id);
+      const workoutHistory = Array.isArray(progress?.workoutHistory) ? progress.workoutHistory : [];
+
+      if (progress?.performanceStats) {
+        setProgressStats({
+          totalWorkouts: Number(progress.performanceStats.totalWorkouts || 0),
+          avgAccuracy: Number(progress.performanceStats.avgAccuracy || 0),
+          totalWorkoutMinutes: Number(progress.performanceStats.totalWorkoutMinutes || 0),
+        });
+      }
+
+      setWorkoutDates(
+        workoutHistory
+          .map((entry: { completedAt?: string }) => (entry.completedAt ? formatDayKey(new Date(entry.completedAt)) : ''))
+          .filter(Boolean)
+      );
+
+      if (Array.isArray(progress?.weightHistory) && progress.weightHistory.length > 0) {
+        const mappedWeights = progress.weightHistory
+          .slice(-7)
+          .map((entry: { value?: number }) => Number(entry.value || 0))
+          .filter((value: number) => value > 0);
+
+        if (mappedWeights.length >= 2) {
+          setWeightData(mappedWeights);
+          setWeightKg(String(mappedWeights[mappedWeights.length - 1]));
+        }
+      }
+    };
+
+    loadProgress();
+  }, [getProgressForUser, user?.id]);
 
   const clampWeight = (next: string): string => {
     const numeric = Number(next.replace(/[^0-9.]/g, ''));
@@ -186,6 +238,11 @@ export const ProgressScreen: React.FC = () => {
   const bmiDisplayValue = bmiValue ? bmiValue.toFixed(1) : '--';
   const [bmiWhole, bmiDecimal = ''] = bmiDisplayValue.split('.');
   const bmiPointer = Math.max(0, Math.min(100, getBmiPercent(bmiValue || BMI_MIN)));
+  const currentMonth = new Date();
+  const calendarDays = Array.from({ length: getDaysInMonth(currentMonth) }, (_, index) => index + 1);
+  const activeDaySet = new Set(
+    workoutDates.filter((day) => sameMonth(new Date(day), currentMonth)).map((day) => Number(day.slice(-2)))
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -227,17 +284,17 @@ export const ProgressScreen: React.FC = () => {
         <Animated.View entering={FadeInDown.duration(360).delay(80)} style={[styles.statsRow, compact && styles.statsRowCompact]}>
           <StatCard
             label="Sessions"
-            value="24"
+            value={String(progressStats.totalWorkouts || 0)}
             icon={<SimpleIcon name="activity" size={16} color={Colors.primary} />}
           />
           <StatCard
             label="Avg Accuracy"
-            value="91%"
+            value={`${Math.round(progressStats.avgAccuracy || 0)}%`}
             icon={<SimpleIcon name="target" size={16} color={Colors.primary} />}
           />
           <StatCard
-            label="Streak"
-            value="12d"
+            label="Time"
+            value={`${Math.round(progressStats.totalWorkoutMinutes || 0)}m`}
             icon={<SimpleIcon name="award" size={16} color={Colors.primary} />}
           />
         </Animated.View>
@@ -374,12 +431,12 @@ export const ProgressScreen: React.FC = () => {
         <Animated.View entering={FadeInDown.duration(360).delay(280)}>
           <Card style={styles.calendarCard}>
             <View style={styles.calendarHeader}>
-              <Text style={styles.calendarMonth}>March</Text>
-              <Text style={styles.calendarCount}>{ACTIVE_STREAK_DAYS.size} active days</Text>
+              <Text style={styles.calendarMonth}>{currentMonth.toLocaleString('default', { month: 'long' })}</Text>
+              <Text style={styles.calendarCount}>{activeDaySet.size} active days</Text>
             </View>
             <View style={styles.calendarGrid}>
-              {CALENDAR_DAYS.map((day) => {
-                const active = ACTIVE_STREAK_DAYS.has(day);
+              {calendarDays.map((day) => {
+                const active = activeDaySet.has(day);
                 return (
                   <View
                     key={`cal-${day}`}

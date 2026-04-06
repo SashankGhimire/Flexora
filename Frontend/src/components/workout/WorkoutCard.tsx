@@ -1,11 +1,18 @@
 import React from 'react';
 import { ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { WorkoutProgram } from '../../data/workoutData';
 import { Colors } from '../../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../../theme/tokens';
 
+type WorkoutCardProgram = {
+  id: string;
+  name: string;
+  focus: string;
+  durationMinutes: number;
+  exerciseIds: string[];
+};
+
 type WorkoutCardProps = {
-  program: WorkoutProgram;
+  program: WorkoutCardProgram;
   onPress: () => void;
 };
 
@@ -17,12 +24,22 @@ const PROGRAM_COVER: Record<string, string> = {
   'shoulder-beginner': 'https://images.unsplash.com/photo-1659350774685-04b709a54863?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   'back-beginner': 'https://images.unsplash.com/photo-1579758629938-03607ccdbaba?auto=format&fit=crop&w=900&q=70',
   'full-body-beginner': 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=70',
+  abs: 'https://images.unsplash.com/photo-1571019613914-85f342c6a11e?auto=format&fit=crop&w=1200&q=70',
+  arms: 'https://images.unsplash.com/photo-1534367507873-d2d7e24c797f?auto=format&fit=crop&w=900&q=70',
+  chest: 'https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=900&q=70',
+  legs: 'https://images.unsplash.com/photo-1434682881908-b43d0467b798?auto=format&fit=crop&w=900&q=70',
+  shoulder: 'https://images.unsplash.com/photo-1659350774685-04b709a54863?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  back: 'https://images.unsplash.com/photo-1579758629938-03607ccdbaba?auto=format&fit=crop&w=900&q=70',
+  'full body': 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=70',
 };
+
+const resolveProgramCover = (program: WorkoutCardProgram): string =>
+  PROGRAM_COVER[program.id] || PROGRAM_COVER[program.focus.toLowerCase()] || PROGRAM_COVER['full body'];
 
 export const WorkoutCard: React.FC<WorkoutCardProps> = ({ program, onPress }) => {
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={onPress}>
-      <ImageBackground source={{ uri: PROGRAM_COVER[program.id] }} imageStyle={styles.image} style={styles.imageWrap}>
+      <ImageBackground source={{ uri: resolveProgramCover(program) }} imageStyle={styles.image} style={styles.imageWrap}>
         <View style={styles.overlay}>
           <View style={styles.topRow}>
             <Text style={styles.focus}>{program.focus.toUpperCase()}</Text>

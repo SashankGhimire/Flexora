@@ -1,13 +1,14 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ImageBackground, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SectionHeader, SimpleIcon } from '../components/ui';
 import { WorkoutCard } from '../components/workout';
 import { ExerciseType, HomeStackParamList } from '../types';
+import { useAppData } from '../context/AppDataContext';
+import { getAllPrograms } from '../data/workoutData';
 import { Colors } from '../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
-import { getAllPrograms } from '../data/workoutData';
 
 type ExerciseNavProp = NativeStackNavigationProp<HomeStackParamList, 'ExerciseSelection'>;
 
@@ -28,10 +29,39 @@ const AI_WORKOUTS: AiWorkout[] = [
 ];
 
 const HERO_POINTS = ['AI camera posture tracking', 'Live rep counting', 'Real-time correction'];
+const HERO_BG =
+  'https://images.unsplash.com/photo-1549476464-37392f717541?auto=format&fit=crop&w=1200&q=75';
 
 export const ExerciseSelectionScreen: React.FC = () => {
   const navigation = useNavigation<ExerciseNavProp>();
-  const programs = getAllPrograms();
+  const { workouts, workoutsState, refreshWorkouts } = useAppData();
+
+  React.useEffect(() => {
+    refreshWorkouts();
+  }, [refreshWorkouts]);
+
+  const categories = React.useMemo(() => {
+    const values = workouts.map((workout) => workout.category);
+    return Array.from(new Set(values));
+  }, [workouts]);
+
+  const displayPrograms = React.useMemo(() => {
+    if (workouts.length > 0) {
+      return workouts.map((program) => ({
+        id: program._id,
+        name: program.title,
+        focus: (program.category === 'arms'
+          ? 'Arm'
+          : program.category === 'full body'
+            ? 'Full Body'
+            : program.category.charAt(0).toUpperCase() + program.category.slice(1)) as any,
+        durationMinutes: program.duration,
+        exerciseIds: program.exercises.map((item) => item.exercise?._id).filter(Boolean) as string[],
+      }));
+    }
+
+    return getAllPrograms();
+  }, [workouts]);
 
   const handleStartAiWorkout = (exerciseType: ExerciseType) => {
     navigation.navigate('Workout', { exerciseType });
@@ -40,25 +70,29 @@ export const ExerciseSelectionScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroCard}>
-          <View style={styles.heroTopRow}>
-            <View style={styles.heroIconWrap}>
-              <SimpleIcon name="cpu" size={16} color={Colors.primary} />
-            </View>
-            <View style={styles.heroLivePill}>
-              <Text style={styles.heroLiveText}>AI ONLINE</Text>
-            </View>
-          </View>
-          <Text style={styles.heroTitle}>SMART TRAINING HUB</Text>
-          <Text style={styles.heroSub}>Choose AI or guided bodyweight workouts in one place.</Text>
-          <View style={styles.heroPointRow}>
-            {HERO_POINTS.map((point) => (
-              <View key={point} style={styles.heroPointChip}>
-                <Text style={styles.heroPointText}>{point}</Text>
+        <ImageBackground source={{ uri: HERO_BG }} style={styles.heroCard} imageStyle={styles.heroImage}>
+          <View style={styles.heroOverlay}>
+            <View style={styles.heroGlowOrbLarge} />
+            <View style={styles.heroGlowOrbSmall} />
+            <View style={styles.heroTopRow}>
+              <View style={styles.heroIconWrap}>
+                <SimpleIcon name="cpu" size={16} color={Colors.primary} />
               </View>
-            ))}
+              <View style={styles.heroLivePill}>
+                <Text style={styles.heroLiveText}>AI ONLINE</Text>
+              </View>
+            </View>
+            <Text style={styles.heroTitle}>SMART TRAINING HUB</Text>
+            <Text style={styles.heroSub}>Choose AI or guided bodyweight workouts in one place.</Text>
+            <View style={styles.heroPointRow}>
+              {HERO_POINTS.map((point) => (
+                <View key={point} style={styles.heroPointChip}>
+                  <Text style={styles.heroPointText}>{point}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
+        </ImageBackground>
 
         <SectionHeader
           title="AI Workouts"
@@ -90,18 +124,42 @@ export const ExerciseSelectionScreen: React.FC = () => {
 
         <SectionHeader
           title="Bodyweight Workouts"
-          subtitle="HomeWorkout-style beginner programs"
+          subtitle={categories.length ? `Dynamic categories: ${categories.join(', ')}` : 'Loading dynamic categories...'}
           style={styles.sectionTop}
         />
 
+        {workoutsState.loading ? (
+          <View style={styles.statusCard}>
+            <Text style={styles.statusTitle}>Loading workouts...</Text>
+            <Text style={styles.statusText}>Fetching latest programs from backend.</Text>
+          </View>
+        ) : null}
+
+        {!workoutsState.loading && workoutsState.error ? (
+          <View style={styles.statusCard}>
+            <Text style={styles.statusTitle}>Could not sync right now</Text>
+            <Text style={styles.statusText}>{workoutsState.error}</Text>
+            <TouchableOpacity onPress={refreshWorkouts} style={styles.retryButton} activeOpacity={0.85}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         <View style={styles.programList}>
-          {programs.map((program) => (
+          {displayPrograms.map((program) => (
             <WorkoutCard
               key={program.id}
-              program={program}
+              program={program as any}
               onPress={() => navigation.navigate('WorkoutProgram', { programId: program.id })}
             />
           ))}
+
+          {!workoutsState.loading && displayPrograms.length === 0 ? (
+            <View style={styles.statusCard}>
+              <Text style={styles.statusTitle}>No workouts found</Text>
+              <Text style={styles.statusText}>Ask admin to add programs from backend panel endpoints.</Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.bottomSpace} />
@@ -124,13 +182,37 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: Colors.card,
-    padding: Spacing.md,
+    overflow: 'hidden',
     shadowColor: Colors.black,
     shadowOpacity: 0.07,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
+  },
+  heroImage: {
+    borderRadius: Radius.xl,
+  },
+  heroOverlay: {
+    backgroundColor: Colors.blackA45,
+    padding: Spacing.md,
+  },
+  heroGlowOrbLarge: {
+    position: 'absolute',
+    top: -28,
+    right: -20,
+    width: 130,
+    height: 130,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.primaryLightA16,
+  },
+  heroGlowOrbSmall: {
+    position: 'absolute',
+    bottom: -22,
+    left: -16,
+    width: 88,
+    height: 88,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.primaryLightA16,
   },
   heroTopRow: {
     flexDirection: 'row',
@@ -163,13 +245,13 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     marginTop: Spacing.md,
-    color: Colors.textPrimary,
+    color: Colors.textOnPrimary,
     fontSize: Typography.title,
     fontWeight: FontWeight.heavy,
   },
   heroSub: {
     marginTop: Spacing.xs,
-    color: Colors.textSecondary,
+    color: Colors.whiteA82,
     fontSize: Typography.body,
   },
   heroPointRow: {
@@ -181,13 +263,13 @@ const styles = StyleSheet.create({
   heroPointChip: {
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.background,
+    borderColor: Colors.whiteA28,
+    backgroundColor: Colors.whiteA14,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 4,
   },
   heroPointText: {
-    color: Colors.textSecondary,
+    color: Colors.textOnPrimary,
     fontSize: Typography.caption,
   },
   sectionTop: {
@@ -254,6 +336,39 @@ const styles = StyleSheet.create({
   },
   programList: {
     gap: Spacing.sm,
+  },
+  statusCard: {
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  statusTitle: {
+    color: Colors.textPrimary,
+    fontSize: Typography.body,
+    fontWeight: FontWeight.bold,
+  },
+  statusText: {
+    marginTop: Spacing.xs,
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+  },
+  retryButton: {
+    marginTop: Spacing.sm,
+    alignSelf: 'flex-start',
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryLightA16,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+  },
+  retryButtonText: {
+    color: Colors.primary,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.bold,
   },
   bottomSpace: {
     height: 92,

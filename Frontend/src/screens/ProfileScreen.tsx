@@ -14,6 +14,7 @@ import {
 import { launchImageLibrary } from 'react-native-image-picker';
 import { getApiServerOrigin } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useAppData } from '../context/AppDataContext';
 import { useTheme } from '../context/ThemeContext';
 import { getLocalOnboardingProfile, getOnboardingProfile } from '../services/onboardingService';
 import { Colors } from '../theme/colors';
@@ -22,7 +23,10 @@ import { Button, Card, PrimaryButton, SectionHeader, SimpleIcon, StatCard } from
 
 export const ProfileScreen: React.FC = () => {
   const { user, updateProfile, logout } = useAuth();
+  const { getProgressForUser } = useAppData();
   const { themeMode, toggleTheme } = useTheme();
+  const styles = useMemo(() => createStyles(themeMode), [themeMode]);
+  const heroIconColor = themeMode === 'dark' ? Colors.textPrimary : Colors.primaryDark;
   const { width } = useWindowDimensions();
   const compact = width <= 360;
   const scrollRef = React.useRef<ScrollView>(null);
@@ -35,6 +39,9 @@ export const ProfileScreen: React.FC = () => {
   } | null>(null);
   const [saving, setSaving] = useState(false);
   const [weightLabel, setWeightLabel] = useState('--');
+  const [workoutsCompletedLabel, setWorkoutsCompletedLabel] = useState('0');
+  const [totalTimeLabel, setTotalTimeLabel] = useState('0m');
+  const [streakLabel, setStreakLabel] = useState('0-day streak');
 
   // For button label
   const themeLabel = themeMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
@@ -74,6 +81,56 @@ export const ProfileScreen: React.FC = () => {
 
     hydrateWeight();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    const calculateStreak = (dates: Array<string | Date>): number => {
+      if (!dates.length) {
+        return 0;
+      }
+
+      const uniqueDays = Array.from(
+        new Set(dates.map((date) => new Date(date).toISOString().slice(0, 10)))
+      ).sort((left, right) => (left < right ? 1 : -1));
+
+      let streak = 1;
+      let cursor = new Date(uniqueDays[0]);
+
+      for (let index = 1; index < uniqueDays.length; index += 1) {
+        const current = new Date(uniqueDays[index]);
+        const diffDays = Math.round((cursor.getTime() - current.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays === 1) {
+          streak += 1;
+          cursor = current;
+        } else if (diffDays > 1) {
+          break;
+        }
+      }
+
+      return streak;
+    };
+
+    const loadProfileProgress = async () => {
+      const progress = await getProgressForUser(user.id);
+      if (!progress?.performanceStats) {
+        return;
+      }
+
+      setWorkoutsCompletedLabel(String(progress.performanceStats.totalWorkouts || 0));
+      setTotalTimeLabel(`${Math.round(progress.performanceStats.totalWorkoutMinutes || 0)}m`);
+
+      const workoutHistory = Array.isArray(progress?.workoutHistory) ? progress.workoutHistory : [];
+      const streakDays = calculateStreak(
+        workoutHistory.map((item: { completedAt?: string }) => item.completedAt || new Date().toISOString())
+      );
+      setStreakLabel(`${streakDays}-day streak`);
+    };
+
+    loadProfileProgress();
+  }, [getProgressForUser, user?.id]);
 
   const avatarUrl = useMemo(() => {
     if (!user?.avatarUrl) return '';
@@ -135,71 +192,92 @@ export const ProfileScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerCard}>
-          <View style={styles.headerGlowLarge} />
-          <View style={styles.headerGlowSmall} />
-          <View style={styles.headerTopRow}>
-            <View style={styles.memberPill}>
-              <SimpleIcon name="award" size={12} color={Colors.textOnPrimary} />
-              <Text style={styles.memberPillText}>Active member</Text>
+          <View style={styles.headerAccentWash} />
+          <View style={styles.headerSheen} />
+          <View style={styles.headerRibbon} />
+          <View style={styles.headerGridLineOne} />
+          <View style={styles.headerGridLineTwo} />
+          <View style={styles.headerTextureBarOne} />
+          <View style={styles.headerTextureBarTwo} />
+          <View style={styles.headerOverlay}>
+            <View style={styles.headerTopRow}>
+              <View style={styles.memberPill}>
+                <SimpleIcon name="award" size={12} color={heroIconColor} />
+                <Text style={styles.memberPillText}>Active member</Text>
+              </View>
+              {!isEditing ? (
+                <TouchableOpacity
+                  style={styles.headerEditButton}
+                  activeOpacity={0.8}
+                  onPress={handleStartEditing}
+                >
+                  <SimpleIcon name="edit" size={14} color={heroIconColor} />
+                </TouchableOpacity>
+              ) : null}
             </View>
-            {!isEditing ? (
-              <TouchableOpacity
-                style={styles.headerEditButton}
-                activeOpacity={0.8}
-                onPress={handleStartEditing}
-              >
-                <SimpleIcon name="edit" size={14} color={Colors.textOnPrimary} />
-              </TouchableOpacity>
-            ) : null}
-          </View>
 
-          <View style={styles.headerCenter}>
-            <View style={styles.avatarWrap}>
-              {avatarAsset?.uri || avatarUrl ? (
-                <Image source={{ uri: avatarAsset?.uri || avatarUrl }} style={styles.avatarImage} />
+            <View style={styles.headerCenter}>
+              <View style={styles.avatarWrap}>
+                {avatarAsset?.uri || avatarUrl ? (
+                  <Image source={{ uri: avatarAsset?.uri || avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarText}>
+                    {(user?.name || 'User')
+                      .split(' ')
+                      .map((part) => part[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </Text>
+                )}
+              </View>
+
+              {isEditing ? (
+                <TextInput
+                  value={name}
+                  onChangeText={setName}
+                  style={styles.nameInput}
+                  placeholder="Your name"
+                  placeholderTextColor={Colors.textMuted}
+                />
               ) : (
-                <Text style={styles.avatarText}>
-                  {(user?.name || 'User')
-                    .split(' ')
-                    .map((part) => part[0])
-                    .join('')
-                    .slice(0, 2)
-                    .toUpperCase()}
-                </Text>
+                <Text style={styles.name}>{user?.name || 'User'}</Text>
               )}
+              <Text style={styles.email}>{user?.email || 'email@domain.com'}</Text>
+              <View style={styles.headerDivider} />
+
+              {!isEditing ? (
+                <View style={styles.headerInfoRow}>
+                  <View style={styles.headerInfoChip}>
+                    <SimpleIcon name="activity" size={12} color={heroIconColor} />
+                    <Text style={styles.headerInfoText}>{workoutsCompletedLabel} workouts</Text>
+                  </View>
+                  <View style={styles.headerInfoChip}>
+                    <SimpleIcon name="award" size={12} color={heroIconColor} />
+                    <Text style={styles.headerInfoText}>{streakLabel}</Text>
+                  </View>
+                </View>
+              ) : null}
             </View>
 
             {isEditing ? (
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                style={styles.nameInput}
-                placeholder="Your name"
-                placeholderTextColor="rgba(255,255,255,0.72)"
-              />
-            ) : (
-              <Text style={styles.name}>{user?.name || 'User'}</Text>
-            )}
-            <Text style={styles.email}>{user?.email || 'email@domain.com'}</Text>
+              <View style={styles.editRow}>
+                <Button title="Change Photo" variant="secondary" onPress={handlePickAvatar} style={[styles.editBtnHalf, styles.editSecondaryButton]} />
+                <PrimaryButton
+                  title={saving ? 'Saving...' : 'Save'}
+                  onPress={handleSave}
+                  disabled={saving}
+                  style={[styles.editBtnHalf, styles.editPrimaryButton]}
+                />
+              </View>
+            ) : null}
           </View>
-
-          {isEditing ? (
-            <View style={styles.editRow}>
-              <Button title="Change Photo" variant="secondary" onPress={handlePickAvatar} style={[styles.editBtnHalf, styles.editSecondaryButton]} />
-              <PrimaryButton
-                title={saving ? 'Saving...' : 'Save'}
-                onPress={handleSave}
-                disabled={saving}
-                style={[styles.editBtnHalf, styles.editPrimaryButton]}
-              />
-            </View>
-          ) : null}
         </View>
 
         <View style={[styles.statRow, compact && styles.statRowCompact]}>
           <StatCard
             label="Workouts Completed"
-            value="24"
+            value={workoutsCompletedLabel}
             icon={<SimpleIcon name="activity" size={16} color={Colors.warning} />}
           />
           <StatCard
@@ -209,7 +287,7 @@ export const ProfileScreen: React.FC = () => {
           />
           <StatCard
             label="Total Time"
-            value="2h 45m"
+            value={totalTimeLabel}
             icon={<SimpleIcon name="clock" size={16} color={Colors.textSecondary} />}
           />
         </View>
@@ -218,12 +296,12 @@ export const ProfileScreen: React.FC = () => {
         <Card style={styles.highlightCard}>
           <View style={styles.highlightRow}>
             <View style={styles.highlightPill}>
-              <SimpleIcon name="flame" size={14} color={Colors.warning} />
-              <Text style={styles.highlightText}>12-day streak</Text>
+              <SimpleIcon name="award" size={14} color={Colors.warning} />
+              <Text style={styles.highlightText}>{streakLabel}</Text>
             </View>
             <View style={styles.highlightPill}>
               <SimpleIcon name="clock" size={14} color={Colors.textSecondary} />
-              <Text style={styles.highlightText}>2h 45m total</Text>
+              <Text style={styles.highlightText}>{totalTimeLabel} total</Text>
             </View>
           </View>
         </Card>
@@ -277,7 +355,15 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
             <View style={styles.settingDivider} />
 
-            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8} onPress={toggleTheme}>
+            <TouchableOpacity
+              style={styles.settingRow}
+              activeOpacity={0.8}
+              onPress={() => {
+                toggleTheme().catch((error) => {
+                  console.warn('[ProfileScreen] Failed to toggle theme', error);
+                });
+              }}
+            >
               <View style={styles.settingRowIconWrap}>
                 <SimpleIcon
                   name={themeMode === 'dark' ? 'moon' : 'sun'}
@@ -340,50 +426,105 @@ export const ProfileScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (themeMode: 'light' | 'dark') => {
+  const isDark = themeMode === 'dark';
+
+  return StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
   },
   content: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.x3 + Spacing.sm,
+    paddingTop: Spacing.x2 + Spacing.md,
     paddingBottom: Spacing.x2,
   },
   contentCompact: {
     paddingHorizontal: Spacing.md,
   },
   headerCard: {
-    marginTop: Spacing.sm,
-    borderRadius: 24,
+    marginTop: Spacing.md,
+    borderRadius: 28,
     overflow: 'hidden',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.xl,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
     shadowColor: Colors.black,
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
-  headerGlowLarge: {
+  headerAccentWash: {
     position: 'absolute',
-    top: -20,
-    right: -20,
-    width: 180,
-    height: 180,
-    borderRadius: 999,
-    backgroundColor: Colors.primaryLightA22,
-  },
-  headerGlowSmall: {
-    position: 'absolute',
-    bottom: -40,
+    top: -50,
     left: -20,
-    width: 140,
-    height: 140,
-    borderRadius: 999,
-    backgroundColor: Colors.primaryLightA16,
+    width: 260,
+    height: 160,
+    transform: [{ rotate: '-6deg' }],
+    backgroundColor: isDark ? Colors.primaryA34 : Colors.primaryLightA22,
+  },
+  headerSheen: {
+    position: 'absolute',
+    top: -18,
+    right: -72,
+    width: 230,
+    height: 64,
+    transform: [{ rotate: '-12deg' }],
+    backgroundColor: isDark ? Colors.primaryA14 : Colors.whiteA72,
+  },
+  headerRibbon: {
+    position: 'absolute',
+    top: 56,
+    left: -52,
+    width: 220,
+    height: 52,
+    transform: [{ rotate: '-10deg' }],
+    backgroundColor: isDark ? Colors.primaryA52 : Colors.primaryA35,
+  },
+  headerGridLineOne: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 88,
+    height: 1,
+    backgroundColor: isDark ? Colors.primaryA52 : Colors.primaryA42,
+  },
+  headerGridLineTwo: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 122,
+    height: 1,
+    backgroundColor: isDark ? Colors.primaryA35 : Colors.primaryA14,
+  },
+  headerTextureBarOne: {
+    position: 'absolute',
+    top: 38,
+    left: -44,
+    width: 180,
+    height: 46,
+    borderRadius: Radius.pill,
+    transform: [{ rotate: '-14deg' }],
+    backgroundColor: Colors.primaryA12,
+  },
+  headerTextureBarTwo: {
+    position: 'absolute',
+    bottom: 22,
+    right: -48,
+    width: 190,
+    height: 52,
+    borderRadius: Radius.pill,
+    transform: [{ rotate: '-16deg' }],
+    backgroundColor: Colors.primaryA08,
+  },
+  headerOverlay: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xl,
+    backgroundColor: isDark ? Colors.blackA58 : 'rgba(255,255,255,0.62)',
+    borderWidth: 1,
+    borderColor: isDark ? Colors.primaryA34 : Colors.border,
   },
   headerTopRow: {
     flexDirection: 'row',
@@ -396,23 +537,23 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderColor: isDark ? Colors.primaryA42 : Colors.primaryA35,
+    backgroundColor: isDark ? Colors.primaryA14 : Colors.primaryA12,
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
   },
   memberPillText: {
-    color: Colors.textOnPrimary,
+    color: isDark ? Colors.textPrimary : Colors.primaryDark,
     fontSize: Typography.caption,
     fontWeight: FontWeight.semi,
   },
   headerEditButton: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderColor: isDark ? Colors.primaryA42 : Colors.primaryA35,
+    backgroundColor: isDark ? Colors.primaryA14 : Colors.primaryA12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -421,12 +562,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarWrap: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     backgroundColor: Colors.primaryLight,
     borderWidth: 4,
-    borderColor: Colors.white,
+    borderColor: Colors.card,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -447,27 +588,55 @@ const styles = StyleSheet.create({
   },
   name: {
     marginTop: Spacing.md,
-    color: Colors.textOnPrimary,
-    fontSize: 26,
+    color: Colors.textPrimary,
+    fontSize: Typography.display,
     fontWeight: FontWeight.heavy,
+    letterSpacing: 0.3,
     textAlign: 'center',
   },
   email: {
     marginTop: Spacing.xs,
-    color: 'rgba(255,255,255,0.82)',
+    color: Colors.textSecondary,
     fontSize: Typography.body,
     textAlign: 'center',
+  },
+  headerDivider: {
+    marginTop: Spacing.md,
+    width: '68%',
+    height: 1,
+    backgroundColor: isDark ? Colors.primaryA42 : Colors.primaryA35,
+  },
+  headerInfoRow: {
+    marginTop: Spacing.md,
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  headerInfoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: isDark ? Colors.primaryA42 : Colors.primaryA35,
+    backgroundColor: isDark ? Colors.primaryA14 : Colors.primaryLightA22,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+  },
+  headerInfoText: {
+    color: isDark ? Colors.textPrimary : Colors.primaryDark,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.semi,
   },
   nameInput: {
     marginTop: Spacing.md,
     minWidth: '72%',
-    color: Colors.textOnPrimary,
+    color: Colors.textPrimary,
     fontSize: Typography.title,
     fontWeight: FontWeight.heavy,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
+    borderColor: isDark ? Colors.primaryA42 : Colors.primaryA35,
     borderRadius: Radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: Colors.background,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     textAlign: 'center',
@@ -481,15 +650,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   editSecondaryButton: {
-    backgroundColor: Colors.white,
-    borderColor: Colors.white,
+    backgroundColor: isDark ? Colors.card : Colors.white,
+    borderColor: isDark ? Colors.border : Colors.white,
   },
   editPrimaryButton: {
     backgroundColor: Colors.primaryDark,
     borderColor: Colors.primaryDark,
   },
   statRow: {
-    marginTop: Spacing.md,
+    marginTop: Spacing.lg,
     flexDirection: 'row',
     gap: Spacing.md,
   },
@@ -619,6 +788,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     backgroundColor: Colors.card,
     borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   highlightRow: {
     flexDirection: 'row',
@@ -661,7 +832,8 @@ const styles = StyleSheet.create({
   bottomSpace: {
     height: 88,
   },
-});
+  });
+};
 
 
 

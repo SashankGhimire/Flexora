@@ -4,6 +4,7 @@
  */
 
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
 /**
  * Protect Routes - Verify JWT Token
@@ -28,8 +29,18 @@ exports.protect = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Attach user ID to request object
-    req.user = decoded;
+    const user = await User.findById(decoded.id).select('_id role');
+    if (!user) {
+      return res.status(401).json({
+        message: 'User not found. Please log in again.',
+      });
+    }
+
+    req.user = {
+      id: user._id,
+      role: user.role || 'user',
+    };
+
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -49,4 +60,14 @@ exports.protect = async (req, res, next) => {
       error: error.message,
     });
   }
+};
+
+exports.protectAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({
+      message: 'Admin access required',
+    });
+  }
+
+  return next();
 };

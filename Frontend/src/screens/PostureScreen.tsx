@@ -31,10 +31,11 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/native';
 
 // Constants
-const ACCENT = Colors.primary;
-const OVERLAY_LIGHT = Colors.blackA45;
-const OVERLAY_MEDIUM = Colors.blackA5;
-const OVERLAY_SUBTLE = Colors.blackA3;
+const ACCENT = Colors.primaryDark;
+const SOFT_ACCENT = Colors.primaryLight;
+const OVERLAY_LIGHT = Colors.blackA56;
+const OVERLAY_MEDIUM = Colors.blackA58;
+const OVERLAY_SUBTLE = Colors.blackA46;
 const GAP = 12;
 const BORDER_RADIUS = 14;
 const DEBUG_MIN_SCORE = 0.25;
@@ -2112,15 +2113,15 @@ const styles = StyleSheet.create({
   },
   viewModeButton: {
     borderWidth: 1,
-    borderColor: `${ACCENT}66`,
+    borderColor: Colors.whiteA28,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 4,
-    backgroundColor: Colors.blackA5,
+    backgroundColor: OVERLAY_SUBTLE,
   },
   viewModeButtonActive: {
-    backgroundColor: `${ACCENT}33`,
-    borderColor: `${ACCENT}AA`,
+    backgroundColor: Colors.whiteA16,
+    borderColor: Colors.whiteA72,
   },
   viewModeText: {
     color: Colors.textSecondary,
@@ -2128,7 +2129,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   viewModeTextActive: {
-    color: ACCENT,
+    color: SOFT_ACCENT,
   },
   bicepTitle: {
     color: '#FFFFFF',
@@ -2137,7 +2138,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   bicepRep: {
-    color: ACCENT,
+    color: SOFT_ACCENT,
     fontSize: 40,
     fontWeight: '900',
     marginTop: 6,
@@ -2195,7 +2196,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   lungeRep: {
-    color: ACCENT,
+    color: SOFT_ACCENT,
     fontSize: 40,
     fontWeight: '900',
     marginTop: 6,
@@ -2227,7 +2228,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   pushupRep: {
-    color: ACCENT,
+    color: SOFT_ACCENT,
     fontSize: 40,
     fontWeight: '900',
     marginTop: 6,
@@ -2245,7 +2246,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   jumpingJackRep: {
-    color: ACCENT,
+    color: SOFT_ACCENT,
     fontSize: 40,
     fontWeight: '900',
     marginTop: 6,
@@ -2263,7 +2264,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   squatRep: {
-    color: ACCENT,
+    color: SOFT_ACCENT,
     fontSize: 40,
     fontWeight: '900',
     marginTop: 6,
@@ -2290,6 +2291,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 10,
     backgroundColor: OVERLAY_LIGHT,
+    borderWidth: 1,
+    borderColor: Colors.whiteA16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: BORDER_RADIUS,
@@ -2317,28 +2320,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: `${ACCENT}44`,
+    borderColor: Colors.whiteA28,
     paddingBottom: 4,
   },
   flipButtonText: {
     fontSize: 20,
-    color: ACCENT,
+    color: SOFT_ACCENT,
     fontWeight: '700',
   },
 
   // ===== STATUS BADGE =====
   topBadge: {
-    backgroundColor: `${ACCENT}22`,
+    backgroundColor: Colors.whiteA14,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: `${ACCENT}55`,
+    borderColor: Colors.whiteA28,
   },
   topBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: ACCENT,
+    color: SOFT_ACCENT,
   },
   topBadgePaused: {
     backgroundColor: Colors.warningA15,
@@ -2356,6 +2359,8 @@ const styles = StyleSheet.create({
   },
   cornerItem: {
     backgroundColor: OVERLAY_LIGHT,
+    borderWidth: 1,
+    borderColor: Colors.whiteA16,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: BORDER_RADIUS,
@@ -2383,6 +2388,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     backgroundColor: OVERLAY_LIGHT,
+    borderWidth: 1,
+    borderColor: Colors.whiteA16,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 18,
@@ -2394,7 +2401,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: `${ACCENT}66`,
+    borderColor: Colors.whiteA28,
     minWidth: 220,
     alignItems: 'center',
   },
@@ -2405,7 +2412,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.blackA62,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: `${ACCENT}66`,
+    borderColor: Colors.whiteA28,
     paddingHorizontal: 14,
     paddingVertical: 8,
     minWidth: 150,
@@ -2447,12 +2454,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: `${ACCENT}66`,
+    borderColor: Colors.whiteA28,
     minWidth: 260,
     alignItems: 'center',
   },
   detectStatusTitle: {
-    color: ACCENT,
+    color: SOFT_ACCENT,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -2470,10 +2477,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     minWidth: 290,
     borderWidth: 1,
-    borderColor: `${ACCENT}55`,
+    borderColor: Colors.whiteA28,
   },
   debugTitle: {
-    color: ACCENT,
+    color: SOFT_ACCENT,
     fontSize: 12,
     fontWeight: '700',
     marginBottom: 4,
@@ -2491,10 +2498,12 @@ const styles = StyleSheet.create({
   },
   detectButton: {
     marginTop: 10,
-    backgroundColor: ACCENT,
+    backgroundColor: Colors.secondaryDark,
     borderRadius: BORDER_RADIUS,
     paddingVertical: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.whiteA28,
   },
   detectButtonText: {
     color: Colors.textOnPrimary,
@@ -2508,7 +2517,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.whiteA28,
   },
   secondaryButtonText: {
     color: '#FFFFFF',
@@ -2517,10 +2526,12 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     flex: 1,
-    backgroundColor: ACCENT,
+    backgroundColor: Colors.secondaryDark,
     borderRadius: BORDER_RADIUS,
     paddingVertical: 14,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.whiteA28,
   },
   primaryButtonText: {
     color: Colors.textOnPrimary,

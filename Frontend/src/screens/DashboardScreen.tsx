@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Image,
@@ -22,23 +22,12 @@ import { Colors } from '../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
 import { Card, PrimaryButton, SectionHeader, SimpleIcon, StatCard } from '../components/ui';
 import { BODY_FOCUS, getProgramsByFocus } from '../data/workoutData';
+import { useAppData } from '../context/AppDataContext';
 
 type DashboardNavProp = CompositeNavigationProp<
   BottomTabNavigationProp<HomeTabParamList, 'Home'>,
   NativeStackNavigationProp<HomeStackParamList>
 >;
-
-const QUICK_STATS = [
-  { id: 'streak', label: 'Workout Streak', value: '12 Days', icon: 'activity' },
-  { id: 'completed', label: 'Completed', value: '24', icon: 'check-circle' },
-  { id: 'accuracy', label: 'Accuracy Score', value: '92%', icon: 'target' },
-];
-
-const HERO_METRICS = [
-  { id: 'streak', label: 'Streak', value: '12 days' },
-  { id: 'accuracy', label: 'Accuracy', value: '92%' },
-  { id: 'today', label: 'Today', value: '35 min' },
-];
 
 const AI_FEATURES = ['Form AI', 'Rep AI', 'Live Cam'];
 
@@ -50,6 +39,13 @@ const PROGRAM_COVER: Record<string, string> = {
   'shoulder-beginner': 'https://images.unsplash.com/photo-1659350774685-04b709a54863?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   'back-beginner': 'https://images.unsplash.com/photo-1579758629938-03607ccdbaba?auto=format&fit=crop&w=900&q=70',
   'full-body-beginner': 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=70',
+  abs: 'https://images.unsplash.com/photo-1571019613914-85f342c6a11e?auto=format&fit=crop&w=1200&q=70',
+  arms: 'https://images.unsplash.com/photo-1534367507873-d2d7e24c797f?auto=format&fit=crop&w=900&q=70',
+  chest: 'https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=900&q=70',
+  legs: 'https://images.unsplash.com/photo-1434682881908-b43d0467b798?auto=format&fit=crop&w=900&q=70',
+  shoulder: 'https://images.unsplash.com/photo-1659350774685-04b709a54863?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  back: 'https://images.unsplash.com/photo-1579758629938-03607ccdbaba?auto=format&fit=crop&w=900&q=70',
+  'full body': 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=900&q=70',
 };
 
 const BODYWEIGHT_HERO_COVER =
@@ -57,25 +53,131 @@ const BODYWEIGHT_HERO_COVER =
 
 export const DashboardScreen: React.FC = () => {
   const { user, logout } = useAuth();
+  const { getProgressForUser, workouts } = useAppData();
   const navigation = useNavigation<DashboardNavProp>();
   const { width } = useWindowDimensions();
   const [selectedFocus, setSelectedFocus] = useState<string>('Abs');
+  const [dashboardStats, setDashboardStats] = useState({
+    totalWorkouts: 0,
+    totalCaloriesBurned: 0,
+    avgAccuracy: 0,
+    totalWorkoutMinutes: 0,
+    todayMinutes: 0,
+    streakDays: 0,
+  });
   const focusSliderRef = useRef<ScrollView>(null);
+
+  const isSameDay = (left: string | Date, right: Date) => {
+    const leftDate = new Date(left);
+    return (
+      leftDate.getFullYear() === right.getFullYear() &&
+      leftDate.getMonth() === right.getMonth() &&
+      leftDate.getDate() === right.getDate()
+    );
+  };
+
+  const calculateStreak = (dates: Array<string | Date>): number => {
+    if (!dates.length) {
+      return 0;
+    }
+
+    const uniqueDays = Array.from(
+      new Set(dates.map((date) => new Date(date).toISOString().slice(0, 10)))
+    ).sort((left, right) => (left < right ? 1 : -1));
+
+    let streak = 1;
+    let cursor = new Date(uniqueDays[0]);
+
+    for (let index = 1; index < uniqueDays.length; index += 1) {
+      const current = new Date(uniqueDays[index]);
+      const diffDays = Math.round((cursor.getTime() - current.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        streak += 1;
+        cursor = current;
+      } else if (diffDays > 1) {
+        break;
+      }
+    }
+
+    return streak;
+  };
 
   const focusCardWidth = Math.max(286, width - Spacing.lg * 2 - 8);
   const focusSnapInterval = focusCardWidth + Spacing.sm;
 
-  const featuredPrograms = useMemo(
-    () => BODY_FOCUS
+  const featuredPrograms = useMemo(() => {
+    if (workouts.length > 0) {
+      return workouts.map((workout) => ({
+        id: workout._id,
+        name: workout.title,
+        focus: workout.category === 'full body' ? 'Full Body' : workout.category === 'arms' ? 'Arm' : workout.category === 'legs' ? 'Leg' : 'Abs',
+        durationMinutes: workout.duration,
+        exerciseIds: workout.exercises.map((item) => item.exercise?._id).filter(Boolean) as string[],
+      }));
+    }
+
+    return BODY_FOCUS
       .map((focus) => getProgramsByFocus(focus)[0])
-      .filter((program): program is NonNullable<typeof program> => Boolean(program)),
-    [],
-  );
+      .filter((program): program is NonNullable<typeof program> => Boolean(program));
+  }, [workouts]);
 
   const bodyweightProgram = useMemo(
     () => featuredPrograms.find((program) => program.focus === 'Full Body') ?? featuredPrograms[0],
     [featuredPrograms],
   );
+
+  const resolveCover = (programId: string, focus: string): string =>
+    PROGRAM_COVER[programId] || PROGRAM_COVER[focus.toLowerCase()] || PROGRAM_COVER['full body'];
+
+  const heroMetrics = useMemo(
+    () => [
+      { id: 'streak', label: 'Streak', value: `${dashboardStats.streakDays} days` },
+      { id: 'today', label: 'Today', value: `${dashboardStats.todayMinutes} min` },
+      { id: 'workouts', label: 'Workouts', value: String(dashboardStats.totalWorkouts) },
+    ],
+    [dashboardStats]
+  );
+
+  const quickStats = useMemo(
+    () => [
+      { id: 'workouts', label: 'Workouts Completed', value: String(dashboardStats.totalWorkouts), icon: 'activity' },
+      { id: 'calories', label: 'Calories Burned', value: `${Math.round(dashboardStats.totalCaloriesBurned)} kcal`, icon: 'zap' },
+      { id: 'minutes', label: 'Training Time', value: `${Math.round(dashboardStats.totalWorkoutMinutes)}m`, icon: 'clock' },
+    ],
+    [dashboardStats]
+  );
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    const loadStats = async () => {
+      const progress = await getProgressForUser(user.id);
+      const workoutHistory = Array.isArray(progress?.workoutHistory) ? progress.workoutHistory : [];
+      const now = new Date();
+
+      const todayMinutes = workoutHistory.reduce((sum: number, item: { completedAt?: string; durationSeconds?: number }) => {
+        const completedAt = item.completedAt ? new Date(item.completedAt) : null;
+        if (!completedAt || !isSameDay(completedAt, now)) {
+          return sum;
+        }
+
+        return sum + Math.max(0, Math.round((Number(item.durationSeconds || 0) / 60)));
+      }, 0);
+
+      setDashboardStats({
+        totalWorkouts: Number(progress?.performanceStats?.totalWorkouts || 0),
+        totalCaloriesBurned: Number(progress?.performanceStats?.totalCaloriesBurned || 0),
+        avgAccuracy: Number(progress?.performanceStats?.avgAccuracy || 0),
+        totalWorkoutMinutes: Number(progress?.performanceStats?.totalWorkoutMinutes || 0),
+        todayMinutes,
+        streakDays: calculateStreak(workoutHistory.map((item: { completedAt?: string }) => item.completedAt || now.toISOString())),
+      });
+    };
+
+    loadStats();
+  }, [getProgressForUser, user?.id]);
 
   const goToProgram = (programId: string) => {
     navigation.navigate('WorkoutProgram', { programId });
@@ -148,7 +250,7 @@ export const DashboardScreen: React.FC = () => {
           </View>
 
           <View style={styles.heroMetricRow}>
-            {HERO_METRICS.map((metric) => (
+            {heroMetrics.map((metric) => (
               <View key={metric.id} style={styles.heroMetricPill}>
                 <Text style={styles.heroMetricValue}>{metric.value}</Text>
                 <Text style={styles.heroMetricLabel}>{metric.label}</Text>
@@ -208,7 +310,7 @@ export const DashboardScreen: React.FC = () => {
               activeOpacity={0.9}
               onPress={() => goToProgram(program.id)}
             >
-              <Image source={{ uri: PROGRAM_COVER[program.id] }} style={styles.focusProgramImage} />
+              <Image source={{ uri: resolveCover(program.id, program.focus) }} style={styles.focusProgramImage} />
               <View style={styles.focusProgramTextWrap}>
                 <Text style={styles.focusProgramTitle}>{program.name}</Text>
                 <Text style={styles.focusProgramMeta}>{program.durationMinutes} min • {program.exerciseIds.length} exercises</Text>
@@ -220,7 +322,7 @@ export const DashboardScreen: React.FC = () => {
 
         <SectionHeader title="Quick Stats" subtitle="Your recent training snapshot" style={styles.sectionTop} />
         <View style={styles.statsGrid}>
-          {QUICK_STATS.map((item) => (
+          {quickStats.map((item) => (
             <StatCard
               key={item.id}
               label={item.label}
