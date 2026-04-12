@@ -67,8 +67,7 @@ const AuthStackScreen = () => {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: Colors.background },
-        animationEnabled: true,
-        cardStyle: { opacity: 1 },
+        animation: 'slide_from_right',
       }}
       initialRouteName="Login"
     >
@@ -84,7 +83,7 @@ const HomeTabs: React.FC = () => {
   const compact = height < 700;
 
   const tabBarHeight = compact ? 60 : 64;
-  const tabBarBottom = insets.bottom > 0 ? Math.max(6, insets.bottom + 4) : 8;
+  const tabBarBottom = insets.bottom > 0 ? Math.max(30, insets.bottom + 28) : 3;
 
   return (
     <Tab.Navigator
@@ -94,7 +93,6 @@ const HomeTabs: React.FC = () => {
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarHideOnKeyboard: true,
-        animationEnabled: true,
         tabBarStyle: {
           backgroundColor: Colors.card,
           position: 'absolute',
@@ -169,52 +167,15 @@ export const HomeStackNavigator: React.FC = () => {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: Colors.background },
-        animationEnabled: true,
-        cardStyle: { opacity: 1 },
+        animation: 'slide_from_right',
       }}
     >
-      <HomeStack.Screen 
-        name="HomeTabs" 
-        component={HomeTabs}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <HomeStack.Screen 
-        name="ExerciseSelection" 
-        component={ExerciseSelectionScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <HomeStack.Screen 
-        name="Workout" 
-        component={PostureScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <HomeStack.Screen 
-        name="WorkoutProgram" 
-        component={WorkoutProgramScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <HomeStack.Screen 
-        name="WorkoutSession" 
-        component={WorkoutSessionScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <HomeStack.Screen 
-        name="WorkoutComplete" 
-        component={WorkoutCompleteScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
+      <HomeStack.Screen name="HomeTabs" component={HomeTabs} />
+      <HomeStack.Screen name="ExerciseSelection" component={ExerciseSelectionScreen} />
+      <HomeStack.Screen name="Workout" component={PostureScreen} />
+      <HomeStack.Screen name="WorkoutProgram" component={WorkoutProgramScreen} />
+      <HomeStack.Screen name="WorkoutSession" component={WorkoutSessionScreen} />
+      <HomeStack.Screen name="WorkoutComplete" component={WorkoutCompleteScreen} />
     </HomeStack.Navigator>
   );
 };
@@ -226,81 +187,20 @@ const OnboardingStackScreen: React.FC = () => {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: Colors.background },
-        animationEnabled: true,
-        cardStyle: { opacity: 1 },
+        animation: 'slide_from_right',
       }}
       initialRouteName="Welcome"
     >
-      <OnboardingStack.Screen 
-        name="Welcome" 
-        component={WelcomeScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <OnboardingStack.Screen 
-        name="Goal" 
-        component={GoalScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <OnboardingStack.Screen 
-        name="Gender" 
-        component={GenderScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <OnboardingStack.Screen 
-        name="Age" 
-        component={AgeScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <OnboardingStack.Screen 
-        name="Height" 
-        component={HeightScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <OnboardingStack.Screen 
-        name="Weight" 
-        component={WeightScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <OnboardingStack.Screen 
-        name="Activity" 
-        component={ActivityScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <OnboardingStack.Screen 
-        name="Preference" 
-        component={PreferenceScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <OnboardingStack.Screen 
-        name="WeeklyGoal" 
-        component={WeeklyGoalScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
-      <OnboardingStack.Screen 
-        name="BMI" 
-        component={BMIScreen}
-        options={{
-          animationEnabled: true,
-        }}
-      />
+      <OnboardingStack.Screen name="Welcome" component={WelcomeScreen} />
+      <OnboardingStack.Screen name="Goal" component={GoalScreen} />
+      <OnboardingStack.Screen name="Gender" component={GenderScreen} />
+      <OnboardingStack.Screen name="Age" component={AgeScreen} />
+      <OnboardingStack.Screen name="Height" component={HeightScreen} />
+      <OnboardingStack.Screen name="Weight" component={WeightScreen} />
+      <OnboardingStack.Screen name="Activity" component={ActivityScreen} />
+      <OnboardingStack.Screen name="Preference" component={PreferenceScreen} />
+      <OnboardingStack.Screen name="WeeklyGoal" component={WeeklyGoalScreen} />
+      <OnboardingStack.Screen name="BMI" component={BMIScreen} />
     </OnboardingStack.Navigator>
   );
 };
@@ -315,36 +215,17 @@ export const AppNavigator: React.FC = () => {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: Colors.background },
-          animationEnabled: true,
-          cardStyle: { opacity: 1 },
+          animation: 'fade',
         }}
       >
         {isLoggedIn ? (
           user?.completedOnboarding ? (
-          <Stack.Screen
-            name="Home"
-            component={HomeStackNavigator}
-            options={{
-              animationEnabled: true,
-            }}
-          />
+          <Stack.Screen name="Home" component={HomeStackNavigator} />
           ) : (
-            <Stack.Screen
-              name="Onboarding"
-              component={OnboardingStackScreen}
-              options={{
-                animationEnabled: true,
-              }}
-            />
+            <Stack.Screen name="Onboarding" component={OnboardingStackScreen} />
           )
         ) : (
-          <Stack.Screen
-            name="Auth"
-            component={AuthStackScreen}
-            options={{
-              animationEnabled: true,
-            }}
-          />
+          <Stack.Screen name="Auth" component={AuthStackScreen} />
         )}
       </Stack.Navigator>
     </NavigationContainer>

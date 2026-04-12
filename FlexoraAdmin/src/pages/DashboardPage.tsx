@@ -1,12 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StatCard } from '../components/ui/StatCard';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SectionCard } from '../components/ui/SectionCard';
 import { DataTable } from '../components/ui/DataTable';
-import { fetchUsers, type ApiUser } from '../services/usersService';
+import { CheckCircleIcon, CalendarIcon, BarChartIcon, TrendingUpIcon, UsersIcon } from '../components/icons/Icons';
+import { fetchAdminOverview, type AdminOverview } from '../services/adminService';
+
+type DashboardMetricCardProps = {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  valueClassName?: string;
+};
+
+const DashboardMetricCard = ({ label, value, icon, valueClassName }: DashboardMetricCardProps) => (
+  <div className="h-full rounded-2xl border border-brand-border bg-brand-card p-4 shadow-soft">
+    <div className="flex h-full items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-muted">{label}</p>
+        <p className={`mt-2 truncate text-2xl font-bold text-brand-text ${valueClassName ?? ''}`}>{value}</p>
+      </div>
+      <div className="shrink-0">{icon}</div>
+    </div>
+  </div>
+);
 
 export const DashboardPage = () => {
-  const [users, setUsers] = useState<ApiUser[]>([]);
+  const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -15,10 +34,10 @@ export const DashboardPage = () => {
       try {
         setIsLoading(true);
         setLoadError('');
-        const data = await fetchUsers();
-        setUsers(data);
+        const data = await fetchAdminOverview();
+        setOverview(data);
       } catch (error) {
-        setLoadError('Unable to load dashboard metrics. Ensure backend is running on port 5000.');
+        setLoadError(error instanceof Error ? error.message : 'Unable to load dashboard overview.');
       } finally {
         setIsLoading(false);
       }
@@ -27,178 +46,163 @@ export const DashboardPage = () => {
     load();
   }, []);
 
-  const metrics = useMemo(() => {
-    const total = users.length;
-    const active = users.filter((u) => u.completedOnboarding).length;
-    const pending = Math.max(total - active, 0);
-    const thisMonth = users.filter((u) => {
-      if (!u.createdAt) return false;
-      const date = new Date(u.createdAt);
-      const now = new Date();
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    }).length;
-
-    return { total, active, pending, thisMonth };
-  }, [users]);
-
-  const onboardingRate = useMemo(() => {
-    if (!metrics.total) return 0;
-    return Math.round((metrics.active / metrics.total) * 100);
-  }, [metrics.active, metrics.total]);
-
-  const weeklySignups = useMemo(() => {
-    const now = new Date();
-    const points = Array.from({ length: 8 }, (_, i) => {
-      const start = new Date(now);
-      start.setDate(now.getDate() - (7 * (7 - i)));
-      start.setHours(0, 0, 0, 0);
-
-      const end = new Date(start);
-      end.setDate(start.getDate() + 7);
-
-      const count = users.filter((u) => {
-        if (!u.createdAt) return false;
-        const d = new Date(u.createdAt);
-        return d >= start && d < end;
-      }).length;
-
-      return {
-        label: `W${i + 1}`,
-        count,
-      };
-    });
-
-    return points;
-  }, [users]);
-
-  const maxWeekly = useMemo(() => Math.max(...weeklySignups.map((p) => p.count), 1), [weeklySignups]);
-
-  const recentUsers = users.slice(0, 4);
+  const weeklyMax = useMemo(() => Math.max(...(overview?.weeklySignups.map((point) => point.count) || [1]), 1), [overview]);
 
   return (
-    <div className="h-full space-y-4 overflow-hidden">
-      <PageHeader title="Command Dashboard" subtitle="Realtime control center for user growth and onboarding" />
+    <div className="flex h-full flex-col gap-4 overflow-y-auto pr-1">
+      <div className="shrink-0">
+        <PageHeader title="Command Dashboard" subtitle="Live operational view powered by the backend" />
+      </div>
 
-      {loadError ? <p className="text-sm text-rose-300">{loadError}</p> : null}
+      {loadError ? <p className="shrink-0 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-600">{loadError}</p> : null}
 
-      <section className="rise-in overflow-hidden rounded-2xl border border-brand-border/70 bg-brand-card shadow-soft">
-        <div className="grid gap-0 lg:grid-cols-[1.4fr_1fr]">
-          <div className="relative p-5 sm:p-6">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(24,165,122,0.12),transparent_42%),radial-gradient(circle_at_80%_80%,rgba(59,130,246,0.10),transparent_48%)]" />
-            <div className="relative">
-              <p className="text-xs uppercase tracking-[0.16em] text-brand-muted">Mission Control</p>
-              <h2 className="mt-2 max-w-xl text-xl font-bold leading-tight text-brand-text sm:text-2xl">
-                Growth is strong. Onboarding momentum is now your biggest lever.
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm text-brand-muted">
-                Completion is currently {onboardingRate}%. Focus new joiners in their first 24 hours to move this above 80%.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button className="rounded-lg bg-brand-primary px-3 py-2 text-sm font-semibold text-white transition hover:brightness-110">Create Weekly Brief</button>
-                <button className="rounded-lg border border-brand-border bg-brand-panel px-3 py-2 text-sm font-semibold text-brand-text transition hover:bg-white">Export User Snapshot</button>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-brand-border bg-[#F6FAFD] p-5 lg:border-l lg:border-t-0">
-            <p className="text-xs uppercase tracking-[0.14em] text-brand-muted">Today Highlights</p>
-            <div className="mt-3 space-y-2.5">
-              <div className="rounded-xl border border-brand-border bg-white p-3">
-                <p className="text-xs text-brand-muted">New this month</p>
-                <p className="mt-1 text-2xl font-bold text-brand-text">{metrics.thisMonth}</p>
-              </div>
-              <div className="rounded-xl border border-brand-border bg-white p-3">
-                <p className="text-xs text-brand-muted">Pending onboarding</p>
-                <p className="mt-1 text-2xl font-bold text-amber-300">{metrics.pending}</p>
-              </div>
-              <div className="rounded-xl border border-brand-border bg-white p-3">
-                <p className="text-xs text-brand-muted">Completion health</p>
-                <p className="mt-1 text-2xl font-bold text-brand-light">{onboardingRate}%</p>
-              </div>
-            </div>
-          </div>
+      {isLoading ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-2xl border border-brand-border bg-brand-card text-sm text-brand-muted">
+          Loading dashboard...
         </div>
-      </section>
-
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Users" value={metrics.total.toLocaleString()} hint="All registered accounts" />
-        <StatCard label="Active Profiles" value={metrics.active.toLocaleString()} hint="Completed onboarding" />
-        <StatCard label="Pending Setup" value={metrics.pending.toLocaleString()} hint="Needs onboarding" />
-        <StatCard label="Joined This Month" value={metrics.thisMonth.toLocaleString()} hint="Current month growth" />
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-3">
-        <SectionCard title="Signup Trend (8 Weeks)">
-          <div className="space-y-3">
-            <div className="grid h-36 grid-cols-8 items-end gap-2 rounded-xl border border-brand-border bg-brand-panel p-3">
-              {weeklySignups.map((p) => (
-                <div key={p.label} className="flex flex-col items-center gap-2">
-                  <div
-                    className="w-full rounded-md bg-brand-primary/75"
-                    style={{ height: `${Math.max(12, (p.count / maxWeekly) * 110)}px` }}
-                  />
-                  <span className="text-[10px] text-brand-muted">{p.label}</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-brand-muted">Weekly signups from real backend records</p>
+      ) : overview ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <DashboardMetricCard
+              label="Total Users"
+              value={overview.totalUsers.toLocaleString()}
+              icon={<UsersIcon className="h-5 w-5 text-brand-primary" />}
+            />
+            <DashboardMetricCard
+              label="Active Profiles"
+              value={overview.activeUsers.toLocaleString()}
+              icon={<CheckCircleIcon className="h-5 w-5 text-emerald-500" />}
+              valueClassName="text-emerald-600"
+            />
+            <DashboardMetricCard
+              label="Onboarding Rate"
+              value={`${overview.onboardingRate}%`}
+              icon={<TrendingUpIcon className="h-5 w-5 text-blue-500" />}
+              valueClassName="text-blue-600"
+            />
+            <DashboardMetricCard
+              label="Pending Users"
+              value={overview.pendingUsers.toLocaleString()}
+              icon={<CalendarIcon className="h-5 w-5 text-amber-500" />}
+              valueClassName="text-amber-600"
+            />
           </div>
-        </SectionCard>
 
-        <SectionCard title="Onboarding Funnel">
-          <div className="space-y-4">
-            <div>
-              <div className="mb-1 flex items-center justify-between text-xs text-brand-muted">
-                <span>Completion Rate</span>
-                <span>{onboardingRate}%</span>
-              </div>
-              <div className="h-2 rounded-full bg-brand-panel">
-                <div className="h-2 rounded-full bg-brand-primary" style={{ width: `${onboardingRate}%` }} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-brand-border bg-brand-panel p-3">
-                <p className="text-xs text-brand-muted">Active</p>
-                <p className="mt-1 text-xl font-bold text-brand-light">{metrics.active}</p>
-              </div>
-              <div className="rounded-xl border border-brand-border bg-brand-panel p-3">
-                <p className="text-xs text-brand-muted">Pending</p>
-                <p className="mt-1 text-xl font-bold text-amber-300">{metrics.pending}</p>
-              </div>
-            </div>
-          </div>
-        </SectionCard>
-        <SectionCard title="Recent Users">
-          <DataTable
-            columns={[
-              {
-                key: 'name',
-                header: 'Name',
-                render: (row) => (
-                  <div>
-                    <p className="font-semibold text-brand-text">{row.name}</p>
-                    <p className="text-xs text-brand-muted">{row.email}</p>
+          <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+            <SectionCard title="Weekly Signups" icon={<TrendingUpIcon className="w-5 h-5" />}>
+              <div className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr]">
+                <div className="rounded-xl border border-brand-border bg-gradient-to-br from-brand-panel to-white p-4">
+                  <div className="flex h-36 items-end gap-2">
+                    {overview.weeklySignups.map((point) => (
+                      <div key={point.label} className="flex flex-1 flex-col items-center gap-2">
+                        <div
+                          className="w-full rounded-t-lg bg-gradient-to-t from-brand-primary to-brand-light"
+                          style={{ height: `${Math.max(12, (point.count / weeklyMax) * 120)}px` }}
+                        />
+                        <span className="text-[10px] font-medium text-brand-muted">{point.label}</span>
+                      </div>
+                    ))}
                   </div>
-                ),
-              },
-              {
-                key: 'status',
-                header: 'Status',
-                render: (row) => {
-                  const active = !!row.completedOnboarding;
-                  return (
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${active ? 'border border-brand-primary/30 bg-emerald-50 text-emerald-700' : 'border border-amber-300/60 bg-amber-50 text-amber-700'}`}>
-                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                      {active ? 'Active' : 'Pending'}
-                    </span>
-                  );
-                },
-              },
-            ]}
-            rows={recentUsers}
-          />
-        </SectionCard>
-      </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-brand-border bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-muted">Onboarding Rate</p>
+                    <p className="mt-2 text-3xl font-bold text-brand-primary">{overview.onboardingRate}%</p>
+                    <p className="mt-1 text-xs text-brand-muted">Live user progress from the database</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-brand-border bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-muted">Admins</p>
+                      <p className="mt-2 text-2xl font-bold text-brand-text">{overview.adminUsers}</p>
+                    </div>
+                    <div className="rounded-xl border border-brand-border bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-muted">Pending</p>
+                      <p className="mt-2 text-2xl font-bold text-amber-600">{overview.pendingUsers}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-brand-border bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-muted">Workout Sessions</p>
+                    <p className="mt-2 text-2xl font-bold text-brand-text">{overview.sessions.totalSessions}</p>
+                    <p className="mt-1 text-xs text-brand-muted">Completed session records</p>
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Recent Users" icon={<UsersIcon className="w-5 h-5" />}>
+              <div className="space-y-3">
+                <DataTable
+                  columns={[
+                    {
+                      key: 'name',
+                      header: 'User',
+                      render: (row) => (
+                        <div>
+                          <p className="font-semibold text-brand-text">{row.name}</p>
+                          <p className="text-xs text-brand-muted">{row.email}</p>
+                        </div>
+                      ),
+                    },
+                    {
+                      key: 'status',
+                      header: 'Status',
+                      render: (row) => {
+                        const active = !!row.completedOnboarding;
+                        return (
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${active ? 'border border-emerald-200 bg-emerald-50 text-emerald-700' : 'border border-amber-200 bg-amber-50 text-amber-700'}`}>
+                            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                            {active ? 'Active' : 'Pending'}
+                          </span>
+                        );
+                      },
+                    },
+                  ]}
+                  rows={overview.recentUsers}
+                />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-brand-border bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-muted">Progress Workouts</p>
+                    <p className="mt-2 text-2xl font-bold text-blue-600">{overview.progress.totalWorkouts}</p>
+                  </div>
+                  <div className="rounded-xl border border-brand-border bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-muted">Avg Accuracy</p>
+                    <p className="mt-2 text-2xl font-bold text-emerald-600">{overview.progress.avgAccuracy}%</p>
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <DashboardMetricCard
+              label="Calories Burned"
+              value={overview.sessions.totalCaloriesBurned.toLocaleString()}
+              icon={<CheckCircleIcon className="h-5 w-5 text-emerald-500" />}
+            />
+            <DashboardMetricCard
+              label="Workout Minutes"
+              value={overview.progress.totalWorkoutMinutes.toLocaleString()}
+              icon={<CalendarIcon className="h-5 w-5 text-blue-500" />}
+            />
+            <DashboardMetricCard
+              label="Sessions"
+              value={overview.sessions.totalSessions.toLocaleString()}
+              icon={<BarChartIcon className="h-5 w-5 text-purple-500" />}
+            />
+            <DashboardMetricCard
+              label="Admin Accounts"
+              value={overview.adminUsers.toLocaleString()}
+              icon={<TrendingUpIcon className="h-5 w-5 text-amber-500" />}
+            />
+          </div>
+        </>
+      ) : (
+        <div className="rounded-2xl border border-brand-border bg-brand-card px-4 py-6 text-sm text-brand-muted">
+          No dashboard data available.
+        </div>
+      )}
     </div>
   );
 };

@@ -9,6 +9,7 @@ export const LoginPage = () => {
   const [password, setPassword] = useState('password123');
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -16,14 +17,18 @@ export const LoginPage = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const ok = login(email, password, remember);
-    if (!ok) {
-      setError('Please enter both email and password.');
-      return;
+    try {
+      setIsSubmitting(true);
+      setError('');
+      await login(email, password, remember);
+      navigate('/');
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : 'Login failed.');
+    } finally {
+      setIsSubmitting(false);
     }
-    navigate('/');
   };
 
   return (
@@ -63,8 +68,11 @@ export const LoginPage = () => {
             Remember me
           </label>
           {error ? <p className="text-sm text-red-500">{error}</p> : null}
-          <button className="w-full rounded-lg bg-brand-primary px-4 py-2 font-semibold text-white transition hover:brightness-110">
-            Sign in
+          <button
+            disabled={isSubmitting}
+            className="w-full rounded-lg bg-brand-primary px-4 py-2 font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSubmitting ? 'Signing in...' : 'Sign in'}
           </button>
         </div>
       </form>

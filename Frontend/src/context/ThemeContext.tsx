@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DevSettings } from 'react-native';
 import {
   THEME_MODE_STORAGE_KEY,
   ThemeMode,
@@ -32,17 +31,6 @@ export const ThemeProvider: React.FC<{
       setThemeModeState(mode);
       setAppThemeMode(mode);
       await AsyncStorage.setItem(THEME_MODE_STORAGE_KEY, mode);
-
-      // Many screens use module-level StyleSheet colors; a JS reload guarantees full theme repaint.
-      if (__DEV__ && typeof DevSettings.reload === 'function') {
-        setTimeout(() => {
-          try {
-            DevSettings.reload();
-          } catch (error) {
-            console.warn('[ThemeContext] Failed to reload app after theme change', error);
-          }
-        }, 40);
-      }
     } catch (error) {
       console.warn('[ThemeContext] Failed to apply theme mode', error);
     }

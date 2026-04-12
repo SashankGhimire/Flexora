@@ -50,8 +50,8 @@ type SquatOptions = {
 };
 
 const MIN_CONFIDENCE = 0.25;
-const PHASE_CONFIRMATION_FRAMES = 2;
-const ANALYSIS_INTERVAL_MS = 180;
+const PHASE_CONFIRMATION_FRAMES = 1;
+const ANALYSIS_INTERVAL_MS = 120;
 const KNEE_SMOOTHING_WINDOW = 5;
 const HIP_DEPTH_DOWN_THRESHOLD = 0.06;
 const HIP_DEPTH_UP_THRESHOLD = 0.02;
@@ -250,18 +250,9 @@ const scoreRep = (profile: SquatProfile, repSpeed: number): number => {
 const finalizeRep = (profile: SquatProfile, repSpeed: number): void => {
   const rom = calculateROM(state.maxKneeAngle, state.minKneeAngle);
   state.lastCompletedRom = rom;
-  
-  // Check if rep meets strict or assisted criteria
-  const hasStrictRep = 
-    state.minKneeAngle <= profile.strict.minAngle &&
-    rom >= profile.strict.rom;
-  const hasAssistedRep =
-    state.minKneeAngle <= profile.assisted.minAngle &&
-    rom >= profile.assisted.rom;
-  
-  if (hasStrictRep || hasAssistedRep) {
-    state.repCount += 1;
-  }
+
+  // Lenient counting: every confirmed down -> up cycle is a rep.
+  state.repCount += 1;
 
   const accuracy = scoreRep(profile, repSpeed);
   state.scoredReps += 1;
@@ -317,13 +308,20 @@ const applyPhaseTransition = (
 
 const resolveNextPhase = (
   currentPhase: SquatPhase,
-  hipDepth: number
+  hipDepth: number,
+  kneeAngle: number,
+  profile: SquatProfile
 ): SquatPhase | null => {
-  if (currentPhase === 'up' && hipDepth > HIP_DEPTH_DOWN_THRESHOLD) {
+  const downByHip = hipDepth > HIP_DEPTH_DOWN_THRESHOLD;
+  const upByHip = hipDepth < HIP_DEPTH_UP_THRESHOLD;
+  const downByKnee = kneeAngle <= profile.strict.minAngle;
+  const upByKnee = kneeAngle >= profile.assisted.minAngle;
+
+  if (currentPhase === 'up' && (downByHip || downByKnee)) {
     return 'down';
   }
 
-  if (currentPhase === 'down' && hipDepth < HIP_DEPTH_UP_THRESHOLD) {
+  if (currentPhase === 'down' && (upByHip || upByKnee)) {
     return 'up';
   }
 
@@ -397,7 +395,7 @@ export const updateSquat = (
     updateRepWindow(bestKneeAngle, leftForStability, rightForStability, hipCenterY, profile);
   }
 
-  const nextPhase = resolveNextPhase(state.phase, hipDepth);
+  const nextPhase = resolveNextPhase(state.phase, hipDepth, bestKneeAngle, profile);
   if (nextPhase !== null) {
     applyPhaseTransition(nextPhase, now, profile, hipCenterY, bestKneeAngle);
   } else {

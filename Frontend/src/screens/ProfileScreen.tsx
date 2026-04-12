@@ -134,7 +134,10 @@ export const ProfileScreen: React.FC = () => {
 
   const avatarUrl = useMemo(() => {
     if (!user?.avatarUrl) return '';
-    return `${getApiServerOrigin()}${user.avatarUrl}`;
+    if (user.avatarUrl.startsWith('http://') || user.avatarUrl.startsWith('https://')) {
+      return user.avatarUrl;
+    }
+    return `${getApiServerOrigin()}${user.avatarUrl.startsWith('/') ? user.avatarUrl : `/${user.avatarUrl}`}`;
   }, [user?.avatarUrl]);
 
   const handlePickAvatar = async () => {

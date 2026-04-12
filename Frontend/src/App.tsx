@@ -30,7 +30,7 @@ const ThemedRoot: React.FC<{
         translucent={false}
       />
       <View style={[styles.container, { backgroundColor: Colors.background }]}> 
-        <AppNavigatorComponent />
+        <AppNavigatorComponent key={themeMode} />
 
         {showSplash && (
           <Animated.View style={[styles.splashOverlay, { opacity: splashOpacity }]}>

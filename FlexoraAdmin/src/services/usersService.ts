@@ -13,11 +13,10 @@ export type UpdateUserPayload = {
   email?: string;
   completedOnboarding?: boolean;
 };
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+import { apiFetch } from './api';
 
 export async function fetchUsers(): Promise<ApiUser[]> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/users`);
+  const response = await apiFetch('/api/auth/users');
 
   if (!response.ok) {
     throw new Error(`Failed to fetch users: ${response.status}`);
@@ -28,7 +27,7 @@ export async function fetchUsers(): Promise<ApiUser[]> {
 }
 
 export async function fetchUserById(id: string): Promise<ApiUser> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/users/${id}`);
+  const response = await apiFetch(`/api/auth/users/${id}`);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch user: ${response.status}`);
@@ -39,7 +38,7 @@ export async function fetchUserById(id: string): Promise<ApiUser> {
 }
 
 export async function updateUserById(id: string, payload: UpdateUserPayload): Promise<ApiUser> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/users/${id}`, {
+  const response = await apiFetch(`/api/auth/users/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -56,7 +55,7 @@ export async function updateUserById(id: string, payload: UpdateUserPayload): Pr
 }
 
 export async function deleteUserById(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/users/${id}`, {
+  const response = await apiFetch(`/api/auth/users/${id}`, {
     method: 'DELETE',
   });
 

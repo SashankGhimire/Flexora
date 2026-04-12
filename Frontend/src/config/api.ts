@@ -22,16 +22,16 @@ export const API_URL_LOCALHOST = 'http://localhost:5000';
 const API_PATH = '/api';
 const HEALTH_PATH = '/api/health';
 const PROBE_TIMEOUT_MS = 3500;
+const normalizeOrigin = (url: string): string => url.replace(/\/$/, '');
+
+const toApiBaseUrl = (origin: string): string => `${normalizeOrigin(origin)}${API_PATH}`;
+
 const PRIMARY_BACKEND_PORT = 5000;
 const MAX_BACKEND_PORT_SCAN = 5020;
 const LOCAL_PORT_CANDIDATES = Array.from(
   { length: MAX_BACKEND_PORT_SCAN - PRIMARY_BACKEND_PORT + 1 },
   (_, index) => PRIMARY_BACKEND_PORT + index
 );
-
-const normalizeOrigin = (url: string): string => url.replace(/\/$/, '');
-
-const toApiBaseUrl = (origin: string): string => `${normalizeOrigin(origin)}${API_PATH}`;
 
 const buildLocalPortVariants = (origin: string): string[] => {
   try {

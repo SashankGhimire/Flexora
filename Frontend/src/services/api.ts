@@ -240,7 +240,7 @@ export const updateCurrentUserMultipart = async (payload: {
 
   return request<{ message: string; user: ApiAuthUser }>(
     apiClient.put(AUTH_ENDPOINTS.UPDATE_ME, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { Accept: 'application/json' },
     })
   );
 };

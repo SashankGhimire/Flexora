@@ -19,7 +19,11 @@ const formatTotalTime = (seconds: number): string => {
 export const WorkoutCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
   const { user } = useAuth();
   const { completedExercises, totalSeconds } = route.params;
-  const avatarUrl = user?.avatarUrl ? `${getApiServerOrigin()}${user.avatarUrl}` : '';
+  const avatarUrl = user?.avatarUrl
+    ? user.avatarUrl.startsWith('http://') || user.avatarUrl.startsWith('https://')
+      ? user.avatarUrl
+      : `${getApiServerOrigin()}${user.avatarUrl.startsWith('/') ? user.avatarUrl : `/${user.avatarUrl}`}`
+    : '';
   const initials = (user?.name || 'User')
     .split(' ')
     .map((part) => part[0])

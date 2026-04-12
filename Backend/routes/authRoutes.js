@@ -4,8 +4,6 @@
  */
 
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 const multer = require('multer');
 const {
 	register,
@@ -21,22 +19,7 @@ const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-const avatarsDir = path.join(__dirname, '..', 'uploads', 'avatars');
-
-if (!fs.existsSync(avatarsDir)) {
-	fs.mkdirSync(avatarsDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-	destination: (req, file, cb) => {
-		cb(null, avatarsDir);
-	},
-	filename: (req, file, cb) => {
-		const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-		const safeId = req.user?.id || 'guest';
-		cb(null, `avatar-${safeId}-${Date.now()}${ext}`);
-	},
-});
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
 	if (file.mimetype && file.mimetype.startsWith('image/')) {

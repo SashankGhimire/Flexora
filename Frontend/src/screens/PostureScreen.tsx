@@ -25,6 +25,7 @@ import { resetJumpingJackDetector, updateJumpingJack } from '../ai/jumpingJackDe
 import { resetLungeDetector, updateLunge } from '../ai/lungeDetector';
 import { resetPushupDetector, updatePushup } from '../ai/pushupDetector';
 import { resetSquatDetector, SquatViewMode, updateSquat } from '../ai/squatDetector';
+import { saveWorkoutSession } from '../services/sessionService';
 import { Colors } from '../theme/colors';
 import { ExerciseType, HomeStackParamList } from '../types';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -1615,6 +1616,26 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
 
   const handleFlipCamera = () => setIsFrontCamera(!isFrontCamera);
 
+  const persistAiWorkoutSession = useCallback(async () => {
+    const completedAccuracy = Math.max(0, Math.min(100, Math.round(accuracy ?? 0)));
+
+    try {
+      await saveWorkoutSession({
+        exercisesPerformed: [
+          {
+            exercise,
+            reps: Math.max(0, reps),
+            duration: Math.max(0, seconds),
+            accuracy: completedAccuracy,
+          },
+        ],
+        durationSeconds: Math.max(0, seconds),
+      });
+    } catch (error) {
+      console.warn('[PostureScreen] Failed to save AI workout session', error);
+    }
+  }, [accuracy, exercise, reps, seconds]);
+
   const handlePause = () => {
     setIsPaused(!isPaused);
     const nextFeedback = isPaused ? 'Keep Going!' : 'Paused';
@@ -1631,7 +1652,10 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
         {
           text: 'End',
           style: 'destructive',
-          onPress: () => navigation.goBack(),
+          onPress: async () => {
+            await persistAiWorkoutSession();
+            navigation.goBack();
+          },
         },
       ],
       { cancelable: true }

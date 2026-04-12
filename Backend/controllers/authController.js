@@ -5,6 +5,7 @@
 
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const { uploadAvatarBuffer } = require('../config/cloudinary');
 
 /**
  * Generate JWT Token
@@ -199,8 +200,9 @@ exports.updateMe = async (req, res) => {
       updates.activityLevel = activityLevel.trim();
     }
 
-    if (req.file) {
-      updates.avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    if (req.file?.buffer) {
+      const avatarUrl = await uploadAvatarBuffer(req.file.buffer, req.user.id);
+      updates.avatarUrl = avatarUrl;
     }
 
     const user = await User.findByIdAndUpdate(req.user.id, updates, {

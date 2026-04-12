@@ -1,16 +1,23 @@
-import { NavLink, useLocation } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { NavLink } from 'react-router-dom';
 
 export const Topbar = () => {
-  const location = useLocation();
-  const { logout } = useAuth();
+  const pathname = window.location.pathname;
 
   const mobileItems = [
     { to: '/dashboard', label: 'Dashboard' },
     { to: '/users', label: 'Users' },
+    { to: '/analytics', label: 'Analytics' },
+    { to: '/settings', label: 'Settings' },
   ];
 
-  const title = location.pathname.includes('/users') ? 'Users' : 'Dashboard';
+  const titleMap: Array<[string, string]> = [
+    ['/users', 'Users'],
+    ['/analytics', 'Analytics'],
+    ['/settings', 'Settings'],
+    ['/dashboard', 'Dashboard'],
+  ];
+
+  const title = titleMap.find(([path]) => pathname.includes(path))?.[1] || 'Dashboard';
 
   return (
     <header className="sticky top-0 z-20 border-b border-brand-border/70 bg-brand-panel/95 px-4 py-4 backdrop-blur sm:px-6">
@@ -18,17 +25,6 @@ export const Topbar = () => {
         <div>
           <p className="text-xs uppercase tracking-[0.16em] text-brand-muted">Admin Console</p>
           <p className="text-lg font-bold text-brand-text">{title}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="rounded-lg border border-brand-border bg-brand-card px-3 py-2 text-sm font-semibold text-brand-text transition hover:bg-brand-bg">
-            Export
-          </button>
-          <button
-            onClick={logout}
-            className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
-          >
-            Logout
-          </button>
         </div>
       </div>
       <nav className="mt-3 flex gap-2 overflow-x-auto lg:hidden">

@@ -36,20 +36,10 @@ type JumpingJackProfile = {
 };
 
 const MIN_CONFIDENCE = 0.25;
-const PHASE_CONFIRMATION_FRAMES = 2;
+const PHASE_CONFIRMATION_FRAMES = 1;
 const ANKLE_SMOOTHING_WINDOW = 3;
-const ARM_Y_OFFSET = 0.05;
-const LEGS_OPEN_THRESHOLD = 0.25;
-const LEGS_CLOSED_THRESHOLD = 0.15;
-
-const JUMPING_JACK_PROFILES: Record<string, JumpingJackProfile> = {
-  default: {
-    openThreshold: 0.25,
-    closeThreshold: 0.15,
-    strict: { maxOpen: 0.35, minClose: 0.1 },
-    assisted: { maxOpen: 0.28, minClose: 0.14 },
-  },
-};
+const ARM_UP_OFFSET = 0.035;
+const ARM_DOWN_OFFSET = 0.005;
 
 const MOVENET = {
   LEFT_SHOULDER: 5,
@@ -79,6 +69,53 @@ const state: JumpingJackState = {
 
 const hasConfidence = (point: PoseKeypoint | undefined): point is PoseKeypoint => {
   return !!point && typeof point.score === 'number' && point.score >= MIN_CONFIDENCE;
+};
+
+const getCenterY = (
+  left: PoseKeypoint | undefined,
+  right: PoseKeypoint | undefined
+): number | null => {
+  const leftOk = hasConfidence(left);
+  const rightOk = hasConfidence(right);
+
+  if (leftOk && rightOk) {
+    return (left.y + right.y) * 0.5;
+  }
+
+  if (leftOk) {
+    return left.y;
+  }
+
+  if (rightOk) {
+    return right.y;
+  }
+
+  return null;
+};
+
+const clamp = (value: number, min: number, max: number): number => {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+};
+
+const getAdaptiveProfile = (shoulderWidth: number): JumpingJackProfile => {
+  const safeShoulderWidth = clamp(shoulderWidth, 0.07, 0.26);
+  const openThreshold = clamp(safeShoulderWidth * 1.45, 0.13, 0.26);
+  const closeThreshold = clamp(safeShoulderWidth * 0.9, 0.08, 0.17);
+
+  return {
+    openThreshold,
+    closeThreshold,
+    strict: {
+      maxOpen: clamp(safeShoulderWidth * 1.75, openThreshold + 0.02, 0.32),
+      minClose: clamp(safeShoulderWidth * 0.75, 0.06, closeThreshold),
+    },
+    assisted: {
+      maxOpen: clamp(safeShoulderWidth * 1.45, openThreshold, 0.28),
+      minClose: clamp(safeShoulderWidth * 0.95, 0.08, 0.18),
+    },
+  };
 };
 
 const smoothAnkleDistance = (distance: number): number => {
@@ -112,9 +149,11 @@ const getSpeedFeedback = (repSpeedSec: number): { score: number; feedback: RepSp
   return { score: Math.min(100, score), feedback: 'Controlled' };
 };
 
-const getAccuracyScore = (ankleRange: number, repSpeed: number): number => {
-  const profile = JUMPING_JACK_PROFILES.default;
-  const rangeScore = ankleRange >= 0.2 ? 100 : Math.max(0, Math.min(100, (ankleRange / 0.2) * 100));
+const getAccuracyScore = (ankleRange: number, repSpeed: number, profile: JumpingJackProfile): number => {
+  const targetRange = Math.max(0.1, profile.assisted.maxOpen - profile.assisted.minClose);
+  const rangeScore = ankleRange >= targetRange
+    ? 100
+    : Math.max(0, Math.min(100, (ankleRange / targetRange) * 100));
   const speedResult = getSpeedFeedback(repSpeed);
   return rangeScore * 0.6 + speedResult.score * 0.4;
 };
@@ -127,7 +166,7 @@ const toResult = (): JumpingJackResult => ({
   speedFeedback: state.lastSpeedFeedback,
 });
 
-const applyPhaseTransition = (nextPhase: JumpingJackPhase): void => {
+const applyPhaseTransition = (nextPhase: JumpingJackPhase, profile: JumpingJackProfile): void => {
   if (nextPhase === state.phase) {
     state.pendingPhase = null;
     state.pendingFrames = 0;
@@ -158,23 +197,14 @@ const applyPhaseTransition = (nextPhase: JumpingJackPhase): void => {
   }
 
   if (previous === 'open' && nextPhase === 'close' && state.repStartTime !== null) {
-    const profile = JUMPING_JACK_PROFILES.default;
     const endTime = Date.now();
     const ankleRange = state.maxAnkleDistance - state.minAnkleDistance;
     const repSpeed = (endTime - state.repStartTime) / 1000;
     const speedResult = getSpeedFeedback(repSpeed);
-    const accuracy = getAccuracyScore(ankleRange, repSpeed);
+    const accuracy = getAccuracyScore(ankleRange, repSpeed, profile);
 
-    const hasStrictRep = 
-      state.maxAnkleDistance >= profile.strict.maxOpen &&
-      state.minAnkleDistance <= profile.strict.minClose;
-    const hasAssistedRep =
-      state.maxAnkleDistance >= profile.assisted.maxOpen &&
-      state.minAnkleDistance <= profile.assisted.minClose;
-
-    if (hasStrictRep || hasAssistedRep) {
-      state.repCount += 1;
-    }
+    // Lenient counting: every confirmed open -> close cycle is a rep.
+    state.repCount += 1;
 
     state.lastRepSpeedSec = repSpeed;
     state.lastSpeedFeedback = speedResult.feedback;
@@ -194,30 +224,25 @@ export const updateJumpingJack = (keypoints: PoseKeypoint[]): JumpingJackResult 
   const leftAnkle = keypoints[MOVENET.LEFT_ANKLE];
   const rightAnkle = keypoints[MOVENET.RIGHT_ANKLE];
 
-  if (
-    !hasConfidence(leftShoulder) ||
-    !hasConfidence(rightShoulder) ||
-    !hasConfidence(leftWrist) ||
-    !hasConfidence(rightWrist) ||
-    !hasConfidence(leftAnkle) ||
-    !hasConfidence(rightAnkle)
-  ) {
+  const shoulderCenterY = getCenterY(leftShoulder, rightShoulder);
+  const wristCenterY = getCenterY(leftWrist, rightWrist);
+  const hasLegs = hasConfidence(leftAnkle) && hasConfidence(rightAnkle);
+
+  if (shoulderCenterY === null || wristCenterY === null) {
     state.pendingPhase = null;
     state.pendingFrames = 0;
     return toResult();
   }
 
-  const leftArmUp = leftWrist.y < leftShoulder.y - ARM_Y_OFFSET;
-  const rightArmUp = rightWrist.y < rightShoulder.y - ARM_Y_OFFSET;
-  const armsUp = leftArmUp && rightArmUp;
+  const armsUp = wristCenterY < shoulderCenterY - ARM_UP_OFFSET;
+  const armsDown = wristCenterY > shoulderCenterY + ARM_DOWN_OFFSET;
 
-  const armsDown =
-    leftWrist.y > leftShoulder.y + ARM_Y_OFFSET &&
-    rightWrist.y > rightShoulder.y + ARM_Y_OFFSET;
-
-  const profile = JUMPING_JACK_PROFILES.default;
-  const rawAnkleDistance = Math.abs(leftAnkle.x - rightAnkle.x);
-  const ankleDistance = smoothAnkleDistance(rawAnkleDistance);
+  const shoulderWidth = hasConfidence(leftShoulder) && hasConfidence(rightShoulder)
+    ? Math.abs(leftShoulder.x - rightShoulder.x)
+    : 0.16;
+  const profile = getAdaptiveProfile(shoulderWidth);
+  const rawAnkleDistance = hasLegs ? Math.abs(leftAnkle.x - rightAnkle.x) : state.lastAnkleDistance;
+  const ankleDistance = hasLegs ? smoothAnkleDistance(rawAnkleDistance) : rawAnkleDistance;
   state.lastAnkleDistance = ankleDistance;
 
   // Track min/max for ROM
@@ -230,16 +255,17 @@ export const updateJumpingJack = (keypoints: PoseKeypoint[]): JumpingJackResult 
     }
   }
 
-  const legsOpen = ankleDistance > profile.openThreshold;
-  const legsClosed = ankleDistance < profile.closeThreshold;
+  const legsOpen = hasLegs ? ankleDistance > profile.openThreshold : true;
+  const legsClosed = hasLegs ? ankleDistance < profile.closeThreshold : true;
 
-  const isOpenPose = armsUp && legsOpen;
-  const isClosePose = armsDown && legsClosed;
+  // Lenient mode: arm movement alone can drive phases when the lower body is out of frame.
+  const isOpenPose = armsUp && (hasLegs ? legsOpen || armsUp : true);
+  const isClosePose = armsDown && (hasLegs ? legsClosed || armsDown : true);
 
   if (state.phase === 'close' && isOpenPose) {
-    applyPhaseTransition('open');
+    applyPhaseTransition('open', profile);
   } else if (state.phase === 'open' && isClosePose) {
-    applyPhaseTransition('close');
+    applyPhaseTransition('close', profile);
   } else {
     state.pendingPhase = null;
     state.pendingFrames = 0;

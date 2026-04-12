@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Image,
@@ -13,7 +13,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
@@ -102,6 +102,34 @@ export const DashboardScreen: React.FC = () => {
     return streak;
   };
 
+  const loadStats = React.useCallback(async () => {
+    if (!user?.id) {
+      return;
+    }
+
+    const progress = await getProgressForUser(user.id);
+    const workoutHistory = Array.isArray(progress?.workoutHistory) ? progress.workoutHistory : [];
+    const now = new Date();
+
+    const todayMinutes = workoutHistory.reduce((sum: number, item: { completedAt?: string; durationSeconds?: number }) => {
+      const completedAt = item.completedAt ? new Date(item.completedAt) : null;
+      if (!completedAt || !isSameDay(completedAt, now)) {
+        return sum;
+      }
+
+      return sum + Math.max(0, Math.round((Number(item.durationSeconds || 0) / 60)));
+    }, 0);
+
+    setDashboardStats({
+      totalWorkouts: Number(progress?.performanceStats?.totalWorkouts || 0),
+      totalCaloriesBurned: Number(progress?.performanceStats?.totalCaloriesBurned || 0),
+      avgAccuracy: Number(progress?.performanceStats?.avgAccuracy || 0),
+      totalWorkoutMinutes: Number(progress?.performanceStats?.totalWorkoutMinutes || 0),
+      todayMinutes,
+      streakDays: calculateStreak(workoutHistory.map((item: { completedAt?: string }) => item.completedAt || now.toISOString())),
+    });
+  }, [getProgressForUser, user?.id]);
+
   const focusCardWidth = Math.max(286, width - Spacing.lg * 2 - 8);
   const focusSnapInterval = focusCardWidth + Spacing.sm;
 
@@ -147,37 +175,11 @@ export const DashboardScreen: React.FC = () => {
     [dashboardStats]
   );
 
-  useEffect(() => {
-    if (!user?.id) {
-      return;
-    }
-
-    const loadStats = async () => {
-      const progress = await getProgressForUser(user.id);
-      const workoutHistory = Array.isArray(progress?.workoutHistory) ? progress.workoutHistory : [];
-      const now = new Date();
-
-      const todayMinutes = workoutHistory.reduce((sum: number, item: { completedAt?: string; durationSeconds?: number }) => {
-        const completedAt = item.completedAt ? new Date(item.completedAt) : null;
-        if (!completedAt || !isSameDay(completedAt, now)) {
-          return sum;
-        }
-
-        return sum + Math.max(0, Math.round((Number(item.durationSeconds || 0) / 60)));
-      }, 0);
-
-      setDashboardStats({
-        totalWorkouts: Number(progress?.performanceStats?.totalWorkouts || 0),
-        totalCaloriesBurned: Number(progress?.performanceStats?.totalCaloriesBurned || 0),
-        avgAccuracy: Number(progress?.performanceStats?.avgAccuracy || 0),
-        totalWorkoutMinutes: Number(progress?.performanceStats?.totalWorkoutMinutes || 0),
-        todayMinutes,
-        streakDays: calculateStreak(workoutHistory.map((item: { completedAt?: string }) => item.completedAt || now.toISOString())),
-      });
-    };
-
-    loadStats();
-  }, [getProgressForUser, user?.id]);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadStats();
+    }, [loadStats])
+  );
 
   const goToProgram = (programId: string) => {
     navigation.navigate('WorkoutProgram', { programId });
