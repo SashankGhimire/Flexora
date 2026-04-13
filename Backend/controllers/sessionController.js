@@ -127,6 +127,7 @@ const saveSession = asyncHandler(async (req, res) => {
 
   const progress = await Progress.findOne({ userId: req.user.id });
   const totalWorkouts = (progress?.performanceStats?.totalWorkouts || 0) + 1;
+  const totalReps = (progress?.performanceStats?.totalReps || 0) + summary.totalReps;
   const totalCalories = (progress?.performanceStats?.totalCaloriesBurned || 0) + summary.caloriesBurned;
   const totalMinutes = (progress?.performanceStats?.totalWorkoutMinutes || 0) + summary.totalDuration / 60;
   const prevAvg = progress?.performanceStats?.avgAccuracy || 0;
@@ -148,6 +149,7 @@ const saveSession = asyncHandler(async (req, res) => {
       $set: {
         performanceStats: {
           totalWorkouts,
+          totalReps,
           totalCaloriesBurned: Number(totalCalories.toFixed(2)),
           avgAccuracy,
           totalWorkoutMinutes: Number(totalMinutes.toFixed(2)),

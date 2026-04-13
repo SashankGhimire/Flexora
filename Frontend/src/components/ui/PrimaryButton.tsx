@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -7,7 +7,7 @@ import {
   TouchableOpacityProps,
   View,
 } from 'react-native';
-import { Colors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { FontWeight, Radius, Spacing, Typography } from '../../theme/tokens';
 
 type PrimaryButtonProps = TouchableOpacityProps & {
@@ -24,6 +24,8 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   style,
   ...props
 }) => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const isDisabled = disabled || loading;
 
   return (
@@ -34,7 +36,7 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={Colors.textOnPrimary} />
+        <ActivityIndicator color={colors.textOnPrimary} />
       ) : (
         <View style={styles.content}>
           {icon ? <View style={styles.icon}>{icon}</View> : null}
@@ -45,34 +47,35 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  button: {
-    minHeight: 48,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.primary,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.lg,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  icon: {
-    marginRight: Spacing.sm,
-  },
-  text: {
-    color: Colors.textOnPrimary,
-    fontSize: Typography.subtitle,
-    fontWeight: FontWeight.bold,
-    letterSpacing: 0.2,
-  },
-  disabled: {
-    opacity: 0.55,
-  },
-});
+const createStyles = (colors: { primary: string; textOnPrimary: string }) =>
+  StyleSheet.create({
+    button: {
+      minHeight: 48,
+      borderRadius: Radius.md,
+      backgroundColor: colors.primary,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: Spacing.lg,
+    },
+    content: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    icon: {
+      marginRight: Spacing.sm,
+    },
+    text: {
+      color: colors.textOnPrimary,
+      fontSize: Typography.subtitle,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.2,
+    },
+    disabled: {
+      opacity: 0.55,
+    },
+  });
 
 

@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  FlatList,
   Image,
   ImageBackground,
   NativeSyntheticEvent,
@@ -17,6 +18,7 @@ import { useFocusEffect, useNavigation, CompositeNavigationProp } from '@react-n
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { HomeStackParamList, HomeTabParamList } from '../types';
 import { Colors } from '../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
@@ -51,8 +53,36 @@ const PROGRAM_COVER: Record<string, string> = {
 const BODYWEIGHT_HERO_COVER =
   'https://images.unsplash.com/photo-1758875569284-c57e79ef75e0?q=80&w=1632&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
+const normalizeFocus = (value: string): string => {
+  const normalized = value.toLowerCase().trim().replace(/[-_]/g, ' ').replace(/\s+/g, ' ');
+
+  if (normalized === 'arm' || normalized === 'arms') return 'arm';
+  if (normalized === 'leg' || normalized === 'legs') return 'leg';
+  if (normalized === 'abs' || normalized === 'ab') return 'abs';
+  if (normalized === 'chest') return 'chest';
+  if (normalized === 'shoulder' || normalized === 'shoulders') return 'shoulder';
+  if (normalized === 'back') return 'back';
+  if (normalized === 'full body' || normalized === 'fullbody') return 'full body';
+
+  return normalized;
+};
+
+const mapCategoryToFocus = (category: string): string => {
+  const normalized = normalizeFocus(category);
+
+  if (normalized === 'abs') return 'Abs';
+  if (normalized === 'arm') return 'Arm';
+  if (normalized === 'chest') return 'Chest';
+  if (normalized === 'leg') return 'Leg';
+  if (normalized === 'shoulder') return 'Shoulder';
+  if (normalized === 'back') return 'Back';
+  return 'Full Body';
+};
+
 export const DashboardScreen: React.FC = () => {
   const { user, logout } = useAuth();
+  const { themeMode } = useTheme();
+  const styles = useMemo(() => createStyles(), [themeMode]);
   const { getProgressForUser, workouts } = useAppData();
   const navigation = useNavigation<DashboardNavProp>();
   const { width } = useWindowDimensions();
@@ -65,7 +95,7 @@ export const DashboardScreen: React.FC = () => {
     todayMinutes: 0,
     streakDays: 0,
   });
-  const focusSliderRef = useRef<ScrollView>(null);
+  const focusCardListRef = useRef<FlatList<any>>(null);
 
   const isSameDay = (left: string | Date, right: Date) => {
     const leftDate = new Date(left);
@@ -138,7 +168,7 @@ export const DashboardScreen: React.FC = () => {
       return workouts.map((workout) => ({
         id: workout._id,
         name: workout.title,
-        focus: workout.category === 'full body' ? 'Full Body' : workout.category === 'arms' ? 'Arm' : workout.category === 'legs' ? 'Leg' : 'Abs',
+        focus: mapCategoryToFocus(workout.category),
         durationMinutes: workout.duration,
         exerciseIds: workout.exercises.map((item) => item.exercise?._id).filter(Boolean) as string[],
       }));
@@ -153,6 +183,13 @@ export const DashboardScreen: React.FC = () => {
     () => featuredPrograms.find((program) => program.focus === 'Full Body') ?? featuredPrograms[0],
     [featuredPrograms],
   );
+
+  const selectedFocusFirstIndex = useMemo(() => {
+    const index = featuredPrograms.findIndex(
+      (program) => normalizeFocus(program.focus) === normalizeFocus(selectedFocus)
+    );
+    return index;
+  }, [featuredPrograms, selectedFocus]);
 
   const resolveCover = (programId: string, focus: string): string =>
     PROGRAM_COVER[programId] || PROGRAM_COVER[focus.toLowerCase()] || PROGRAM_COVER['full body'];
@@ -181,6 +218,10 @@ export const DashboardScreen: React.FC = () => {
     }, [loadStats])
   );
 
+  const handleStartAiWorkout = () => {
+    navigation.navigate('StartWorkout');
+  };
+
   const goToProgram = (programId: string) => {
     navigation.navigate('WorkoutProgram', { programId });
   };
@@ -192,18 +233,6 @@ export const DashboardScreen: React.FC = () => {
     ]);
   };
 
-  const scrollFocusToFocus = (focus: string) => {
-    const index = featuredPrograms.findIndex((program) => program.focus === focus);
-    if (index < 0) {
-      return;
-    }
-    focusSliderRef.current?.scrollTo({
-      x: index * focusSnapInterval,
-      y: 0,
-      animated: true,
-    });
-  };
-
   const handleFocusMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     const snappedIndex = Math.round(offsetX / focusSnapInterval);
@@ -211,6 +240,17 @@ export const DashboardScreen: React.FC = () => {
     const nextFocus = featuredPrograms[boundedIndex]?.focus;
     if (nextFocus && nextFocus !== selectedFocus) {
       setSelectedFocus(nextFocus);
+    }
+  };
+
+  const handleFocusPress = (focus: string) => {
+    setSelectedFocus(focus);
+    const index = featuredPrograms.findIndex(
+      (program) => normalizeFocus(program.focus) === normalizeFocus(focus)
+    );
+
+    if (index >= 0) {
+      focusCardListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0 });
     }
   };
 
@@ -262,7 +302,7 @@ export const DashboardScreen: React.FC = () => {
 
           <PrimaryButton
             title="Start AI Workout"
-            onPress={() => navigation.navigate('StartWorkout')}
+            onPress={handleStartAiWorkout}
             style={styles.aiButton}
           />
         </Card>
@@ -284,28 +324,19 @@ export const DashboardScreen: React.FC = () => {
               key={focus}
               activeOpacity={0.85}
               style={[styles.focusChip, selectedFocus === focus && styles.focusChipActive]}
-              onPress={() => {
-                setSelectedFocus(focus);
-                scrollFocusToFocus(focus);
-              }}
+              onPress={() => handleFocusPress(focus)}
             >
               <Text style={[styles.focusChipText, selectedFocus === focus && styles.focusChipTextActive]}>{focus}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        <ScrollView
-          ref={focusSliderRef}
+        <FlatList
+          ref={focusCardListRef}
           horizontal
-          showsHorizontalScrollIndicator={false}
-          decelerationRate="fast"
-          snapToInterval={focusSnapInterval}
-          snapToAlignment="start"
-          disableIntervalMomentum
-          contentContainerStyle={styles.focusProgramSlider}
-          onMomentumScrollEnd={handleFocusMomentumEnd}
-        >
-          {featuredPrograms.map((program) => (
+          data={featuredPrograms}
+          keyExtractor={(program) => program.id}
+          renderItem={({ item: program }) => (
             <TouchableOpacity
               key={program.id}
               style={[styles.focusProgramCard, { width: focusCardWidth }]}
@@ -319,8 +350,26 @@ export const DashboardScreen: React.FC = () => {
                 <Text style={styles.focusProgramAction}>Tap to open program</Text>
               </View>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+          )}
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          snapToInterval={focusSnapInterval}
+          snapToAlignment="start"
+          disableIntervalMomentum
+          contentContainerStyle={styles.focusProgramSlider}
+          onMomentumScrollEnd={handleFocusMomentumEnd}
+          onScrollToIndexFailed={() => {
+            // fallback for first render while list is measuring
+            if (selectedFocusFirstIndex >= 0) {
+              setTimeout(() => {
+                focusCardListRef.current?.scrollToIndex({ index: selectedFocusFirstIndex, animated: true, viewPosition: 0 });
+              }, 80);
+            }
+          }}
+        />
+        {selectedFocusFirstIndex < 0 ? (
+          <Text style={styles.emptyFocusText}>No workouts available for this focus yet.</Text>
+        ) : null}
 
         <SectionHeader title="Quick Stats" subtitle="Your recent training snapshot" style={styles.sectionTop} />
         <View style={styles.statsGrid}>
@@ -350,7 +399,7 @@ export const DashboardScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -391,11 +440,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     borderWidth: 1,
     borderColor: Colors.border,
-    shadowColor: Colors.black,
-    shadowOpacity: 0.07,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
   },
   aiTopRow: {
     flexDirection: 'row',
@@ -497,11 +541,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     overflow: 'hidden',
     minHeight: 188,
-    shadowColor: Colors.black,
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
   },
   heroSlider: {
     gap: Spacing.sm,
@@ -557,11 +596,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     backgroundColor: Colors.card,
     padding: Spacing.sm,
-    shadowColor: Colors.black,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
   },
   focusProgramImage: {
     width: 78,
@@ -623,11 +657,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: Colors.black,
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
+  },
+  emptyFocusText: {
+    marginTop: Spacing.sm,
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
   },
   quickInsightIconWrap: {
     width: 42,

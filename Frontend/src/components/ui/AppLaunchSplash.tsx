@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { Logo } from './Logo';
-import { isDarkMode } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 
 export const AppLaunchSplash: React.FC = () => {
+  const { isDarkMode } = useTheme();
   const shimmer = useRef(new Animated.Value(0)).current;
   const dot1 = useRef(new Animated.Value(0.25)).current;
   const dot2 = useRef(new Animated.Value(0.25)).current;
@@ -35,7 +36,7 @@ export const AppLaunchSplash: React.FC = () => {
       dot: '#38BDF8',
       shadowColor: '#0f172a',
     };
-  }, []);
+  }, [isDarkMode]);
   const styles = useMemo(() => createStyles(palette), [palette]);
 
   useEffect(() => {

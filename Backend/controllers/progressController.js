@@ -40,6 +40,7 @@ const getProgressByUserId = asyncHandler(async (req, res) => {
       workoutHistory: progress?.workoutHistory || [],
       performanceStats: progress?.performanceStats || {
         totalWorkouts: 0,
+        totalReps: 0,
         totalCaloriesBurned: 0,
         avgAccuracy: 0,
         totalWorkoutMinutes: 0,

@@ -8,7 +8,6 @@ import { AppDataProvider } from './context/AppDataContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import AppLaunchSplash from './components/ui/AppLaunchSplash';
 import {
-  Colors,
   ThemeMode,
   THEME_MODE_STORAGE_KEY,
   getThemeMode,
@@ -20,16 +19,16 @@ const ThemedRoot: React.FC<{
   showSplash: boolean;
   splashOpacity: Animated.Value;
 }> = ({ AppNavigatorComponent, showSplash, splashOpacity }) => {
-  const { themeMode } = useTheme();
+  const { themeMode, colors } = useTheme();
 
   return (
     <>
       <StatusBar
         barStyle={themeMode === 'dark' ? 'light-content' : 'dark-content'}
-        backgroundColor={Colors.background}
+        backgroundColor={colors.background}
         translucent={false}
       />
-      <View style={[styles.container, { backgroundColor: Colors.background }]}> 
+      <View style={[styles.container, { backgroundColor: colors.background }]}> 
         <AppNavigatorComponent key={themeMode} />
 
         {showSplash && (
@@ -91,7 +90,9 @@ function App() {
   if (!AppNavigatorComponent) {
     return (
       <SafeAreaProvider>
-        <AppLaunchSplash />
+        <ThemeProvider initialMode={getThemeMode()}>
+          <AppLaunchSplash />
+        </ThemeProvider>
       </SafeAreaProvider>
     );
   }
@@ -116,7 +117,7 @@ function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: 'transparent',
   },
   splashOverlay: {
     ...StyleSheet.absoluteFillObject,

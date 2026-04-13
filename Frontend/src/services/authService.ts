@@ -4,6 +4,7 @@ import {
   login,
   register,
   setAuthToken,
+  updateCurrentUser,
   updateCurrentUserMultipart,
 } from './api';
 
@@ -36,7 +37,24 @@ export const updateProfile = async (data: {
   name?: string;
   avatar?: { uri: string; name?: string; type?: string } | null;
 }) => {
-  return updateCurrentUserMultipart(data);
+  const normalizedName = typeof data.name === 'string' ? data.name.trim() : undefined;
+
+  if (!data.avatar?.uri) {
+    return updateCurrentUser({ ...(normalizedName ? { name: normalizedName } : {}) });
+  }
+
+  try {
+    return await updateCurrentUserMultipart({
+      ...(normalizedName ? { name: normalizedName } : {}),
+      avatar: data.avatar,
+    });
+  } catch (error) {
+    if (normalizedName) {
+      return updateCurrentUser({ name: normalizedName });
+    }
+
+    throw error;
+  }
 };
 
 export const getStoredTokenValue = () => getStoredToken();

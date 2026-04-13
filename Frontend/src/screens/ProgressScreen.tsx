@@ -4,6 +4,7 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Card, SectionHeader, SimpleIcon, StatCard } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useAppData } from '../context/AppDataContext';
+import { useTheme } from '../context/ThemeContext';
 import {
   getLocalOnboardingProfile,
   getOnboardingProfile,
@@ -69,6 +70,8 @@ const getBmiCategoryTheme = (category: string) => {
 export const ProgressScreen: React.FC = () => {
   const { user } = useAuth();
   const { getProgressForUser } = useAppData();
+  const { themeMode } = useTheme();
+  const styles = useMemo(() => createStyles(), [themeMode]);
   const { width } = useWindowDimensions();
   const compact = width <= 360;
   const calendarCellWidth = compact ? 31 : 36;
@@ -81,10 +84,13 @@ export const ProgressScreen: React.FC = () => {
   const [bmiModalVisible, setBmiModalVisible] = useState(false);
   const [progressStats, setProgressStats] = useState({
     totalWorkouts: 0,
+    totalReps: 0,
     avgAccuracy: 0,
     totalWorkoutMinutes: 0,
   });
   const [workoutDates, setWorkoutDates] = useState<string[]>([]);
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [progressError, setProgressError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.id) {
@@ -132,15 +138,34 @@ export const ProgressScreen: React.FC = () => {
     }
 
     const loadProgress = async () => {
+      setProgressLoading(true);
+      setProgressError(null);
       const progress = await getProgressForUser(user.id);
+      if (!progress) {
+        setProgressError('Unable to load progress right now.');
+        setProgressLoading(false);
+        return;
+      }
+
       const workoutHistory = Array.isArray(progress?.workoutHistory) ? progress.workoutHistory : [];
+      const totalRepsFromHistory = workoutHistory.reduce(
+        (sum: number, entry: { totalReps?: number; reps?: number }) => sum + Number(entry.totalReps || entry.reps || 0),
+        0
+      );
+      const totalRepsFromStats = Number(progress?.performanceStats?.totalReps || 0);
 
       if (progress?.performanceStats) {
         setProgressStats({
           totalWorkouts: Number(progress.performanceStats.totalWorkouts || 0),
+          totalReps: totalRepsFromStats > 0 ? totalRepsFromStats : totalRepsFromHistory,
           avgAccuracy: Number(progress.performanceStats.avgAccuracy || 0),
           totalWorkoutMinutes: Number(progress.performanceStats.totalWorkoutMinutes || 0),
         });
+      } else {
+        setProgressStats((prev) => ({
+          ...prev,
+          totalReps: totalRepsFromHistory,
+        }));
       }
 
       setWorkoutDates(
@@ -160,6 +185,8 @@ export const ProgressScreen: React.FC = () => {
           setWeightKg(String(mappedWeights[mappedWeights.length - 1]));
         }
       }
+
+      setProgressLoading(false);
     };
 
     loadProgress();
@@ -243,6 +270,17 @@ export const ProgressScreen: React.FC = () => {
   const activeDaySet = new Set(
     workoutDates.filter((day) => sameMonth(new Date(day), currentMonth)).map((day) => Number(day.slice(-2)))
   );
+  const weeklyWeightChange = chartData.length >= 2
+    ? Number((chartData[chartData.length - 1] - chartData[0]).toFixed(1))
+    : 0;
+  const weeklyWeightLabel = weeklyWeightChange === 0
+    ? '0.0 kg'
+    : `${weeklyWeightChange > 0 ? '+' : ''}${weeklyWeightChange.toFixed(1)} kg`;
+  const goalStatusLabel = progressStats.avgAccuracy >= 75
+    ? 'On Track'
+    : progressStats.avgAccuracy >= 50
+      ? 'Improving'
+      : 'Needs Focus';
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -262,20 +300,32 @@ export const ProgressScreen: React.FC = () => {
               <SimpleIcon name="trending-up" size={18} color={Colors.primary} />
             </View>
           </View>
-          <Text style={styles.reportHeroText}>
-            Your body metrics are steady and your streak is holding strong. Keep showing up and the trend will keep working in your favor.
-          </Text>
+          {progressLoading ? <Text style={styles.reportHeroText}>Loading your latest progress...</Text> : null}
+          {progressError ? <Text style={styles.reportHeroError}>{progressError}</Text> : null}
+          {!progressLoading && !progressError ? (
+            <Text style={styles.reportHeroText}>
+              {`Workouts: ${progressStats.totalWorkouts} • Reps: ${progressStats.totalReps} • BMI: ${bmiDisplayValue}. Keep training consistently to improve accuracy and endurance.`}
+            </Text>
+          ) : null}
           <View style={styles.reportHeroPills}>
             <View style={styles.reportHeroPill}>
-              <Text style={styles.reportHeroPillValue}>7 Days</Text>
+              <Text style={styles.reportHeroPillValue}>{progressStats.totalWorkouts}</Text>
               <Text style={styles.reportHeroPillLabel}>Tracked</Text>
             </View>
             <View style={styles.reportHeroPill}>
-              <Text style={styles.reportHeroPillValue}>-0.4 kg</Text>
+              <Text style={styles.reportHeroPillValue}>{progressStats.totalReps}</Text>
+              <Text style={styles.reportHeroPillLabel}>Total reps</Text>
+            </View>
+            <View style={styles.reportHeroPill}>
+              <Text style={styles.reportHeroPillValue}>{bmiDisplayValue}</Text>
+              <Text style={styles.reportHeroPillLabel}>BMI</Text>
+            </View>
+            <View style={styles.reportHeroPill}>
+              <Text style={styles.reportHeroPillValue}>{weeklyWeightLabel}</Text>
               <Text style={styles.reportHeroPillLabel}>Weekly change</Text>
             </View>
             <View style={styles.reportHeroPill}>
-              <Text style={styles.reportHeroPillValue}>On Track</Text>
+              <Text style={styles.reportHeroPillValue}>{goalStatusLabel}</Text>
               <Text style={styles.reportHeroPillLabel}>Goal status</Text>
             </View>
           </View>
@@ -283,17 +333,22 @@ export const ProgressScreen: React.FC = () => {
 
         <Animated.View entering={FadeInDown.duration(360).delay(80)} style={[styles.statsRow, compact && styles.statsRowCompact]}>
           <StatCard
-            label="Sessions"
+            label="Total Workouts"
             value={String(progressStats.totalWorkouts || 0)}
             icon={<SimpleIcon name="activity" size={16} color={Colors.primary} />}
           />
           <StatCard
-            label="Avg Accuracy"
-            value={`${Math.round(progressStats.avgAccuracy || 0)}%`}
+            label="Total Reps"
+            value={String(progressStats.totalReps || 0)}
             icon={<SimpleIcon name="target" size={16} color={Colors.primary} />}
           />
           <StatCard
-            label="Time"
+            label="Avg Accuracy"
+            value={`${Math.round(progressStats.avgAccuracy || 0)}%`}
+            icon={<SimpleIcon name="award" size={16} color={Colors.primary} />}
+          />
+          <StatCard
+            label="Total Time"
             value={`${Math.round(progressStats.totalWorkoutMinutes || 0)}m`}
             icon={<SimpleIcon name="award" size={16} color={Colors.primary} />}
           />
@@ -547,7 +602,7 @@ export const ProgressScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -638,10 +693,11 @@ const styles = StyleSheet.create({
   reportHeroPills: {
     marginTop: Spacing.md,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.sm,
   },
   reportHeroPill: {
-    flex: 1,
+    minWidth: '31%',
     borderRadius: Radius.lg,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -658,6 +714,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
     color: Colors.textSecondary,
     fontSize: Typography.caption,
+  },
+  reportHeroError: {
+    marginTop: Spacing.sm,
+    color: Colors.error,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.semi,
   },
   chartCard: {
     backgroundColor: Colors.card,

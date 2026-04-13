@@ -2,9 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
+  Modal,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -12,19 +15,36 @@ import {
   View,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getApiServerOrigin } from '../services/api';
+import {
+  getNotificationPreference,
+  getProfileGoal,
+  setNotificationPreference,
+  updateProfileGoal,
+} from '../services/profileService';
 import { useAuth } from '../context/AuthContext';
 import { useAppData } from '../context/AppDataContext';
 import { useTheme } from '../context/ThemeContext';
 import { getLocalOnboardingProfile, getOnboardingProfile } from '../services/onboardingService';
 import { Colors } from '../theme/colors';
+import { HomeStackParamList } from '../types';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
 import { Button, Card, PrimaryButton, SectionHeader, SimpleIcon, StatCard } from '../components/ui';
+
+const GOAL_OPTIONS = [
+  { value: 'lose_weight', label: 'Lose Weight' },
+  { value: 'build_muscle', label: 'Build Muscle' },
+  { value: 'improve_fitness', label: 'Improve Fitness' },
+  { value: 'stay_active', label: 'Stay Active' },
+];
 
 export const ProfileScreen: React.FC = () => {
   const { user, updateProfile, logout } = useAuth();
   const { getProgressForUser } = useAppData();
   const { themeMode, toggleTheme } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
   const styles = useMemo(() => createStyles(themeMode), [themeMode]);
   const heroIconColor = themeMode === 'dark' ? Colors.textPrimary : Colors.primaryDark;
   const { width } = useWindowDimensions();
@@ -42,6 +62,12 @@ export const ProfileScreen: React.FC = () => {
   const [workoutsCompletedLabel, setWorkoutsCompletedLabel] = useState('0');
   const [totalTimeLabel, setTotalTimeLabel] = useState('0m');
   const [streakLabel, setStreakLabel] = useState('0-day streak');
+  const [selectedGoal, setSelectedGoal] = useState('improve_fitness');
+  const [goalModalVisible, setGoalModalVisible] = useState(false);
+  const [savingGoal, setSavingGoal] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  const selectedGoalLabel = GOAL_OPTIONS.find((option) => option.value === selectedGoal)?.label || 'Improve Fitness';
 
   // For button label
   const themeLabel = themeMode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
@@ -132,6 +158,24 @@ export const ProfileScreen: React.FC = () => {
     loadProfileProgress();
   }, [getProgressForUser, user?.id]);
 
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    const hydratePreferences = async () => {
+      const notificationEnabled = await getNotificationPreference(user.id);
+      setNotificationsEnabled(notificationEnabled);
+
+      const remoteGoal = await getProfileGoal();
+      if (remoteGoal) {
+        setSelectedGoal(remoteGoal);
+      }
+    };
+
+    hydratePreferences();
+  }, [user?.id]);
+
   const avatarUrl = useMemo(() => {
     if (!user?.avatarUrl) return '';
     if (user.avatarUrl.startsWith('http://') || user.avatarUrl.startsWith('https://')) {
@@ -185,6 +229,28 @@ export const ProfileScreen: React.FC = () => {
   const handleStartEditing = () => {
     setIsEditing(true);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const handleToggleNotifications = async () => {
+    if (!user?.id) {
+      return;
+    }
+
+    const nextValue = !notificationsEnabled;
+    setNotificationsEnabled(nextValue);
+    await setNotificationPreference(user.id, nextValue);
+  };
+
+  const handleSaveGoal = async () => {
+    setSavingGoal(true);
+    try {
+      await updateProfileGoal(selectedGoal);
+      setGoalModalVisible(false);
+    } catch (error: any) {
+      Alert.alert('Goal update failed', error?.message || 'Unable to save your goal now.');
+    } finally {
+      setSavingGoal(false);
+    }
   };
 
   return (
@@ -328,22 +394,22 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
             <View style={styles.settingDivider} />
 
-            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8} onPress={() => setGoalModalVisible(true)}>
               <View style={styles.settingRowIconWrap}>
                 <SimpleIcon name="target" size={16} color={Colors.primary} />
               </View>
               <View style={styles.settingRowTextWrap}>
                 <Text style={styles.listLabel}>Goals</Text>
-                <Text style={styles.listSubtitle}>Review and update your fitness targets</Text>
+                <Text style={styles.listSubtitle}>{selectedGoalLabel}</Text>
               </View>
               <View style={styles.settingTrailingWrap}>
-                <Text style={styles.settingTrailingText}>View</Text>
+                <Text style={styles.settingTrailingText}>Update</Text>
                 <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
               </View>
             </TouchableOpacity>
             <View style={styles.settingDivider} />
 
-            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8} onPress={handleToggleNotifications}>
               <View style={[styles.settingRowIconWrap, styles.settingRowIconMuted]}>
                 <SimpleIcon name="bell" size={16} color={Colors.textSecondary} />
               </View>
@@ -352,8 +418,12 @@ export const ProfileScreen: React.FC = () => {
                 <Text style={styles.listSubtitle}>Control reminders and workout alerts</Text>
               </View>
               <View style={styles.settingTrailingWrap}>
-                <Text style={styles.settingTrailingText}>Alerts</Text>
-                <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
+                <Switch
+                  value={notificationsEnabled}
+                  onValueChange={handleToggleNotifications}
+                  trackColor={{ false: Colors.border, true: Colors.primaryA52 }}
+                  thumbColor={notificationsEnabled ? Colors.primary : Colors.textMuted}
+                />
               </View>
             </TouchableOpacity>
             <View style={styles.settingDivider} />
@@ -402,7 +472,7 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
             <View style={styles.settingDivider} />
 
-            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8} onPress={() => navigation.navigate('HelpCenter')}>
               <View style={[styles.settingRowIconWrap, styles.settingRowIconMuted]}>
                 <SimpleIcon name="life-buoy" size={16} color={Colors.textSecondary} />
               </View>
@@ -422,6 +492,43 @@ export const ProfileScreen: React.FC = () => {
           <SimpleIcon name="log-out" size={16} color={Colors.error} />
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
+
+        <Modal
+          visible={goalModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setGoalModalVisible(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Set Fitness Goal</Text>
+              <Text style={styles.modalSubtitle}>This updates your profile plan instantly.</Text>
+              {GOAL_OPTIONS.map((option) => (
+                <Pressable
+                  key={option.value}
+                  style={[
+                    styles.goalOption,
+                    selectedGoal === option.value && styles.goalOptionActive,
+                  ]}
+                  onPress={() => setSelectedGoal(option.value)}
+                >
+                  <Text style={[styles.goalOptionText, selectedGoal === option.value && styles.goalOptionTextActive]}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              ))}
+
+              <View style={styles.modalActions}>
+                <Pressable style={styles.modalBtnGhost} onPress={() => setGoalModalVisible(false)}>
+                  <Text style={styles.modalBtnGhostText}>Cancel</Text>
+                </Pressable>
+                <Pressable style={styles.modalBtn} onPress={handleSaveGoal} disabled={savingGoal}>
+                  <Text style={styles.modalBtnText}>{savingGoal ? 'Saving...' : 'Save Goal'}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         <View style={styles.bottomSpace} />
       </ScrollView>
@@ -834,6 +941,81 @@ const createStyles = (themeMode: 'light' | 'dark') => {
   },
   bottomSpace: {
     height: 88,
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
+    backgroundColor: Colors.blackA58,
+  },
+  modalCard: {
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
+    padding: Spacing.lg,
+  },
+  modalTitle: {
+    color: Colors.textPrimary,
+    fontSize: Typography.title,
+    fontWeight: FontWeight.heavy,
+  },
+  modalSubtitle: {
+    marginTop: Spacing.xs,
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+    marginBottom: Spacing.md,
+  },
+  goalOption: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  goalOptionActive: {
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryLightA16,
+  },
+  goalOptionText: {
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.semi,
+  },
+  goalOptionTextActive: {
+    color: Colors.primary,
+  },
+  modalActions: {
+    marginTop: Spacing.sm,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: Spacing.sm,
+  },
+  modalBtnGhost: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+  },
+  modalBtnGhostText: {
+    color: Colors.textSecondary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.semi,
+  },
+  modalBtn: {
+    borderRadius: Radius.md,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+  },
+  modalBtnText: {
+    color: Colors.textOnPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
   },
   });
 };

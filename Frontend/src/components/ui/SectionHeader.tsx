@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { Colors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { FontWeight, Spacing, Typography } from '../../theme/tokens';
 
 type SectionHeaderProps = {
@@ -16,6 +16,9 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   rightNode,
   style,
 }) => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={[styles.container, style]}>
       <View style={styles.textWrap}>
@@ -27,28 +30,29 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.md,
-    gap: 8,
-  },
-  textWrap: {
-    flex: 1,
-  },
-  title: {
-    color: Colors.textPrimary,
-    fontSize: Typography.title,
-    fontWeight: FontWeight.bold,
-  },
-  subtitle: {
-    marginTop: Spacing.xs,
-    color: Colors.textSecondary,
-    fontSize: Typography.caption,
-    lineHeight: 16,
-  },
-});
+const createStyles = (colors: { textPrimary: string; textSecondary: string }) =>
+  StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      marginBottom: Spacing.md,
+      gap: 8,
+    },
+    textWrap: {
+      flex: 1,
+    },
+    title: {
+      color: colors.textPrimary,
+      fontSize: Typography.title,
+      fontWeight: FontWeight.bold,
+    },
+    subtitle: {
+      marginTop: Spacing.xs,
+      color: colors.textSecondary,
+      fontSize: Typography.caption,
+      lineHeight: 16,
+    },
+  });
 
 

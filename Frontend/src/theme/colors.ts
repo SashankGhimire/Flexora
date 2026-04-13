@@ -1,9 +1,7 @@
-import { Appearance } from 'react-native';
-
 export type ThemeMode = 'light' | 'dark';
 export const THEME_MODE_STORAGE_KEY = '@flexora:theme_mode';
 
-const LightColors = {
+export const lightTheme = {
   primary: '#3FAF73',
   primaryLight: '#8FD9B6',
   primaryDark: '#2E7D5B',
@@ -102,8 +100,8 @@ const LightColors = {
   black: '#1A1A1A',
 } as const;
 
-const DarkColors = {
-  ...LightColors,
+export const darkTheme = {
+  ...lightTheme,
   primary: '#3FAF73',
   primaryLight: '#8FD9B6',
   primaryDark: '#2E7D5B',
@@ -126,17 +124,19 @@ const DarkColors = {
   black: '#050707',
 } as const;
 
+export type AppThemeColors = typeof lightTheme;
+
 const resolveInitialThemeMode = (): ThemeMode => 'light';
 
 let currentThemeMode: ThemeMode = resolveInitialThemeMode();
 
 export let isDarkMode = currentThemeMode === 'dark';
-export let Colors = isDarkMode ? DarkColors : LightColors;
+export let Colors: AppThemeColors = isDarkMode ? darkTheme : lightTheme;
 
 export const setThemeMode = (mode: ThemeMode): void => {
   currentThemeMode = mode;
   isDarkMode = mode === 'dark';
-  Colors = isDarkMode ? DarkColors : LightColors;
+  Colors = isDarkMode ? darkTheme : lightTheme;
 };
 
 export const getThemeMode = (): ThemeMode => currentThemeMode;

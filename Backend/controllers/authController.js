@@ -175,9 +175,13 @@ exports.updateMe = async (req, res) => {
   try {
     const updates = {};
     const { name, age, height, weight, goal, activityLevel } = req.body;
+    let uploadWarning = null;
 
-    if (name) {
-      updates.name = name;
+    if (typeof name === 'string') {
+      const trimmedName = name.trim();
+      if (trimmedName) {
+        updates.name = trimmedName;
+      }
     }
 
     if (age !== undefined) {
@@ -201,14 +205,26 @@ exports.updateMe = async (req, res) => {
     }
 
     if (req.file?.buffer) {
-      const avatarUrl = await uploadAvatarBuffer(req.file.buffer, req.user.id);
-      updates.avatarUrl = avatarUrl;
+      try {
+        const avatarUrl = await uploadAvatarBuffer(req.file.buffer, req.user.id);
+        if (avatarUrl) {
+          updates.avatarUrl = avatarUrl;
+        }
+      } catch (uploadError) {
+        uploadWarning = 'Avatar upload is unavailable right now. Other profile changes were saved.';
+      }
     }
 
-    const user = await User.findByIdAndUpdate(req.user.id, updates, {
-      new: true,
-      runValidators: true,
-    });
+    let user;
+
+    if (Object.keys(updates).length === 0) {
+      user = await User.findById(req.user.id);
+    } else {
+      user = await User.findByIdAndUpdate(req.user.id, updates, {
+        new: true,
+        runValidators: true,
+      });
+    }
 
     if (!user) {
       return res.status(404).json({
@@ -218,6 +234,7 @@ exports.updateMe = async (req, res) => {
 
     res.status(200).json({
       message: 'Profile updated successfully',
+      ...(uploadWarning ? { warning: uploadWarning } : {}),
       user: user.toSafeObject(),
     });
   } catch (error) {

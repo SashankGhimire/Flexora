@@ -58,6 +58,10 @@ const performanceStatsSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    totalReps: {
+      type: Number,
+      default: 0,
+    },
     totalCaloriesBurned: {
       type: Number,
       default: 0,
@@ -99,6 +103,7 @@ const progressSchema = new mongoose.Schema(
       type: performanceStatsSchema,
       default: () => ({
         totalWorkouts: 0,
+        totalReps: 0,
         totalCaloriesBurned: 0,
         avgAccuracy: 0,
         totalWorkoutMinutes: 0,

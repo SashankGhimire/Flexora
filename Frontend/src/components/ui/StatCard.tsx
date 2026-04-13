@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { FontWeight, Radius, Spacing, Typography } from '../../theme/tokens';
 
 type StatCardProps = {
@@ -10,6 +10,9 @@ type StatCardProps = {
 };
 
 export const StatCard: React.FC<StatCardProps> = ({ label, value, icon }) => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.card}>
       <View style={styles.iconWrap}>{icon}</View>
@@ -19,43 +22,45 @@ export const StatCard: React.FC<StatCardProps> = ({ label, value, icon }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    minHeight: 104,
-    borderRadius: Radius.xl,
-    backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    justifyContent: 'space-between',
-    shadowColor: Colors.black,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
-  },
-  iconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: Radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.background,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Spacing.sm,
-  },
-  value: {
-    color: Colors.textPrimary,
-    fontSize: 19,
-    fontWeight: FontWeight.heavy,
-  },
-  label: {
-    color: Colors.textSecondary,
-    fontSize: Typography.caption,
-    marginTop: Spacing.xs,
-  },
-});
+const createStyles = (colors: {
+  card: string;
+  border: string;
+  background: string;
+  textPrimary: string;
+  textSecondary: string;
+}) =>
+  StyleSheet.create({
+    card: {
+      flex: 1,
+      minHeight: 104,
+      borderRadius: Radius.xl,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: Spacing.md,
+      justifyContent: 'space-between',
+    },
+    iconWrap: {
+      width: 32,
+      height: 32,
+      borderRadius: Radius.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: Spacing.sm,
+    },
+    value: {
+      color: colors.textPrimary,
+      fontSize: 19,
+      fontWeight: FontWeight.heavy,
+    },
+    label: {
+      color: colors.textSecondary,
+      fontSize: Typography.caption,
+      marginTop: Spacing.xs,
+    },
+  });
 
 

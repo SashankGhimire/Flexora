@@ -34,6 +34,18 @@ const upload = multer({
 	limits: { fileSize: 5 * 1024 * 1024 },
 });
 
+const handleAvatarUpload = (req, res, next) => {
+	upload.single('avatar')(req, res, (error) => {
+		if (!error) {
+			return next();
+		}
+
+		return res.status(400).json({
+			message: error.message || 'Invalid avatar upload',
+		});
+	});
+};
+
 /**
  * Public Routes
  */
@@ -77,6 +89,6 @@ router.get('/me', protect, getMe);
 // PUT /api/auth/me
 // headers: { Authorization: 'Bearer <token>' }
 // form-data: { name?, avatar? }
-router.put('/me', protect, upload.single('avatar'), updateMe);
+router.put('/me', protect, handleAvatarUpload, updateMe);
 
 module.exports = router;

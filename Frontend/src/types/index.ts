@@ -42,6 +42,7 @@ export type HomeTabParamList = {
 export type HomeStackParamList = {
   HomeTabs: undefined;
   ExerciseSelection: undefined;
+  HelpCenter: undefined;
   Workout: { exerciseType: ExerciseType };
   WorkoutProgram: { programId: string };
   WorkoutSession: { programId: string };

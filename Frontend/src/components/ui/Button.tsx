@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -12,7 +12,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { Colors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { FontWeight, Radius, Spacing, Typography } from '../../theme/tokens';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
@@ -35,6 +35,8 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const isDisabled = disabled || loading;
   const pressScale = useSharedValue(1);
 
@@ -66,7 +68,7 @@ export const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'ghost' ? Colors.primary : Colors.textOnPrimary} />
+        <ActivityIndicator color={variant === 'ghost' ? colors.primary : colors.textOnPrimary} />
       ) : (
         <View style={styles.content}>
           {icon ? <View style={styles.icon}>{icon}</View> : null}
@@ -85,49 +87,55 @@ export const Button: React.FC<ButtonProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  base: {
-    minHeight: 46,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.lg,
-    borderWidth: 1,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  icon: {
-    marginRight: Spacing.sm,
-  },
-  primary: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  secondary: {
-    backgroundColor: Colors.card,
-    borderColor: Colors.primary,
-  },
-  ghost: {
-    backgroundColor: 'transparent',
-    borderColor: Colors.border,
-  },
-  text: {
-    fontSize: Typography.subtitle,
-    fontWeight: FontWeight.bold,
-    letterSpacing: 0.2,
-  },
-  primaryText: {
-    color: Colors.textOnPrimary,
-  },
-  secondaryText: {
-    color: Colors.primary,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-});
+const createStyles = (colors: {
+  primary: string;
+  card: string;
+  border: string;
+  textOnPrimary: string;
+}) =>
+  StyleSheet.create({
+    base: {
+      minHeight: 46,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: Spacing.lg,
+      borderWidth: 1,
+    },
+    content: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    icon: {
+      marginRight: Spacing.sm,
+    },
+    primary: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    secondary: {
+      backgroundColor: colors.card,
+      borderColor: colors.primary,
+    },
+    ghost: {
+      backgroundColor: 'transparent',
+      borderColor: colors.border,
+    },
+    text: {
+      fontSize: Typography.subtitle,
+      fontWeight: FontWeight.bold,
+      letterSpacing: 0.2,
+    },
+    primaryText: {
+      color: colors.textOnPrimary,
+    },
+    secondaryText: {
+      color: colors.primary,
+    },
+    disabled: {
+      opacity: 0.5,
+    },
+  });
 
 

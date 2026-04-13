@@ -1,6 +1,6 @@
 import React from 'react';
 import { useWindowDimensions } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme as NavigationDarkTheme, DefaultTheme as NavigationDefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { LoginScreen, RegisterScreen } from '../screens/auth';
 import {
   DashboardScreen,
   ExerciseSelectionScreen,
+  HelpCenterScreen,
   PostureScreen,
   ProgressScreen,
   ProfileScreen,
@@ -29,7 +30,7 @@ import {
   WeightScreen,
 } from '../screens/onboarding';
 import { useAuth } from '../context/AuthContext';
-import { Colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import {
   AuthStackParamList,
   HomeStackParamList,
@@ -61,12 +62,14 @@ const ProfileTabIcon = ({ color, size }: { color: string; size: number }) => (
 );
 
 const AuthStackScreen = () => {
+  const { colors } = useTheme();
+
   return (
     <AuthStack.Navigator
       id="auth-stack"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: Colors.background },
+        contentStyle: { backgroundColor: colors.background },
         animation: 'slide_from_right',
       }}
       initialRouteName="Login"
@@ -78,6 +81,7 @@ const AuthStackScreen = () => {
 };
 
 const HomeTabs: React.FC = () => {
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const compact = height < 700;
@@ -90,27 +94,22 @@ const HomeTabs: React.FC = () => {
       id="home-tabs"
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarHideOnKeyboard: true,
         tabBarStyle: {
-          backgroundColor: Colors.card,
+          backgroundColor: colors.card,
           position: 'absolute',
           left: 14,
           right: 14,
           bottom: tabBarBottom,
           borderTopWidth: 0,
           borderWidth: 1,
-          borderColor: Colors.border,
+          borderColor: colors.border,
           borderRadius: 16,
           paddingBottom: compact ? 6 : 7,
           paddingTop: compact ? 6 : 7,
           height: tabBarHeight,
-          shadowColor: Colors.black,
-          shadowOpacity: 0.12,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 4,
         },
         tabBarItemStyle: {
           borderRadius: 10,
@@ -161,17 +160,20 @@ const HomeTabs: React.FC = () => {
 };
 
 export const HomeStackNavigator: React.FC = () => {
+  const { colors } = useTheme();
+
   return (
     <HomeStack.Navigator
       id="home-stack"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: Colors.background },
+        contentStyle: { backgroundColor: colors.background },
         animation: 'slide_from_right',
       }}
     >
       <HomeStack.Screen name="HomeTabs" component={HomeTabs} />
       <HomeStack.Screen name="ExerciseSelection" component={ExerciseSelectionScreen} />
+      <HomeStack.Screen name="HelpCenter" component={HelpCenterScreen} />
       <HomeStack.Screen name="Workout" component={PostureScreen} />
       <HomeStack.Screen name="WorkoutProgram" component={WorkoutProgramScreen} />
       <HomeStack.Screen name="WorkoutSession" component={WorkoutSessionScreen} />
@@ -181,12 +183,14 @@ export const HomeStackNavigator: React.FC = () => {
 };
 
 const OnboardingStackScreen: React.FC = () => {
+  const { colors } = useTheme();
+
   return (
     <OnboardingStack.Navigator
       id="onboarding-stack"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: Colors.background },
+        contentStyle: { backgroundColor: colors.background },
         animation: 'slide_from_right',
       }}
       initialRouteName="Welcome"
@@ -207,14 +211,41 @@ const OnboardingStackScreen: React.FC = () => {
 
 export const AppNavigator: React.FC = () => {
   const { isLoggedIn, user } = useAuth();
+  const { colors, isDarkMode } = useTheme();
+
+  const navigationTheme = isDarkMode
+    ? {
+        ...NavigationDarkTheme,
+        colors: {
+          ...NavigationDarkTheme.colors,
+          background: colors.background,
+          card: colors.card,
+          text: colors.textPrimary,
+          border: colors.border,
+          primary: colors.primary,
+          notification: colors.error,
+        },
+      }
+    : {
+        ...NavigationDefaultTheme,
+        colors: {
+          ...NavigationDefaultTheme.colors,
+          background: colors.background,
+          card: colors.card,
+          text: colors.textPrimary,
+          border: colors.border,
+          primary: colors.primary,
+          notification: colors.error,
+        },
+      };
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator
         id="root-stack"
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: Colors.background },
+          contentStyle: { backgroundColor: colors.background },
           animation: 'fade',
         }}
       >

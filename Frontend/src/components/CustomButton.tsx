@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -11,7 +11,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { Colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
@@ -32,6 +32,8 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
   disabled,
   ...props
 }) => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -51,17 +53,14 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
   const getVariantStyles = () => {
     switch (variant) {
       case 'secondary':
-        return { backgroundColor: Colors.card, borderColor: Colors.primary, borderWidth: 1 };
+        return { backgroundColor: colors.card, borderColor: colors.primary, borderWidth: 1 };
       case 'outline':
-        return { backgroundColor: 'transparent', borderWidth: 2, borderColor: Colors.primary };
+        return { backgroundColor: 'transparent', borderWidth: 2, borderColor: colors.primary };
       default:
         return {
-          backgroundColor: Colors.primary,
-          shadowColor: Colors.primary,
-          shadowOpacity: 0.24,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 0 },
-          elevation: 5,
+          backgroundColor: colors.primary,
+          borderColor: colors.primary,
+          borderWidth: 1,
         };
     }
   };
@@ -69,11 +68,11 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
   const getTextColor = () => {
     switch (variant) {
       case 'secondary':
-        return Colors.primary;
+        return colors.primary;
       case 'outline':
-        return Colors.primary;
+        return colors.primary;
       default:
-        return Colors.card;
+        return colors.textOnPrimary;
     }
   };
 
@@ -92,7 +91,7 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' ? Colors.primary : Colors.card} />
+        <ActivityIndicator color={variant === 'outline' ? colors.primary : colors.textOnPrimary} />
       ) : (
         <>
           {icon && <>{icon}</>}
@@ -105,26 +104,27 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  baseButton: {
-    borderRadius: Radius.md,
-    paddingVertical: 16,
-    paddingHorizontal: Spacing.x2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    fontWeight: FontWeight.bold,
-    fontSize: Typography.subtitle,
-  },
-  enabledButton: {
-    opacity: 1,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-});
+const createStyles = (_colors: { textOnPrimary: string }) =>
+  StyleSheet.create({
+    baseButton: {
+      borderRadius: Radius.md,
+      paddingVertical: 16,
+      paddingHorizontal: Spacing.x2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    buttonText: {
+      fontWeight: FontWeight.bold,
+      fontSize: Typography.subtitle,
+    },
+    enabledButton: {
+      opacity: 1,
+    },
+    disabledButton: {
+      opacity: 0.5,
+    },
+  });
 
 
 

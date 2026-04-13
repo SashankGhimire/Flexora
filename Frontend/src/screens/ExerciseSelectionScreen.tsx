@@ -1,6 +1,6 @@
 import React from 'react';
 import { ImageBackground, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SectionHeader, SimpleIcon } from '../components/ui';
 import { WorkoutCard } from '../components/workout';
@@ -35,10 +35,23 @@ const HERO_BG =
 export const ExerciseSelectionScreen: React.FC = () => {
   const navigation = useNavigation<ExerciseNavProp>();
   const { workouts, workoutsState, refreshWorkouts } = useAppData();
+  const contentScrollRef = React.useRef<ScrollView>(null);
 
   React.useEffect(() => {
     refreshWorkouts();
   }, [refreshWorkouts]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const rafId = requestAnimationFrame(() => {
+        contentScrollRef.current?.scrollTo({ x: 0, y: 0, animated: false });
+      });
+
+      return () => {
+        cancelAnimationFrame(rafId);
+      };
+    }, [])
+  );
 
   const categories = React.useMemo(() => {
     const values = workouts.map((workout) => workout.category);
@@ -69,7 +82,7 @@ export const ExerciseSelectionScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={contentScrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ImageBackground source={{ uri: HERO_BG }} style={styles.heroCard} imageStyle={styles.heroImage}>
           <View style={styles.heroOverlay}>
             <View style={styles.heroGlowOrbLarge} />

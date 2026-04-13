@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   TextInput,
   View,
@@ -16,7 +16,7 @@ import Animated, {
   Extrapolate,
 } from 'react-native-reanimated';
 import { SimpleIcon } from './SimpleIcon';
-import { Colors } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { FontWeight, Radius, Spacing, Typography } from '../../theme/tokens';
 
 interface CustomInputProps extends TextInputProps {
@@ -33,6 +33,8 @@ export const CustomInput: React.FC<CustomInputProps> = ({
   isPassword = false,
   ...props
 }) => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const focusAnimation = useSharedValue(0);
@@ -41,7 +43,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
   const animatedBorderStyle = useAnimatedStyle(() => {
     return {
       borderColor: withTiming(
-        focusAnimation.value === 1 ? Colors.primary : Colors.border,
+        focusAnimation.value === 1 ? colors.primary : colors.border,
         { duration: 200 }
       ),
     };
@@ -101,7 +103,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
           <SimpleIcon
             name={icon}
             size={20}
-            color={isFocused ? Colors.primary : Colors.textMuted}
+            color={isFocused ? colors.primary : colors.textMuted}
             style={styles.leftIcon}
           />
         )}
@@ -111,7 +113,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
           onFocus={handleFocus}
           onBlur={handleBlur}
           style={styles.textInput}
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={colors.textMuted}
         />
         {isPassword && (
           <TouchableOpacity
@@ -121,8 +123,8 @@ export const CustomInput: React.FC<CustomInputProps> = ({
               styles.passwordToggle,
               {
                 backgroundColor: isFocused
-                  ? `${Colors.primary}20`
-                  : `${Colors.textMuted}15`,
+                  ? `${colors.primary}20`
+                  : `${colors.textMuted}15`,
               },
             ]}
           >
@@ -130,7 +132,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
               <SimpleIcon
                 name={showPassword ? 'eye' : 'eye-off'}
                 size={24}
-                color={isFocused ? Colors.primary : Colors.textMuted}
+                color={isFocused ? colors.primary : colors.textMuted}
               />
             </Animated.View>
           </TouchableOpacity>
@@ -145,48 +147,53 @@ export const CustomInput: React.FC<CustomInputProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 16,
-  },
-  label: {
-    color: Colors.textPrimary,
-    fontSize: Typography.subtitle,
-    fontWeight: FontWeight.semi,
-    marginBottom: Spacing.sm,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.input,
-    borderRadius: Radius.md,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-  },
-  leftIcon: {
-    marginRight: 12,
-  },
-  textInput: {
-    flex: 1,
-    color: Colors.textPrimary,
-    paddingVertical: 16,
-    fontSize: Typography.subtitle,
-  },
-  passwordToggle: {
-    width: 48,
-    height: 48,
-    borderRadius: Radius.pill,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  errorText: {
-    color: Colors.error,
-    fontSize: Typography.caption,
-    marginTop: Spacing.xs,
-    marginLeft: Spacing.xs,
-  },
-});
+const createStyles = (colors: {
+  textPrimary: string;
+  input: string;
+  error: string;
+}) =>
+  StyleSheet.create({
+    container: {
+      marginBottom: 16,
+    },
+    label: {
+      color: colors.textPrimary,
+      fontSize: Typography.subtitle,
+      fontWeight: FontWeight.semi,
+      marginBottom: Spacing.sm,
+    },
+    inputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.input,
+      borderRadius: Radius.md,
+      paddingHorizontal: 16,
+      borderWidth: 1,
+    },
+    leftIcon: {
+      marginRight: 12,
+    },
+    textInput: {
+      flex: 1,
+      color: colors.textPrimary,
+      paddingVertical: 16,
+      fontSize: Typography.subtitle,
+    },
+    passwordToggle: {
+      width: 48,
+      height: 48,
+      borderRadius: Radius.pill,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: 8,
+    },
+    errorText: {
+      color: colors.error,
+      fontSize: Typography.caption,
+      marginTop: Spacing.xs,
+      marginLeft: Spacing.xs,
+    },
+  });
 
 
 
