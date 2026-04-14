@@ -173,7 +173,8 @@ export const UsersPage = () => {
       setSelectedUser(updated);
       setIsEditOpen(false);
     } catch (error) {
-      setActionError('Failed to update user. Check if email is unique.');
+      const message = error instanceof Error ? error.message : 'Failed to update user.';
+      setActionError(message);
     } finally {
       setIsSaving(false);
     }

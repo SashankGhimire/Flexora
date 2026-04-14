@@ -6,6 +6,7 @@ import { SectionHeader, SimpleIcon } from '../components/ui';
 import { WorkoutCard } from '../components/workout';
 import { ExerciseType, HomeStackParamList } from '../types';
 import { useAppData } from '../context/AppDataContext';
+import { useTheme } from '../context/ThemeContext';
 import { getAllPrograms } from '../data/workoutData';
 import { Colors } from '../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
@@ -22,9 +23,9 @@ type AiWorkout = {
 const AI_WORKOUTS: AiWorkout[] = [
   { key: 'squat', title: 'AI Squat', description: 'Camera-based squat form detection', icon: 'activity' },
   { key: 'pushup', title: 'AI Pushup', description: 'Real-time pushup posture guidance', icon: 'target' },
-  { key: 'lunge', title: 'AI Lunge', description: 'AI lunge alignment and rep counting', icon: 'zap' },
+  { key: 'shoulderPress', title: 'AI Shoulder Press', description: 'Strict overhead press form and rep tracking', icon: 'zap' },
   { key: 'jumpingJack', title: 'AI Jumping Jack', description: 'Cardio form tracking with rep counter', icon: 'users' },
-  { key: 'plank', title: 'AI Plank', description: 'Posture stability tracking for plank hold', icon: 'shield' },
+  { key: 'standingKneeRaise', title: 'AI Standing Knee Raise', description: 'Strict knee-drive tracking with rep counting', icon: 'shield' },
   { key: 'bicepCurl', title: 'AI Bicep Curl', description: 'Rep and range tracking for curls', icon: 'activity' },
 ];
 
@@ -33,13 +34,17 @@ const HERO_BG =
   'https://images.unsplash.com/photo-1549476464-37392f717541?auto=format&fit=crop&w=1200&q=75';
 
 export const ExerciseSelectionScreen: React.FC = () => {
+  const { themeMode } = useTheme();
+  const styles = React.useMemo(() => createStyles(), [themeMode]);
   const navigation = useNavigation<ExerciseNavProp>();
   const { workouts, workoutsState, refreshWorkouts } = useAppData();
   const contentScrollRef = React.useRef<ScrollView>(null);
 
   React.useEffect(() => {
-    refreshWorkouts();
-  }, [refreshWorkouts]);
+    if (workouts.length === 0 && !workoutsState.loading) {
+      refreshWorkouts();
+    }
+  }, [refreshWorkouts, workouts.length, workoutsState.loading]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -78,6 +83,15 @@ export const ExerciseSelectionScreen: React.FC = () => {
 
   const handleStartAiWorkout = (exerciseType: ExerciseType) => {
     navigation.navigate('Workout', { exerciseType });
+  };
+
+  const handleStartWorkout = () => {
+    const firstProgram = displayPrograms[0];
+    if (!firstProgram) {
+      return;
+    }
+
+    navigation.navigate('WorkoutProgram', { programId: firstProgram.id });
   };
 
   return (
@@ -177,11 +191,23 @@ export const ExerciseSelectionScreen: React.FC = () => {
 
         <View style={styles.bottomSpace} />
       </ScrollView>
+
+      <View style={styles.stickyCtaWrap}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          style={[styles.stickyCtaButton, displayPrograms.length === 0 && styles.stickyCtaButtonDisabled]}
+          onPress={handleStartWorkout}
+          disabled={displayPrograms.length === 0}
+        >
+          <SimpleIcon name="play" size={16} color={Colors.textOnPrimary} />
+          <Text style={styles.stickyCtaText}>Start Workout</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -384,7 +410,32 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
   },
   bottomSpace: {
-    height: 92,
+    height: 140,
+  },
+  stickyCtaWrap: {
+    position: 'absolute',
+    left: Spacing.lg,
+    right: Spacing.lg,
+    bottom: Spacing.lg,
+  },
+  stickyCtaButton: {
+    minHeight: 50,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.primary,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: Spacing.xs,
+  },
+  stickyCtaButtonDisabled: {
+    opacity: 0.5,
+  },
+  stickyCtaText: {
+    color: Colors.textOnPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
   },
 });
 

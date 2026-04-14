@@ -22,6 +22,27 @@ type RegisterScreenProps = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 };
 
+const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
+const GMAIL_REGEX = /^[a-z0-9.]+@gmail\.com$/;
+
+const isStrictGmailAddress = (email: string): boolean => {
+  if (!GMAIL_REGEX.test(email)) {
+    return false;
+  }
+
+  const localPart = email.split('@')[0] || '';
+
+  if (localPart.length < 6 || localPart.length > 30) {
+    return false;
+  }
+
+  if (localPart.startsWith('.') || localPart.endsWith('.') || localPart.includes('..')) {
+    return false;
+  }
+
+  return true;
+};
+
 const getPasswordStrength = (value: string) => {
   let score = 0;
 
@@ -55,7 +76,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
   const validate = () => {
     let isValid = true;
     const trimmedName = fullName.trim();
-    const trimmedEmail = email.trim();
+    const trimmedEmail = email.trim().toLowerCase();
 
     if (!trimmedName) {
       setFullNameError('Full name is required');
@@ -67,8 +88,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
     if (!trimmedEmail) {
       setEmailError('Email is required');
       isValid = false;
-    } else if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
+    } else if (!EMAIL_REGEX.test(trimmedEmail)) {
       setEmailError('Enter a valid email');
+      isValid = false;
+    } else if (!isStrictGmailAddress(trimmedEmail)) {
+      setEmailError('Enter a valid Gmail address (example: name123@gmail.com)');
       isValid = false;
     } else {
       setEmailError(undefined);
@@ -102,10 +126,21 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
 
     setLoading(true);
     try {
-      await register(email.trim(), password, fullName.trim());
+      await register(email.trim().toLowerCase(), password, fullName.trim());
       Alert.alert('Success', 'Account created successfully!');
     } catch (error: any) {
-      const errorMessage = error?.message || 'Registration failed. Please try again.';
+      const errorMessage = String(error?.message || 'Registration failed. Please try again.');
+
+      if (/gmail/i.test(errorMessage)) {
+        setEmailError('Enter a valid Gmail address (example: name123@gmail.com)');
+        return;
+      }
+
+      if (/email already|already registered/i.test(errorMessage)) {
+        setEmailError('This Gmail address is already registered');
+        return;
+      }
+
       Alert.alert('Registration Error', errorMessage);
     } finally {
       setLoading(false);
@@ -158,7 +193,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
               <CustomInput
                 label="Email Address"
                 icon="at-sign"
-                placeholder="your.email@example.com"
+                placeholder="your.name@gmail.com"
                 value={email}
                 onChangeText={(value) => {
                   setEmail(value);

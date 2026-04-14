@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Alert, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Card, SectionHeader, SimpleIcon, StatCard } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
@@ -192,12 +192,16 @@ export const ProgressScreen: React.FC = () => {
     loadProgress();
   }, [getProgressForUser, user?.id]);
 
-  const clampWeight = (next: string): string => {
-    const numeric = Number(next.replace(/[^0-9.]/g, ''));
-    if (Number.isNaN(numeric)) {
-      return '';
+  const normalizeWeightInput = (next: string): string => {
+    const cleaned = next.replace(',', '.').replace(/[^0-9.]/g, '');
+    const [whole, ...decimalParts] = cleaned.split('.');
+    const decimal = decimalParts.join('').slice(0, 1);
+
+    if (decimalParts.length > 0) {
+      return `${whole}.${decimal}`;
     }
-    return String(Math.max(30, Math.min(220, Number(numeric.toFixed(1)))));
+
+    return whole;
   };
 
   const persistProfile = async (closeModal = false) => {
@@ -210,6 +214,11 @@ export const ProgressScreen: React.FC = () => {
       if (closeModal) {
         setBmiModalVisible(false);
       }
+      return;
+    }
+
+    if (kg < 30 || kg > 220) {
+      Alert.alert('Invalid weight', 'Please enter a weight between 30 and 220 kg.');
       return;
     }
 
@@ -345,11 +354,6 @@ export const ProgressScreen: React.FC = () => {
           <StatCard
             label="Avg Accuracy"
             value={`${Math.round(progressStats.avgAccuracy || 0)}%`}
-            icon={<SimpleIcon name="award" size={16} color={Colors.primary} />}
-          />
-          <StatCard
-            label="Total Time"
-            value={`${Math.round(progressStats.totalWorkoutMinutes || 0)}m`}
             icon={<SimpleIcon name="award" size={16} color={Colors.primary} />}
           />
         </Animated.View>
@@ -552,7 +556,7 @@ export const ProgressScreen: React.FC = () => {
               <Text style={styles.modalLabel}>Weight (kg)</Text>
               <TextInput
                 value={weightKg}
-                onChangeText={(text) => setWeightKg(clampWeight(text))}
+                onChangeText={(text) => setWeightKg(normalizeWeightInput(text))}
                 keyboardType="numeric"
                 placeholder="75"
                 placeholderTextColor={Colors.textSecondary}

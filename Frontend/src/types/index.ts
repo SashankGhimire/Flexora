@@ -30,7 +30,7 @@ export type OnboardingStackParamList = {
   BMI: { answers: OnboardingAnswers };
 };
 
-export type ExerciseType = 'squat' | 'pushup' | 'lunge' | 'jumpingJack' | 'plank' | 'bicepCurl';
+export type ExerciseType = 'squat' | 'pushup' | 'shoulderPress' | 'jumpingJack' | 'standingKneeRaise' | 'bicepCurl';
 
 export type HomeTabParamList = {
   Home: undefined;

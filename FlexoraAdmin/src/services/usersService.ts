@@ -15,6 +15,15 @@ export type UpdateUserPayload = {
 };
 import { apiFetch } from './api';
 
+const parseApiErrorMessage = async (response: Response, fallback: string) => {
+  try {
+    const data = await response.json();
+    return data?.message || data?.error || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 export async function fetchUsers(): Promise<ApiUser[]> {
   const response = await apiFetch('/api/auth/users');
 
@@ -47,7 +56,8 @@ export async function updateUserById(id: string, payload: UpdateUserPayload): Pr
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to update user: ${response.status}`);
+    const message = await parseApiErrorMessage(response, `Failed to update user: ${response.status}`);
+    throw new Error(message);
   }
 
   const data = await response.json();

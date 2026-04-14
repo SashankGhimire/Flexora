@@ -13,9 +13,9 @@ export const evaluatePosture = (
   const targetRanges: Record<ExerciseType, { min: number; max: number; label: string }> = {
     squat: { min: 80, max: 110, label: 'Keep hips and knees aligned' },
     pushup: { min: 70, max: 110, label: 'Keep your body in a straight line' },
-    lunge: { min: 75, max: 110, label: 'Maintain knee-over-ankle position' },
+    shoulderPress: { min: 90, max: 165, label: 'Stack wrists over elbows and press overhead with control' },
     jumpingJack: { min: 140, max: 180, label: 'Raise arms fully and keep torso controlled' },
-    plank: { min: 160, max: 190, label: 'Keep your core engaged and back flat' },
+    standingKneeRaise: { min: 80, max: 140, label: 'Lift one knee toward hip height with an upright torso' },
     bicepCurl: { min: 45, max: 120, label: 'Keep elbow close to torso and control the curl' },
   };
 

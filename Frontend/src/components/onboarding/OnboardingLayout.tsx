@@ -6,9 +6,11 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../theme/colors';
 import { Spacing, Typography } from '../../theme/tokens';
 import { NextButton } from './NextButton';
@@ -36,9 +38,11 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   nextDisabled,
   children,
 }) => {
+  const navigation = useNavigation();
   const { width } = useWindowDimensions();
   const compact = width <= 360;
   const androidTopInset = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+  const showBackButton = navigation.canGoBack();
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -52,6 +56,18 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
         ]}
         keyboardShouldPersistTaps="handled"
       >
+        {showBackButton && (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <SimpleIcon name="chevron-left" size={16} color={Colors.textPrimary} />
+            <Text style={styles.backButtonText}>Back</Text>
+          </TouchableOpacity>
+        )}
         <ProgressHeader step={step} total={totalSteps} />
         <View style={[styles.headerCard, compact && styles.headerCardCompact]}>
           <View style={styles.badgeRow}>
@@ -102,6 +118,24 @@ const styles = StyleSheet.create({
   contentCompact: {
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.sm,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
+  },
+  backButtonText: {
+    color: Colors.textPrimary,
+    fontSize: Typography.body,
+    fontWeight: '600',
   },
   headerCard: {
     marginTop: Spacing.xs,

@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const LoginPage = () => {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -19,10 +21,27 @@ export const LoginPage = () => {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setError('Email is required.');
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    if (!password) {
+      setError('Password is required.');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setError('');
-      await login(email, password, remember);
+      await login(normalizedEmail, password, remember);
       navigate('/');
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : 'Login failed.');

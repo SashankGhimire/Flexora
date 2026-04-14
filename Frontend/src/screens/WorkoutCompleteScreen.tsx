@@ -3,6 +3,7 @@ import { Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'r
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { getApiServerOrigin } from '../services/api';
 import { Colors } from '../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
@@ -17,6 +18,8 @@ const formatTotalTime = (seconds: number): string => {
 };
 
 export const WorkoutCompleteScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { themeMode } = useTheme();
+  const styles = React.useMemo(() => createStyles(), [themeMode]);
   const { user } = useAuth();
   const { completedExercises, totalSeconds } = route.params;
   const avatarUrl = user?.avatarUrl
@@ -74,7 +77,7 @@ export const WorkoutCompleteScreen: React.FC<Props> = ({ route, navigation }) =>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,

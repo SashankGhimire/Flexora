@@ -41,19 +41,19 @@ type Side = 'left' | 'right';
 type ResultThresholds = {
   squat: { down: number; up: number; repFrom: number; repTo: number };
   pushup: { down: number; up: number; repFrom: number; repTo: number };
-  lunge: { down: number; up: number; repFrom: number; repTo: number };
+  shoulderPress: { down: number; up: number; repFrom: number; repTo: number };
   bicepCurl: { down: number; up: number; repFrom: number; repTo: number };
   jumpingJack: { openAnkle: number; closeAnkle: number; prevOpenAnkle: number };
-  plank: { maxDeviation: number };
+  standingKneeRaise: { upLift: number; downLift: number; repFrom: number; repTo: number };
 };
 
 const THRESHOLDS: ResultThresholds = {
   squat: { down: 100, up: 158, repFrom: 102, repTo: 156 },
   pushup: { down: 95, up: 153, repFrom: 98, repTo: 150 },
-  lunge: { down: 95, up: 156, repFrom: 98, repTo: 154 },
+  shoulderPress: { down: 102, up: 156, repFrom: 106, repTo: 152 },
   bicepCurl: { down: 65, up: 148, repFrom: 70, repTo: 145 },
   jumpingJack: { openAnkle: 0.22, closeAnkle: 0.16, prevOpenAnkle: 0.2 },
-  plank: { maxDeviation: 15 },
+  standingKneeRaise: { upLift: 0.045, downLift: 0.02, repFrom: 0.025, repTo: 0.04 },
 };
 
 const JOINTS = {
@@ -78,9 +78,9 @@ type PhasePersistenceState = {
 const phaseStateByExercise: Record<ExerciseDetectorType, PhasePersistenceState> = {
   squat: { lastPhase: 'hold', phaseStreak: 0, recentDownStreak: 0 },
   pushup: { lastPhase: 'hold', phaseStreak: 0, recentDownStreak: 0 },
-  lunge: { lastPhase: 'hold', phaseStreak: 0, recentDownStreak: 0 },
+  shoulderPress: { lastPhase: 'hold', phaseStreak: 0, recentDownStreak: 0 },
   jumpingJack: { lastPhase: 'hold', phaseStreak: 0, recentDownStreak: 0 },
-  plank: { lastPhase: 'hold', phaseStreak: 0, recentDownStreak: 0 },
+  standingKneeRaise: { lastPhase: 'hold', phaseStreak: 0, recentDownStreak: 0 },
   bicepCurl: { lastPhase: 'hold', phaseStreak: 0, recentDownStreak: 0 },
 };
 
@@ -282,29 +282,23 @@ const getCenterPoint = (
   return { x: one.x, y: one.y };
 };
 
-const getPlankAlignmentAngle = (keypoints: PoseKeypoint[]): number | null => {
-  const shoulderLeft = getKeypoint(keypoints, MOVENET.LEFT_SHOULDER, MIN_SCORE);
-  const shoulderRight = getKeypoint(keypoints, MOVENET.RIGHT_SHOULDER, MIN_SCORE);
-  const hipLeft = getKeypoint(keypoints, MOVENET.LEFT_HIP, MIN_SCORE);
-  const hipRight = getKeypoint(keypoints, MOVENET.RIGHT_HIP, MIN_SCORE);
-  const ankleLeft = getKeypoint(keypoints, MOVENET.LEFT_ANKLE, MIN_SCORE);
-  const ankleRight = getKeypoint(keypoints, MOVENET.RIGHT_ANKLE, MIN_SCORE);
+const getKneeRaiseLift = (keypoints: PoseKeypoint[]): number | null => {
+  const leftHip = getKeypoint(keypoints, MOVENET.LEFT_HIP, MIN_SCORE);
+  const rightHip = getKeypoint(keypoints, MOVENET.RIGHT_HIP, MIN_SCORE);
+  const leftKnee = getKeypoint(keypoints, MOVENET.LEFT_KNEE, MIN_SCORE);
+  const rightKnee = getKeypoint(keypoints, MOVENET.RIGHT_KNEE, MIN_SCORE);
 
-  const shoulder = shoulderLeft && shoulderRight
-    ? { x: (shoulderLeft.x + shoulderRight.x) * 0.5, y: (shoulderLeft.y + shoulderRight.y) * 0.5 }
-    : shoulderLeft ?? shoulderRight;
-  const hip = hipLeft && hipRight
-    ? { x: (hipLeft.x + hipRight.x) * 0.5, y: (hipLeft.y + hipRight.y) * 0.5 }
-    : hipLeft ?? hipRight;
-  const ankle = ankleLeft && ankleRight
-    ? { x: (ankleLeft.x + ankleRight.x) * 0.5, y: (ankleLeft.y + ankleRight.y) * 0.5 }
-    : ankleLeft ?? ankleRight;
+  const hipCenterY = leftHip && rightHip
+    ? (leftHip.y + rightHip.y) * 0.5
+    : leftHip?.y ?? rightHip?.y;
 
-  if (!shoulder || !hip || !ankle) {
+  if (hipCenterY === undefined) {
     return null;
   }
 
-  return calculateAngle(shoulder, hip, ankle);
+  const leftLift = leftKnee ? hipCenterY - leftKnee.y : 0;
+  const rightLift = rightKnee ? hipCenterY - rightKnee.y : 0;
+  return Math.max(leftLift, rightLift);
 };
 
 export const detectSquat = (
@@ -371,35 +365,34 @@ export const detectPushup = (
   return createResult(repDetected, phase, phase === 'down' ? 'Press back up with control' : undefined);
 };
 
-export const detectLunge = (
+export const detectShoulderPress = (
   previousKeypoints: PoseKeypoint[],
   currentKeypoints: PoseKeypoint[]
 ): ExerciseDetectionResult => {
   const { previous, current } = smoothKeypoints(previousKeypoints, currentKeypoints);
 
-  const prevKnee = getKneeAverage(previous);
-  const currKnee = getKneeAverage(current);
-  const hipDy = verticalDelta(previous, current, MOVENET.LEFT_HIP, MOVENET.RIGHT_HIP);
+  const prevElbow = getElbowAverage(previous);
+  const currElbow = getElbowAverage(current);
 
-  if (currKnee === null) {
-    return createResult(false, 'hold', 'Keep legs and hips in frame');
+  if (currElbow === null) {
+    return createResult(false, 'hold', 'Keep shoulders, elbows, and wrists visible');
   }
 
   const phase: ExerciseDetectionPhase =
-    isAtOrBelow(currKnee, THRESHOLDS.lunge.down) && hipDy !== null && hipDy > -VERTICAL_TOLERANCE
+    isAtOrBelow(currElbow, THRESHOLDS.shoulderPress.down)
       ? 'down'
-      : isAtOrAbove(currKnee, THRESHOLDS.lunge.up) && hipDy !== null && hipDy < VERTICAL_TOLERANCE
+      : isAtOrAbove(currElbow, THRESHOLDS.shoulderPress.up)
         ? 'up'
         : 'hold';
 
   const repDetected = didTransitionRep(
-    prevKnee,
-    currKnee,
-    THRESHOLDS.lunge.repFrom,
-    THRESHOLDS.lunge.repTo
+    prevElbow,
+    currElbow,
+    THRESHOLDS.shoulderPress.repFrom,
+    THRESHOLDS.shoulderPress.repTo
   );
 
-  return createResult(repDetected, phase, phase === 'down' ? 'Keep front knee over ankle' : undefined);
+  return createResult(repDetected, phase, phase === 'down' ? 'Press overhead in a straight line' : undefined);
 };
 
 export const detectJumpingJack = (
@@ -450,21 +443,31 @@ export const detectJumpingJack = (
   return createResult(repDetected, phase, phase === 'open' ? 'Return to center to finish rep' : undefined);
 };
 
-export const detectPlank = (
+export const detectStandingKneeRaise = (
   previousKeypoints: PoseKeypoint[],
   currentKeypoints: PoseKeypoint[]
 ): ExerciseDetectionResult => {
-  const { current: smoothedCurrent } = smoothKeypoints(previousKeypoints, currentKeypoints);
-  const angle = getPlankAlignmentAngle(smoothedCurrent);
+  const { previous, current } = smoothKeypoints(previousKeypoints, currentKeypoints);
+  const prevLift = getKneeRaiseLift(previous);
+  const currLift = getKneeRaiseLift(current);
 
-  if (angle === null) {
-    return createResult(false, 'hold', 'Align shoulder, hip, and ankle in frame');
+  if (currLift === null) {
+    return createResult(false, 'hold', 'Keep hips and knees visible');
   }
 
-  const deviation = Math.abs(180 - angle);
-  const isCorrect = deviation < THRESHOLDS.plank.maxDeviation;
+  const phase: ExerciseDetectionPhase =
+    currLift >= THRESHOLDS.standingKneeRaise.upLift
+      ? 'up'
+      : currLift <= THRESHOLDS.standingKneeRaise.downLift
+        ? 'down'
+        : 'hold';
 
-  return createResult(false, 'hold', isCorrect ? 'Plank posture good' : 'Keep body in a straighter line');
+  const repDetected =
+    prevLift !== null &&
+    prevLift <= THRESHOLDS.standingKneeRaise.repFrom &&
+    currLift >= THRESHOLDS.standingKneeRaise.repTo;
+
+  return createResult(repDetected, phase, phase === 'up' ? 'Drive knee up to hip height' : undefined);
 };
 
 export const detectBicepCurl = (
@@ -499,9 +502,9 @@ export const detectBicepCurl = (
 const DETECTORS: Record<ExerciseDetectorType, Detector> = {
   squat: detectSquat,
   pushup: detectPushup,
-  lunge: detectLunge,
+  shoulderPress: detectShoulderPress,
   jumpingJack: detectJumpingJack,
-  plank: detectPlank,
+  standingKneeRaise: detectStandingKneeRaise,
   bicepCurl: detectBicepCurl,
 };
 

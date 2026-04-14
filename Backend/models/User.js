@@ -6,6 +6,32 @@
 const mongoose = require('mongoose');
 const bcryptjs = require('bcryptjs');
 
+const GMAIL_REGEX = /^[a-z0-9.]+@gmail\.com$/;
+
+const isStrictGmailAddress = (email) => {
+  if (typeof email !== 'string') {
+    return false;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (!GMAIL_REGEX.test(normalizedEmail)) {
+    return false;
+  }
+
+  const [localPart] = normalizedEmail.split('@');
+
+  if (!localPart || localPart.length < 6 || localPart.length > 30) {
+    return false;
+  }
+
+  if (localPart.startsWith('.') || localPart.endsWith('.') || localPart.includes('..')) {
+    return false;
+  }
+
+  return true;
+};
+
 // Define User Schema
 const userSchema = new mongoose.Schema(
   {
@@ -21,10 +47,10 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Please provide an email'],
       unique: true,
       lowercase: true,
-      match: [
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-        'Please provide a valid email address',
-      ],
+      validate: {
+        validator: isStrictGmailAddress,
+        message: 'Only valid Gmail addresses are allowed',
+      },
     },
     password: {
       type: String,

@@ -66,6 +66,9 @@ export const ProfileScreen: React.FC = () => {
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
+  const [privateProfileEnabled, setPrivateProfileEnabled] = useState(true);
+  const [biometricLockEnabled, setBiometricLockEnabled] = useState(false);
 
   const selectedGoalLabel = GOAL_OPTIONS.find((option) => option.value === selectedGoal)?.label || 'Improve Fitness';
 
@@ -457,7 +460,7 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
             <View style={styles.settingDivider} />
 
-            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8} onPress={() => setPrivacyModalVisible(true)}>
               <View style={[styles.settingRowIconWrap, styles.settingRowIconMuted]}>
                 <SimpleIcon name="shield" size={16} color={Colors.textSecondary} />
               </View>
@@ -524,6 +527,57 @@ export const ProfileScreen: React.FC = () => {
                 </Pressable>
                 <Pressable style={styles.modalBtn} onPress={handleSaveGoal} disabled={savingGoal}>
                   <Text style={styles.modalBtnText}>{savingGoal ? 'Saving...' : 'Save Goal'}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={privacyModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPrivacyModalVisible(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Privacy & Security</Text>
+              <Text style={styles.modalSubtitle}>Manage your visibility and account protection settings.</Text>
+
+              <View style={styles.privacyItem}>
+                <View style={styles.privacyTextWrap}>
+                  <Text style={styles.privacyTitle}>Private Profile</Text>
+                  <Text style={styles.privacyDescription}>Hide profile details from other users.</Text>
+                </View>
+                <Switch
+                  value={privateProfileEnabled}
+                  onValueChange={setPrivateProfileEnabled}
+                  trackColor={{ false: Colors.border, true: Colors.primaryA52 }}
+                  thumbColor={privateProfileEnabled ? Colors.primary : Colors.textMuted}
+                />
+              </View>
+
+              <View style={styles.privacyItem}>
+                <View style={styles.privacyTextWrap}>
+                  <Text style={styles.privacyTitle}>Biometric Lock</Text>
+                  <Text style={styles.privacyDescription}>Require fingerprint/face unlock on app launch.</Text>
+                </View>
+                <Switch
+                  value={biometricLockEnabled}
+                  onValueChange={setBiometricLockEnabled}
+                  trackColor={{ false: Colors.border, true: Colors.primaryA52 }}
+                  thumbColor={biometricLockEnabled ? Colors.primary : Colors.textMuted}
+                />
+              </View>
+
+              <View style={styles.privacyNoticeCard}>
+                <SimpleIcon name="shield" size={14} color={Colors.primary} />
+                <Text style={styles.privacyNoticeText}>Flexora secures your workout and profile data with authenticated API access.</Text>
+              </View>
+
+              <View style={styles.modalActions}>
+                <Pressable style={styles.modalBtn} onPress={() => setPrivacyModalVisible(false)}>
+                  <Text style={styles.modalBtnText}>Done</Text>
                 </Pressable>
               </View>
             </View>
@@ -1016,6 +1070,50 @@ const createStyles = (themeMode: 'light' | 'dark') => {
     color: Colors.textOnPrimary,
     fontSize: Typography.subtitle,
     fontWeight: FontWeight.bold,
+  },
+  privacyItem: {
+    marginBottom: Spacing.sm,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.md,
+  },
+  privacyTextWrap: {
+    flex: 1,
+  },
+  privacyTitle: {
+    color: Colors.textPrimary,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.semi,
+  },
+  privacyDescription: {
+    marginTop: 2,
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+  },
+  privacyNoticeCard: {
+    marginTop: Spacing.xs,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryLightA16,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  privacyNoticeText: {
+    flex: 1,
+    color: Colors.textPrimary,
+    fontSize: Typography.caption,
+    lineHeight: 17,
   },
   });
 };

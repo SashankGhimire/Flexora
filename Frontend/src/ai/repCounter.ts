@@ -1,5 +1,5 @@
 import { ExerciseType } from '../types';
-import { calculateAngle, getKeypoint, JointAngles, PoseKeypoint } from './motionIntelligence';
+import { getKeypoint, JointAngles, PoseKeypoint } from './motionIntelligence';
 
 const MIN_SCORE = 0.3;
 const PHASE_CONFIRMATION_FRAMES = 2;
@@ -21,9 +21,9 @@ type CounterResult = {
 const states: Record<ExerciseType, CounterState> = {
   squat: { phase: 'hold', repCount: 0, pendingPhase: null, pendingFrames: 0 },
   pushup: { phase: 'hold', repCount: 0, pendingPhase: null, pendingFrames: 0 },
-  lunge: { phase: 'hold', repCount: 0, pendingPhase: null, pendingFrames: 0 },
+  shoulderPress: { phase: 'hold', repCount: 0, pendingPhase: null, pendingFrames: 0 },
   jumpingJack: { phase: 'hold', repCount: 0, pendingPhase: null, pendingFrames: 0 },
-  plank: { phase: 'hold', repCount: 0, pendingPhase: null, pendingFrames: 0 },
+  standingKneeRaise: { phase: 'hold', repCount: 0, pendingPhase: null, pendingFrames: 0 },
   bicepCurl: { phase: 'hold', repCount: 0, pendingPhase: null, pendingFrames: 0 },
 };
 
@@ -46,31 +46,43 @@ const averagePair = (first: number | null, second: number | null): number | null
   return null;
 };
 
-const getPlankPhase = (keypoints: PoseKeypoint[]): RepPhase => {
+const getStandingKneeRaisePhase = (keypoints: PoseKeypoint[]): RepPhase => {
   const leftShoulder = getKeypoint(keypoints, 5, MIN_SCORE);
   const rightShoulder = getKeypoint(keypoints, 6, MIN_SCORE);
   const leftHip = getKeypoint(keypoints, 11, MIN_SCORE);
   const rightHip = getKeypoint(keypoints, 12, MIN_SCORE);
-  const leftAnkle = getKeypoint(keypoints, 15, MIN_SCORE);
-  const rightAnkle = getKeypoint(keypoints, 16, MIN_SCORE);
+  const leftKnee = getKeypoint(keypoints, 13, MIN_SCORE);
+  const rightKnee = getKeypoint(keypoints, 14, MIN_SCORE);
 
-  const shoulder = leftShoulder && rightShoulder
-    ? { x: (leftShoulder.x + rightShoulder.x) * 0.5, y: (leftShoulder.y + rightShoulder.y) * 0.5 }
-    : leftShoulder ?? rightShoulder;
-  const hip = leftHip && rightHip
-    ? { x: (leftHip.x + rightHip.x) * 0.5, y: (leftHip.y + rightHip.y) * 0.5 }
-    : leftHip ?? rightHip;
-  const ankle = leftAnkle && rightAnkle
-    ? { x: (leftAnkle.x + rightAnkle.x) * 0.5, y: (leftAnkle.y + rightAnkle.y) * 0.5 }
-    : leftAnkle ?? rightAnkle;
+  const shoulderCenterY =
+    leftShoulder && rightShoulder
+      ? (leftShoulder.y + rightShoulder.y) * 0.5
+      : leftShoulder?.y ?? rightShoulder?.y;
 
-  if (!shoulder || !hip || !ankle) {
-    return 'bad posture';
+  const hipCenterY =
+    leftHip && rightHip
+      ? (leftHip.y + rightHip.y) * 0.5
+      : leftHip?.y ?? rightHip?.y;
+
+  if (hipCenterY === undefined || shoulderCenterY === undefined) {
+    return 'hold';
   }
 
-  const angle = calculateAngle(shoulder, hip, ankle);
-  const deviation = Math.abs(180 - angle);
-  return deviation <= 15 ? 'hold' : 'bad posture';
+  const leftLift = leftKnee ? hipCenterY - leftKnee.y : 0;
+  const rightLift = rightKnee ? hipCenterY - rightKnee.y : 0;
+  const maxLift = Math.max(leftLift, rightLift);
+  const torsoSpan = Math.max(0.08, hipCenterY - shoulderCenterY);
+  const liftRatio = maxLift / torsoSpan;
+
+  if (liftRatio > 0.24) {
+    return 'up';
+  }
+
+  if (liftRatio < 0.12) {
+    return 'down';
+  }
+
+  return 'hold';
 };
 
 const getJumpingJackPhase = (keypoints: PoseKeypoint[]): RepPhase => {
@@ -129,11 +141,10 @@ const getDesiredPhase = (
     return 'hold';
   }
 
-  if (exerciseType === 'lunge') {
-    const frontKnee = averagePair(angles.leftKnee, angles.rightKnee);
-    if (frontKnee === null) return 'hold';
-    if (frontKnee < 95) return 'down';
-    if (frontKnee > 160) return 'up';
+  if (exerciseType === 'shoulderPress') {
+    if (elbowAvg === null) return 'hold';
+    if (elbowAvg < 102) return 'down';
+    if (elbowAvg > 156) return 'up';
     return 'hold';
   }
 
@@ -141,16 +152,12 @@ const getDesiredPhase = (
     return getJumpingJackPhase(keypoints);
   }
 
-  return getPlankPhase(keypoints);
+  return getStandingKneeRaisePhase(keypoints);
 };
 
 const countsRep = (exerciseType: ExerciseType, fromPhase: RepPhase, toPhase: RepPhase): boolean => {
   if (exerciseType === 'jumpingJack') {
     return fromPhase === 'open' && toPhase === 'close';
-  }
-
-  if (exerciseType === 'plank') {
-    return false;
   }
 
   return fromPhase === 'down' && toPhase === 'up';
@@ -175,7 +182,9 @@ const applyPhaseStateMachine = (
     state.pendingFrames = 1;
   }
 
-  if (state.pendingFrames < PHASE_CONFIRMATION_FRAMES) {
+  const requiredFrames = exerciseType === 'standingKneeRaise' ? 1 : PHASE_CONFIRMATION_FRAMES;
+
+  if (state.pendingFrames < requiredFrames) {
     return { repCount: state.repCount, phase: state.phase };
   }
 

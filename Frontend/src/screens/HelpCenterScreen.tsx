@@ -50,7 +50,7 @@ export const HelpCenterScreen: React.FC<Props> = () => {
             <Card key={item.id} style={styles.faqCard}>
               <View style={styles.faqHeaderRow}>
                 <View style={styles.faqIconWrap}>
-                  <SimpleIcon name="help-circle" size={14} color={colors.primary} />
+                  <SimpleIcon name="life-buoy" size={14} color={colors.primary} />
                 </View>
                 <Text style={styles.faqQuestion}>{item.question}</Text>
               </View>
@@ -58,6 +58,17 @@ export const HelpCenterScreen: React.FC<Props> = () => {
             </Card>
           ))}
         </View>
+
+        <Card style={styles.contactCard}>
+          <View style={styles.contactHeaderRow}>
+            <View style={styles.faqIconWrap}>
+              <SimpleIcon name="mail" size={14} color={colors.primary} />
+            </View>
+            <Text style={styles.faqQuestion}>Need direct help?</Text>
+          </View>
+          <Text style={styles.faqAnswer}>Email us and we will respond as soon as possible.</Text>
+          <Text style={styles.supportEmail}>support@flexora.app</Text>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -132,5 +143,23 @@ const createStyles = (colors: {
       color: colors.textSecondary,
       fontSize: Typography.body,
       lineHeight: 20,
+    },
+    contactCard: {
+      marginTop: Spacing.md,
+      backgroundColor: colors.card,
+      borderColor: colors.border,
+      borderRadius: Radius.xl,
+      marginBottom: Spacing.xl,
+    },
+    contactHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+    supportEmail: {
+      marginTop: Spacing.sm,
+      color: colors.primary,
+      fontSize: Typography.subtitle,
+      fontWeight: FontWeight.bold,
     },
   });

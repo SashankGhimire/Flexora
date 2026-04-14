@@ -142,7 +142,7 @@ export const AppLaunchSplash: React.FC = () => {
       >
         <View style={styles.centerWrap}>
           <Animated.View style={{ transform: [{ translateY: logoFloatY }] }}>
-            <Logo size={88} animated={false} />
+            <Logo size={88} animated />
           </Animated.View>
           <Text style={styles.flexoraText}>Flexora</Text>
           <Text style={styles.badgeText}>AI FITNESS TRAINER</Text>

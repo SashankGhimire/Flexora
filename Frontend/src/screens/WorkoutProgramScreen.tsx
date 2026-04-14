@@ -1,8 +1,10 @@
 import React from 'react';
+import { InteractionManager } from 'react-native';
 import { ImageBackground, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../types';
 import { useAppData } from '../context/AppDataContext';
+import { useTheme } from '../context/ThemeContext';
 import { resolveExerciseAnimation, resolveExercisePreview, resolveExerciseForWorkout } from '../data/workoutData';
 import { Colors } from '../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
@@ -41,6 +43,8 @@ const getExerciseMeta = (exercise: WorkoutExerciseView): string => {
 };
 
 export const WorkoutProgramScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { themeMode } = useTheme();
+  const styles = React.useMemo(() => createStyles(), [themeMode]);
   const { programId } = route.params;
   const { getWorkout } = useAppData();
   const [loading, setLoading] = React.useState(true);
@@ -50,6 +54,8 @@ export const WorkoutProgramScreen: React.FC<Props> = ({ route, navigation }) => 
   const [selectedExercise, setSelectedExercise] = React.useState<WorkoutExerciseView | null>(null);
 
   React.useEffect(() => {
+    let mounted = true;
+
     const hydrateWorkout = async () => {
       setLoading(true);
       setError(null);
@@ -60,6 +66,10 @@ export const WorkoutProgramScreen: React.FC<Props> = ({ route, navigation }) => 
           setProgram(null);
           setExercises([]);
           setError('Workout not found');
+          return;
+        }
+
+        if (!mounted) {
           return;
         }
 
@@ -90,15 +100,28 @@ export const WorkoutProgramScreen: React.FC<Props> = ({ route, navigation }) => 
             };
           });
 
-        setExercises(mappedExercises);
+        if (mounted) {
+          setExercises(mappedExercises);
+        }
       } catch (loadError: any) {
-        setError(loadError?.message || 'Failed to load workout');
+        if (mounted) {
+          setError(loadError?.message || 'Failed to load workout');
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
-    hydrateWorkout();
+    const interactionTask = InteractionManager.runAfterInteractions(() => {
+      hydrateWorkout();
+    });
+
+    return () => {
+      mounted = false;
+      interactionTask.cancel();
+    };
   }, [getWorkout, programId]);
 
   if (!program && !loading) {
@@ -259,7 +282,7 @@ export const WorkoutProgramScreen: React.FC<Props> = ({ route, navigation }) => 
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,

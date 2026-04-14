@@ -7,6 +7,27 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { uploadAvatarBuffer } = require('../config/cloudinary');
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const GMAIL_REGEX = /^[a-z0-9.]+@gmail\.com$/;
+
+const isStrictGmailAddress = (email) => {
+  if (!GMAIL_REGEX.test(email)) {
+    return false;
+  }
+
+  const [localPart] = email.split('@');
+
+  if (!localPart || localPart.length < 6 || localPart.length > 30) {
+    return false;
+  }
+
+  if (localPart.startsWith('.') || localPart.endsWith('.') || localPart.includes('..')) {
+    return false;
+  }
+
+  return true;
+};
+
 /**
  * Generate JWT Token
  * @param {string} userId - User ID from MongoDB
@@ -38,6 +59,18 @@ exports.register = async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({
         message: 'Please provide all required fields (name, email, password)',
+      });
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({
+        message: 'Please provide a valid email address',
+      });
+    }
+
+    if (!isStrictGmailAddress(email)) {
+      return res.status(400).json({
+        message: 'Only Gmail addresses are allowed for registration',
       });
     }
 
@@ -108,13 +141,19 @@ exports.login = async (req, res) => {
       });
     }
 
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({
+        message: 'Please enter a valid email address',
+      });
+    }
+
     // Find user by email and explicitly select password field
     const user = await User.findOne({ email }).select('+password');
 
     // Check if user exists
     if (!user) {
       return res.status(401).json({
-        message: 'Invalid email or password',
+        message: 'No account found with this email',
       });
     }
 
@@ -122,7 +161,7 @@ exports.login = async (req, res) => {
     const isPasswordValid = await user.matchPassword(password);
     if (!isPasswordValid) {
       return res.status(401).json({
-        message: 'Invalid email or password',
+        message: 'Incorrect password',
       });
     }
 
@@ -305,7 +344,15 @@ exports.updateUserById = async (req, res) => {
     }
 
     if (typeof email === 'string') {
-      updates.email = email.trim().toLowerCase();
+      const normalizedEmail = email.trim().toLowerCase();
+
+      if (!isStrictGmailAddress(normalizedEmail)) {
+        return res.status(400).json({
+          message: 'Only Gmail addresses are allowed',
+        });
+      }
+
+      updates.email = normalizedEmail;
     }
 
     if (typeof completedOnboarding === 'boolean') {

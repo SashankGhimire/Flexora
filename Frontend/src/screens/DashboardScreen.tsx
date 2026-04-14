@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Image,
@@ -95,6 +96,8 @@ export const DashboardScreen: React.FC = () => {
     todayMinutes: 0,
     streakDays: 0,
   });
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const focusCardListRef = useRef<FlatList<any>>(null);
 
   const isSameDay = (left: string | Date, right: Date) => {
@@ -132,32 +135,79 @@ export const DashboardScreen: React.FC = () => {
     return streak;
   };
 
+  const calculatePerformanceFromHistory = (
+    history: Array<{ durationSeconds?: number; caloriesBurned?: number; averageAccuracy?: number }>
+  ) => {
+    if (!history.length) {
+      return {
+        totalWorkouts: 0,
+        totalCaloriesBurned: 0,
+        avgAccuracy: 0,
+        totalWorkoutMinutes: 0,
+      };
+    }
+
+    const totalCaloriesBurned = history.reduce((sum, item) => sum + Number(item.caloriesBurned || 0), 0);
+    const totalDurationSeconds = history.reduce((sum, item) => sum + Number(item.durationSeconds || 0), 0);
+    const totalWorkoutMinutes = Math.max(0, Math.round(totalDurationSeconds / 60));
+    const validAccuracies = history
+      .map((item) => Number(item.averageAccuracy || 0))
+      .filter((value) => Number.isFinite(value) && value > 0);
+
+    const avgAccuracy =
+      validAccuracies.length > 0
+        ? validAccuracies.reduce((sum, value) => sum + value, 0) / validAccuracies.length
+        : 0;
+
+    return {
+      totalWorkouts: history.length,
+      totalCaloriesBurned,
+      avgAccuracy,
+      totalWorkoutMinutes,
+    };
+  };
+
   const loadStats = React.useCallback(async () => {
     if (!user?.id) {
       return;
     }
 
-    const progress = await getProgressForUser(user.id);
-    const workoutHistory = Array.isArray(progress?.workoutHistory) ? progress.workoutHistory : [];
-    const now = new Date();
+    setStatsLoading(true);
+    setStatsError(null);
 
-    const todayMinutes = workoutHistory.reduce((sum: number, item: { completedAt?: string; durationSeconds?: number }) => {
-      const completedAt = item.completedAt ? new Date(item.completedAt) : null;
-      if (!completedAt || !isSameDay(completedAt, now)) {
-        return sum;
+    try {
+      const progress = await getProgressForUser(user.id);
+      if (!progress) {
+        throw new Error('Unable to sync quick stats from backend');
       }
 
-      return sum + Math.max(0, Math.round((Number(item.durationSeconds || 0) / 60)));
-    }, 0);
+      const workoutHistory = Array.isArray(progress?.workoutHistory) ? progress.workoutHistory : [];
+      const now = new Date();
+      const fallbackStats = calculatePerformanceFromHistory(workoutHistory);
+      const backendStats = progress?.performanceStats || {};
 
-    setDashboardStats({
-      totalWorkouts: Number(progress?.performanceStats?.totalWorkouts || 0),
-      totalCaloriesBurned: Number(progress?.performanceStats?.totalCaloriesBurned || 0),
-      avgAccuracy: Number(progress?.performanceStats?.avgAccuracy || 0),
-      totalWorkoutMinutes: Number(progress?.performanceStats?.totalWorkoutMinutes || 0),
-      todayMinutes,
-      streakDays: calculateStreak(workoutHistory.map((item: { completedAt?: string }) => item.completedAt || now.toISOString())),
-    });
+      const todayMinutes = workoutHistory.reduce((sum: number, item: { completedAt?: string; durationSeconds?: number }) => {
+        const completedAt = item.completedAt ? new Date(item.completedAt) : null;
+        if (!completedAt || !isSameDay(completedAt, now)) {
+          return sum;
+        }
+
+        return sum + Math.max(0, Math.round(Number(item.durationSeconds || 0) / 60));
+      }, 0);
+
+      setDashboardStats({
+        totalWorkouts: Math.max(Number(backendStats?.totalWorkouts || 0), fallbackStats.totalWorkouts),
+        totalCaloriesBurned: Math.max(Number(backendStats?.totalCaloriesBurned || 0), Math.round(fallbackStats.totalCaloriesBurned)),
+        avgAccuracy: Number(backendStats?.avgAccuracy || 0) > 0 ? Number(backendStats.avgAccuracy) : fallbackStats.avgAccuracy,
+        totalWorkoutMinutes: Math.max(Number(backendStats?.totalWorkoutMinutes || 0), fallbackStats.totalWorkoutMinutes),
+        todayMinutes,
+        streakDays: calculateStreak(workoutHistory.map((item: { completedAt?: string }) => item.completedAt || now.toISOString())),
+      });
+    } catch (error: any) {
+      setStatsError(error?.message || 'Unable to sync quick stats from backend');
+    } finally {
+      setStatsLoading(false);
+    }
   }, [getProgressForUser, user?.id]);
 
   const focusCardWidth = Math.max(286, width - Spacing.lg * 2 - 8);
@@ -205,12 +255,51 @@ export const DashboardScreen: React.FC = () => {
 
   const quickStats = useMemo(
     () => [
-      { id: 'workouts', label: 'Workouts Completed', value: String(dashboardStats.totalWorkouts), icon: 'activity' },
-      { id: 'calories', label: 'Calories Burned', value: `${Math.round(dashboardStats.totalCaloriesBurned)} kcal`, icon: 'zap' },
-      { id: 'minutes', label: 'Training Time', value: `${Math.round(dashboardStats.totalWorkoutMinutes)}m`, icon: 'clock' },
+      {
+        id: 'workouts',
+        label: 'Workouts Completed',
+        value: statsLoading ? 'Syncing...' : String(dashboardStats.totalWorkouts),
+        icon: 'activity',
+      },
+      {
+        id: 'calories',
+        label: 'Calories Burned',
+        value: statsLoading ? 'Syncing...' : `${Math.round(dashboardStats.totalCaloriesBurned)} kcal`,
+        icon: 'zap',
+      },
+      {
+        id: 'minutes',
+        label: 'Training Time',
+        value: statsLoading ? 'Syncing...' : `${Math.round(dashboardStats.totalWorkoutMinutes)}m`,
+        icon: 'clock',
+      },
     ],
-    [dashboardStats]
+    [dashboardStats, statsLoading]
   );
+
+  const quickStatsSubtitle = useMemo(() => {
+    if (statsLoading) {
+      return 'Syncing with backend...';
+    }
+
+    if (statsError) {
+      return 'Backend sync failed. Showing last available values.';
+    }
+
+    return 'Live training snapshot from backend';
+  }, [statsError, statsLoading]);
+
+  const quickInsightMessage = useMemo(() => {
+    if (dashboardStats.todayMinutes > 0) {
+      return `You trained ${dashboardStats.todayMinutes} minutes today. Keep the streak going.`;
+    }
+
+    if (dashboardStats.streakDays > 0) {
+      return `You are on a ${dashboardStats.streakDays}-day streak. One workout today keeps it alive.`;
+    }
+
+    return 'Start your first workout today to build momentum.';
+  }, [dashboardStats.streakDays, dashboardStats.todayMinutes]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -371,7 +460,7 @@ export const DashboardScreen: React.FC = () => {
           <Text style={styles.emptyFocusText}>No workouts available for this focus yet.</Text>
         ) : null}
 
-        <SectionHeader title="Quick Stats" subtitle="Your recent training snapshot" style={styles.sectionTop} />
+        <SectionHeader title="Quick Stats" subtitle={quickStatsSubtitle} style={styles.sectionTop} />
         <View style={styles.statsGrid}>
           {quickStats.map((item) => (
             <StatCard
@@ -382,6 +471,13 @@ export const DashboardScreen: React.FC = () => {
             />
           ))}
         </View>
+        {statsLoading ? (
+          <View style={styles.statsSyncRow}>
+            <ActivityIndicator size="small" color={Colors.primary} />
+            <Text style={styles.statsSyncText}>Fetching latest stats...</Text>
+          </View>
+        ) : null}
+        {statsError ? <Text style={styles.statsErrorText}>{statsError}</Text> : null}
 
         <View style={styles.quickInsightCard}>
           <View style={styles.quickInsightIconWrap}>
@@ -389,7 +485,7 @@ export const DashboardScreen: React.FC = () => {
           </View>
           <View style={styles.quickInsightTextWrap}>
             <Text style={styles.quickInsightTitle}>Today&apos;s Momentum</Text>
-            <Text style={styles.quickInsightText}>You&apos;re one workout away from extending your streak to 13 days.</Text>
+            <Text style={styles.quickInsightText}>{quickInsightMessage}</Text>
           </View>
         </View>
 
@@ -646,6 +742,21 @@ const createStyles = () => StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.md,
+  },
+  statsSyncRow: {
+    marginTop: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  statsSyncText: {
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+  },
+  statsErrorText: {
+    marginTop: Spacing.sm,
+    color: Colors.error,
+    fontSize: Typography.caption,
   },
   quickInsightCard: {
     marginTop: Spacing.md,

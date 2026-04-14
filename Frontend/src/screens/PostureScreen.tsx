@@ -22,8 +22,9 @@ import { analyzeMotion, calculateJointAngles, AngleScope } from '../ai/motionInt
 import { resetRepCounter, updateRepCounter } from '../ai/repCounter';
 import { BicepViewMode, resetBicepCurlDetector, updateBicepCurl } from '../ai/bicepCurlDetector';
 import { resetJumpingJackDetector, updateJumpingJack } from '../ai/jumpingJackDetector';
-import { resetLungeDetector, updateLunge } from '../ai/lungeDetector';
 import { resetPushupDetector, updatePushup } from '../ai/pushupDetector';
+import { resetShoulderPressDetector, updateShoulderPress } from '../ai/shoulderPressDetector';
+import { resetStandingKneeRaiseDetector, updateStandingKneeRaise } from '../ai/standingKneeRaiseDetector';
 import { resetSquatDetector, SquatViewMode, updateSquat } from '../ai/squatDetector';
 import { saveWorkoutSession } from '../services/sessionService';
 import { Colors } from '../theme/colors';
@@ -46,7 +47,9 @@ const RAW_DELTA_THRESHOLD = 0.005;
 const UI_UPDATE_EVERY_N_FRAMES = 3;
 const WORKLET_INFERENCE_EVERY_N_FRAMES = 4;
 const JS_POSE_POLL_INTERVAL_MS = 90;
+const KNEE_RAISE_POSE_POLL_INTERVAL_MS = 55;
 const ANALYSIS_THROTTLE_MS = 180;
+const KNEE_RAISE_ANALYSIS_THROTTLE_MS = 90;
 const OVERLAY_MIN_INTERVAL_MS = 100;
 const SMOOTHING_WINDOW_SIZE = 5;
 const KEYPOINT_POSITION_EPSILON = 0.002;
@@ -79,9 +82,9 @@ const createPoseBuffer = (size = 17): PoseKeypoint[] => {
 const EXERCISE_ANGLE_SCOPE: Record<ExerciseType, AngleScope> = {
   squat: { knees: true, elbows: false },
   pushup: { elbows: true, knees: false },
-  lunge: { knees: true, elbows: false },
+  shoulderPress: { elbows: true, knees: false },
   jumpingJack: { elbows: false, knees: false },
-  plank: { elbows: false, knees: false },
+  standingKneeRaise: { elbows: false, knees: true },
   bicepCurl: { elbows: true, knees: false },
 };
 
@@ -132,9 +135,9 @@ const PoseOverlay = React.memo(({ keypoints }: { keypoints: PoseKeypoint[] }) =>
 const EXERCISE_LABELS: Record<ExerciseType, string> = {
   squat: 'Squats',
   pushup: 'Pushups',
-  lunge: 'Lunges',
+  shoulderPress: 'Shoulder Press',
   jumpingJack: 'Jumping Jacks',
-  plank: 'Plank',
+  standingKneeRaise: 'Standing Knee Raise',
   bicepCurl: 'Bicep Curl',
 };
 
@@ -165,13 +168,13 @@ const EXERCISE_MOTION_CONFIG: Record<
     kneeBentThreshold: 150,
     elbowBentThreshold: 135,
   },
-  lunge: {
+  shoulderPress: {
     minScore: 0.25,
-    handThreshold: 0.012,
-    hipThreshold: 0.007,
-    rawDeltaThreshold: 0.005,
-    kneeBentThreshold: 150,
-    elbowBentThreshold: 130,
+    handThreshold: 0.01,
+    hipThreshold: 0.006,
+    rawDeltaThreshold: 0.004,
+    kneeBentThreshold: 155,
+    elbowBentThreshold: 138,
   },
   jumpingJack: {
     minScore: 0.24,
@@ -181,13 +184,13 @@ const EXERCISE_MOTION_CONFIG: Record<
     kneeBentThreshold: 150,
     elbowBentThreshold: 130,
   },
-  plank: {
+  standingKneeRaise: {
     minScore: 0.22,
-    handThreshold: 0.007,
-    hipThreshold: 0.005,
-    rawDeltaThreshold: 0.0035,
-    kneeBentThreshold: 155,
-    elbowBentThreshold: 125,
+    handThreshold: 0.008,
+    hipThreshold: 0.006,
+    rawDeltaThreshold: 0.004,
+    kneeBentThreshold: 145,
+    elbowBentThreshold: 130,
   },
   bicepCurl: {
     minScore: 0.2,
@@ -225,7 +228,7 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   const backCamera = useCameraDevice('back');
   const frontCamera = useCameraDevice('front');
 
-  // State Management
+  // State Management (All useState hooks first)
   const [permission, setPermission] = useState('loading');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
@@ -251,6 +254,10 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   const [squatKneeAngle, setSquatKneeAngle] = useState(0);
   const [squatRom, setSquatRom] = useState(0);
   const [squatAccuracy, setSquatAccuracy] = useState(0);
+  const [kneeRaiseRepCount, setKneeRaiseRepCount] = useState(0);
+  const [kneeRaisePhase, setKneeRaisePhase] = useState<'up' | 'down'>('down');
+  const [kneeRaiseLift, setKneeRaiseLift] = useState(0);
+  const [kneeRaiseAccuracy, setKneeRaiseAccuracy] = useState(0);
   const [lungeRepCount, setLungeRepCount] = useState(0);
   const [lungePhase, setLungePhase] = useState<'up' | 'down'>('up');
   const [lungeLeftKneeAngle, setLungeLeftKneeAngle] = useState(180);
@@ -277,6 +284,11 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   const [cameraGuide, setCameraGuide] = useState('Camera guide: align full body in frame');
   const [detectSummary, setDetectSummary] = useState('Press Detect Pose to scan 17 points');
   const [elbowScanSummary, setElbowScanSummary] = useState('Elbow scan: waiting');
+  const [detectPosePlugin, setDetectPosePlugin] = useState(() =>
+    VisionCameraProxy.initFrameProcessorPlugin('detectPose', {})
+  );
+
+  // Refs (All useRef after useState)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cameraRef = useRef<Camera | null>(null);
   const prevKeypointsRef = useRef<PoseKeypoint[] | null>(null);
@@ -285,6 +297,12 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   const elbowAngleRef = useRef(0);
   const romRef = useRef(0);
   const repSpeedRef = useRef(0);
+  const bicepSpeedFeedbackRef = useRef<'Too fast' | 'Too slow' | 'Controlled'>('Controlled');
+  const squatSpeedFeedbackRef = useRef<'Too fast' | 'Too slow' | 'Controlled'>('Controlled');
+  const pushupSpeedFeedbackRef = useRef<'Too fast' | 'Too slow' | 'Controlled'>('Controlled');
+  const lungeSpeedFeedbackRef = useRef<'Too fast' | 'Too slow' | 'Controlled'>('Controlled');
+  const jumpingJackSpeedFeedbackRef = useRef<'Too fast' | 'Too slow' | 'Controlled'>('Controlled');
+  const kneeRaiseSpeedFeedbackRef = useRef<'Too fast' | 'Too slow' | 'Controlled'>('Controlled');
   const accuracyRef = useRef(0);
   const maxAngleRef = useRef(0);
   const minAngleRef = useRef(0);
@@ -389,11 +407,13 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     createPoseBuffer(),
   ]);
   const poseBufferIndexRef = useRef(0);
+  
+  // Shared values (hooks)
   const workletFrameCounter = useSharedValue(0);
   const sharedPoseKeypoints = useSharedValue<PoseKeypoint[] | null>(null);
   const sharedPoseVersion = useSharedValue(0);
 
-  // Selected device based on camera mode
+  // Camera hooks
   const device = isFrontCamera ? frontCamera : backCamera;
   const lowResFormat = useCameraFormat(device, [
     { videoResolution: { width: 640, height: 480 } },
@@ -402,11 +422,11 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     { videoResolution: { width: 1280, height: 720 } },
   ]);
   const cameraFormat = lowResFormat ?? hdFallbackFormat;
+
+  // Computed values
   const motionConfig = useMemo(() => EXERCISE_MOTION_CONFIG[exercise], [exercise]);
   const angleScope = useMemo(() => EXERCISE_ANGLE_SCOPE[exercise], [exercise]);
-  const [detectPosePlugin, setDetectPosePlugin] = useState(() =>
-    VisionCameraProxy.initFrameProcessorPlugin('detectPose', {})
-  );
+  
   const visionPluginAvailable = detectPosePlugin != null;
 
   useEffect(() => {
@@ -461,8 +481,11 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     if (exercise === 'jumpingJack') {
       resetJumpingJackDetector();
     }
-    if (exercise === 'lunge') {
-      resetLungeDetector();
+    if (exercise === 'shoulderPress') {
+      resetShoulderPressDetector();
+    }
+    if (exercise === 'standingKneeRaise') {
+      resetStandingKneeRaiseDetector();
     }
     if (exercise === 'pushup') {
       resetPushupDetector();
@@ -485,6 +508,10 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     setSquatKneeAngle(0);
     setSquatRom(0);
     setSquatAccuracy(0);
+    setKneeRaiseRepCount(0);
+    setKneeRaisePhase('down');
+    setKneeRaiseLift(0);
+    setKneeRaiseAccuracy(0);
     setLungeRepCount(0);
     setLungePhase('up');
     setLungeLeftKneeAngle(180);
@@ -720,13 +747,27 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     return leftArmReady || rightArmReady;
   }, []);
 
+  const hasReliableStandingKneeRaisePose = useCallback((points: PoseKeypoint[]): boolean => {
+    const hasPoint = (index: number, minScore = 0.1) => {
+      const point = points[index];
+      return !!point && point.score >= minScore;
+    };
+
+    const hasCore = hasPoint(11) || hasPoint(12);
+    const hasLegJoint = hasPoint(13) || hasPoint(14) || hasPoint(15) || hasPoint(16);
+    return hasCore && hasLegJoint;
+  }, []);
+
   const updatePose = useCallback((detectedKeypoints: PoseKeypoint[]) => {
     if (!isDetectingContinuous) {
       return;
     }
 
     const now = Date.now();
-    if (now - lastAnalysisAtRef.current < ANALYSIS_THROTTLE_MS) {
+    const analysisThrottleMs = exercise === 'standingKneeRaise'
+      ? KNEE_RAISE_ANALYSIS_THROTTLE_MS
+      : ANALYSIS_THROTTLE_MS;
+    if (now - lastAnalysisAtRef.current < analysisThrottleMs) {
       return;
     }
     lastAnalysisAtRef.current = now;
@@ -739,15 +780,23 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     const currentKeypoints = normalizePoseKeypoints(detectedKeypoints);
     const smoothedKeypoints = smoothKeypoints(currentKeypoints);
 
-    const presenceMinScore = Math.max(0.2, motionConfig.minScore);
-    const minimumReliableKeypoints = Math.max(
-      MIN_RELIABLE_KEYPOINTS_FALLBACK,
-      Math.min(MIN_RELIABLE_KEYPOINTS, PERSON_PRESENCE_MIN_KEYPOINTS + 3)
-    );
+    const isStandingKneeRaise = exercise === 'standingKneeRaise';
+    const presenceMinScore = isStandingKneeRaise
+      ? Math.max(0.1, motionConfig.minScore - 0.12)
+      : Math.max(0.2, motionConfig.minScore);
+    const minimumReliableKeypoints = isStandingKneeRaise
+      ? 4
+      : Math.max(
+          MIN_RELIABLE_KEYPOINTS_FALLBACK,
+          Math.min(MIN_RELIABLE_KEYPOINTS, PERSON_PRESENCE_MIN_KEYPOINTS + 3)
+        );
     const presence = isPersonPresent(currentKeypoints, presenceMinScore);
     const hasReliablePose = exercise === 'bicepCurl'
       ? hasReliableBicepPose(currentKeypoints)
-      : presence.detected && presence.confidentCount >= minimumReliableKeypoints;
+      : exercise === 'standingKneeRaise'
+        ? hasReliableStandingKneeRaisePose(currentKeypoints) ||
+          (presence.detected && presence.confidentCount >= minimumReliableKeypoints)
+        : presence.detected && presence.confidentCount >= minimumReliableKeypoints;
 
     if (!hasReliablePose) {
       consecutiveAbsentFramesRef.current += 1;
@@ -862,10 +911,7 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
         minAngleRef.current = roundedMinAngle;
       }
 
-      if (result.speedFeedback !== lastFeedbackRef.current) {
-        lastFeedbackRef.current = result.speedFeedback;
-        setFeedback(result.speedFeedback);
-      }
+      bicepSpeedFeedbackRef.current = result.speedFeedback;
 
       if (bicepUiTickRef.current % UI_UPDATE_EVERY_N_FRAMES === 0) {
         if (elbowAngleRef.current !== bicepUiSnapshotRef.current.elbowAngle) {
@@ -935,6 +981,8 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
         squatAccuracyRef.current = roundedAccuracy;
       }
 
+      squatSpeedFeedbackRef.current = result.speedFeedback;
+
       if (result.repCount !== repsRef.current) {
         repsRef.current = result.repCount;
         setReps(result.repCount);
@@ -985,6 +1033,8 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
         jumpingJackAnkleDistanceRef.current = roundedAnkleDistance;
       }
 
+      jumpingJackSpeedFeedbackRef.current = result.speedFeedback;
+
       if (result.repCount !== repsRef.current) {
         repsRef.current = result.repCount;
         setReps(result.repCount);
@@ -1010,6 +1060,8 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
           jumpingJackUiSnapshotRef.current.ankleDistance = jumpingJackAnkleDistanceRef.current;
           setJumpingJackAnkleDistance(jumpingJackAnkleDistanceRef.current);
         }
+
+        setAccuracy(Math.round(result.accuracy));
       }
     } else if (exercise === 'pushup') {
       const result = updatePushup(smoothedKeypoints);
@@ -1037,6 +1089,8 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
       if (roundedAvg !== pushupAvgElbowAngleRef.current) {
         pushupAvgElbowAngleRef.current = roundedAvg;
       }
+
+      pushupSpeedFeedbackRef.current = result.speedFeedback;
 
       if (result.repCount !== repsRef.current) {
         repsRef.current = result.repCount;
@@ -1069,9 +1123,11 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
           pushupUiSnapshotRef.current.avgElbowAngle = pushupAvgElbowAngleRef.current;
           setPushupAvgElbowAngle(pushupAvgElbowAngleRef.current);
         }
+
+        setAccuracy(Math.round(result.accuracy));
       }
-    } else if (exercise === 'lunge') {
-      const result = updateLunge(smoothedKeypoints);
+    } else if (exercise === 'shoulderPress') {
+      const result = updateShoulderPress(smoothedKeypoints);
       lungeUiTickRef.current += 1;
 
       if (result.repCount !== lungeRepCountRef.current) {
@@ -1082,20 +1138,22 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
         lungePhaseRef.current = result.phase;
       }
 
-      const roundedLeftKnee = Math.round(result.leftKneeAngle);
+      const roundedLeftKnee = Math.round(result.leftElbowAngle);
       if (roundedLeftKnee !== lungeLeftKneeAngleRef.current) {
         lungeLeftKneeAngleRef.current = roundedLeftKnee;
       }
 
-      const roundedRightKnee = Math.round(result.rightKneeAngle);
+      const roundedRightKnee = Math.round(result.rightElbowAngle);
       if (roundedRightKnee !== lungeRightKneeAngleRef.current) {
         lungeRightKneeAngleRef.current = roundedRightKnee;
       }
 
-      const roundedHipDrop = Math.round(result.hipDrop * 1000) / 1000;
+      const roundedHipDrop = Math.round(result.avgElbowAngle);
       if (roundedHipDrop !== lungeHipDropRef.current) {
         lungeHipDropRef.current = roundedHipDrop;
       }
+
+      lungeSpeedFeedbackRef.current = result.speedFeedback;
 
       if (result.repCount !== repsRef.current) {
         repsRef.current = result.repCount;
@@ -1128,6 +1186,55 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
           lungeUiSnapshotRef.current.hipDrop = lungeHipDropRef.current;
           setLungeHipDrop(lungeHipDropRef.current);
         }
+
+        setAccuracy(Math.round(result.accuracy));
+      }
+    } else if (exercise === 'standingKneeRaise') {
+      const result = updateStandingKneeRaise(smoothedKeypoints);
+      lungeUiTickRef.current += 1;
+
+      if (result.repCount !== lungeRepCountRef.current) {
+        lungeRepCountRef.current = result.repCount;
+      }
+
+      if (result.phase !== lungePhaseRef.current) {
+        lungePhaseRef.current = result.phase;
+      }
+
+      const roundedLift = Math.round(result.lift * 1000) / 1000;
+      if (roundedLift !== lungeHipDropRef.current) {
+        lungeHipDropRef.current = roundedLift;
+      }
+
+      kneeRaiseSpeedFeedbackRef.current = result.speedFeedback;
+
+      if (result.repCount !== repsRef.current) {
+        repsRef.current = result.repCount;
+        setReps(result.repCount);
+      }
+
+      if (result.phase !== repPhaseRef.current) {
+        repPhaseRef.current = result.phase;
+        setRepPhase(result.phase);
+      }
+
+      if (lungeUiTickRef.current % UI_UPDATE_EVERY_N_FRAMES === 0) {
+        if (lungeRepCountRef.current !== kneeRaiseRepCount) {
+          setKneeRaiseRepCount(lungeRepCountRef.current);
+        }
+        if (lungePhaseRef.current !== kneeRaisePhase) {
+          setKneeRaisePhase(lungePhaseRef.current);
+        }
+        if (roundedLift !== kneeRaiseLift) {
+          setKneeRaiseLift(roundedLift);
+        }
+        if (Math.round(result.accuracy) !== kneeRaiseAccuracy) {
+          setKneeRaiseAccuracy(Math.round(result.accuracy));
+        }
+      }
+
+      if (lungeUiTickRef.current % UI_UPDATE_EVERY_N_FRAMES === 0) {
+        setAccuracy(Math.round(result.accuracy));
       }
     } else {
       const jointAngles = calculateJointAngles(smoothedKeypoints, motionConfig.minScore, angleScope);
@@ -1203,13 +1310,18 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
 
     if (previous) {
       const currentThresholds = activeThresholdsRef.current;
+      const leftShoulder = currentKeypoints[5];
+      const rightShoulder = currentKeypoints[6];
+      const shoulderWidth =
+        leftShoulder && rightShoulder ? Math.abs(leftShoulder.x - rightShoulder.x) : 0.16;
+      const motionScale = Math.max(0.5, Math.min(1, shoulderWidth / 0.16));
       const effectiveMinScore = Math.min(currentThresholds.minScore, motionConfig.minScore + 0.03);
-      const effectiveHandThreshold = Math.min(currentThresholds.handThreshold, motionConfig.handThreshold * 1.4);
-      const effectiveHipThreshold = Math.min(currentThresholds.hipThreshold, motionConfig.hipThreshold * 1.4);
-      const effectiveRawDeltaThreshold = Math.min(
-        currentThresholds.rawDeltaThreshold,
-        motionConfig.rawDeltaThreshold * 1.4
-      );
+      const effectiveHandThreshold =
+        Math.min(currentThresholds.handThreshold, motionConfig.handThreshold * 1.4) * motionScale;
+      const effectiveHipThreshold =
+        Math.min(currentThresholds.hipThreshold, motionConfig.hipThreshold * 1.4) * motionScale;
+      const effectiveRawDeltaThreshold =
+        Math.min(currentThresholds.rawDeltaThreshold, motionConfig.rawDeltaThreshold * 1.4) * motionScale;
 
       const motion = analyzeMotion(previous, currentKeypoints, {
         minScore: effectiveMinScore,
@@ -1285,20 +1397,93 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
 
       motionFrameCountRef.current += 1;
 
-      let nextFeedback = 'Hold steady';
-      if (motion.bodyVerticalMovement === 'down') {
-        nextFeedback = 'Body moving down';
-      } else if (motion.bodyVerticalMovement === 'up') {
-        nextFeedback = 'Body moving up';
-      } else if (
-        motion.handMovement.leftWrist !== 'stable' ||
-        motion.handMovement.rightWrist !== 'stable'
-      ) {
-        nextFeedback = 'Hands moving';
+      let formCorrection: string | null = null;
+
+      if (exercise === 'bicepCurl') {
+        if (bicepSpeedFeedbackRef.current === 'Too fast') {
+          formCorrection = 'Slow down your curl';
+        } else if (bicepSpeedFeedbackRef.current === 'Too slow') {
+          formCorrection = 'Keep a steady curl pace';
+        } else if (phaseRef.current === 'up' && elbowAngleRef.current > 105) {
+          formCorrection = 'Curl higher, squeeze at top';
+        } else if (phaseRef.current === 'down' && elbowAngleRef.current < 135) {
+          formCorrection = 'Lower fully with control';
+        }
+      } else if (exercise === 'squat') {
+        if (squatSpeedFeedbackRef.current === 'Too fast') {
+          formCorrection = 'Control the squat tempo';
+        } else if (squatSpeedFeedbackRef.current === 'Too slow') {
+          formCorrection = 'Drive up with intent';
+        } else if (squatPhaseRef.current === 'down' && squatKneeAngleRef.current > 120) {
+          formCorrection = 'Go a bit deeper';
+        } else if (squatPhaseRef.current === 'up' && squatKneeAngleRef.current < 155) {
+          formCorrection = 'Stand tall at the top';
+        }
+      } else if (exercise === 'pushup') {
+        if (pushupSpeedFeedbackRef.current === 'Too fast') {
+          formCorrection = 'Slow down each rep';
+        } else if (pushupSpeedFeedbackRef.current === 'Too slow') {
+          formCorrection = 'Keep a steady push rhythm';
+        } else if (pushupPhaseRef.current === 'down' && pushupAvgElbowAngleRef.current > 100) {
+          formCorrection = 'Lower chest a little more';
+        } else if (pushupPhaseRef.current === 'up' && pushupAvgElbowAngleRef.current < 150) {
+          formCorrection = 'Press to full extension';
+        }
+      } else if (exercise === 'shoulderPress') {
+        const elbowDelta = Math.abs(lungeLeftKneeAngleRef.current - lungeRightKneeAngleRef.current);
+        const avgElbow = lungeHipDropRef.current;
+
+        if (lungeSpeedFeedbackRef.current === 'Too fast') {
+          formCorrection = 'Slow down your shoulder press reps';
+        } else if (lungeSpeedFeedbackRef.current === 'Too slow') {
+          formCorrection = 'Press up with more intent';
+        } else if (elbowDelta > 16) {
+          formCorrection = 'Keep both arms moving together';
+        } else if (lungePhaseRef.current === 'up' && avgElbow < 155) {
+          formCorrection = 'Lock out overhead slightly more';
+        } else if (lungePhaseRef.current === 'down' && avgElbow > 115) {
+          formCorrection = 'Lower the elbows with control';
+        }
+      } else if (exercise === 'jumpingJack') {
+        if (jumpingJackSpeedFeedbackRef.current === 'Too fast') {
+          formCorrection = 'Control your jack tempo';
+        } else if (jumpingJackSpeedFeedbackRef.current === 'Too slow') {
+          formCorrection = 'Move with steady rhythm';
+        } else if (jumpingJackPhaseRef.current === 'open' && jumpingJackAnkleDistanceRef.current < 0.14) {
+          formCorrection = 'Open feet wider';
+        } else if (jumpingJackPhaseRef.current === 'close' && jumpingJackAnkleDistanceRef.current > 0.1) {
+          formCorrection = 'Bring feet closer together';
+        }
+      } else if (exercise === 'standingKneeRaise') {
+        if (kneeRaiseSpeedFeedbackRef.current === 'Too fast') {
+          formCorrection = 'Control the speed';
+        } else if (kneeRaiseSpeedFeedbackRef.current === 'Too slow') {
+          formCorrection = 'More explosive lift';
+        } else if (repPhaseRef.current === 'up' && lungeHipDropRef.current < 0.12) {
+          formCorrection = 'Lift higher';
+        } else if (repPhaseRef.current === 'up') {
+          formCorrection = 'Hold steady';
+        } else if (repPhaseRef.current === 'down') {
+          formCorrection = 'Lower smoothly';
+        }
       }
 
-      if (nextFeedback === 'Hold steady' && (hasRawMovement || hasBodyMovement)) {
-        nextFeedback = 'Movement detected';
+      let nextFeedback = formCorrection ?? 'Hold steady';
+      if (!formCorrection) {
+        if (motion.bodyVerticalMovement === 'down') {
+          nextFeedback = 'Body moving down';
+        } else if (motion.bodyVerticalMovement === 'up') {
+          nextFeedback = 'Body moving up';
+        } else if (
+          motion.handMovement.leftWrist !== 'stable' ||
+          motion.handMovement.rightWrist !== 'stable'
+        ) {
+          nextFeedback = 'Hands moving';
+        }
+
+        if (nextFeedback === 'Hold steady' && (hasRawMovement || hasBodyMovement)) {
+          nextFeedback = 'Movement detected';
+        }
       }
 
       if (nextFeedback !== lastFeedbackRef.current) {
@@ -1396,16 +1581,17 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
           activityLabel = 'Auto: lower-body movement';
           activityDetected = true;
         }
-      } else if (exercise === 'lunge') {
+      } else if (exercise === 'shoulderPress') {
         if (
-          (motion.bodyVerticalMovement === 'down' || motion.bodyVerticalMovement === 'up') &&
-          avgKneeAngle !== null &&
-          avgKneeAngle < motionConfig.kneeBentThreshold
+          avgElbowAngle !== null &&
+          (motion.handMovement.leftWrist !== 'stable' ||
+            motion.handMovement.rightWrist !== 'stable' ||
+            motion.bodyVerticalMovement !== 'stable')
         ) {
-          activityLabel = 'Auto: lunge movement';
+          activityLabel = 'Auto: shoulder press movement';
           activityDetected = true;
         } else if (hasRawMovement) {
-          activityLabel = 'Auto: lower-body movement';
+          activityLabel = 'Auto: upper-body movement';
           activityDetected = true;
         }
       } else if (exercise === 'pushup') {
@@ -1438,12 +1624,16 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
           activityLabel = 'Auto: arm movement';
           activityDetected = true;
         }
-      } else if (exercise === 'plank') {
-        if (Math.abs(hipDeltaY) > motionConfig.hipThreshold) {
-          activityLabel = 'Auto: plank body shift';
+      } else if (exercise === 'standingKneeRaise') {
+        if (
+          (motion.bodyVerticalMovement === 'down' || motion.bodyVerticalMovement === 'up') &&
+          avgKneeAngle !== null &&
+          avgKneeAngle < motionConfig.kneeBentThreshold
+        ) {
+          activityLabel = 'Auto: knee raise movement';
           activityDetected = true;
         } else if (hasRawMovement) {
-          activityLabel = 'Auto: core movement';
+          activityLabel = 'Auto: lower-body movement';
           activityDetected = true;
         }
       } else if (hasRawMovement) {
@@ -1468,8 +1658,13 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     exercise,
     getCameraGuideText,
     hasReliableBicepPose,
+    hasReliableStandingKneeRaisePose,
     isDetectingContinuous,
     isPersonPresent,
+    kneeRaiseAccuracy,
+    kneeRaiseLift,
+    kneeRaisePhase,
+    kneeRaiseRepCount,
     motionConfig,
     normalizePoseKeypoints,
     smoothAngle,
@@ -1515,11 +1710,15 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     workletFrameCounter,
   ]);
 
-  // JS polling loop: consume latest shared pose at ~6 FPS and call updatePose on JS only.
+  // JS polling loop: consume latest shared pose on JS and update detector state.
   useEffect(() => {
     if (!isDetectingContinuous) {
       return;
     }
+
+    const pollIntervalMs = exercise === 'standingKneeRaise'
+      ? KNEE_RAISE_POSE_POLL_INTERVAL_MS
+      : JS_POSE_POLL_INTERVAL_MS;
 
     const interval = setInterval(() => {
       const nextVersion = sharedPoseVersion.value;
@@ -1534,7 +1733,7 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
       }
 
       updatePose(latestPose);
-    }, JS_POSE_POLL_INTERVAL_MS);
+    }, pollIntervalMs);
 
     return () => {
       clearInterval(interval);
@@ -1606,6 +1805,8 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
 
     return 'IMPROVE';
   }, [bicepAccuracy]);
+  const genericFormText = accuracy !== null ? `${accuracy}%` : '--';
+  const squatFormText = `${squatAccuracy}%`;
 
   // Utility functions
   const formatTime = (totalSeconds: number): string => {
@@ -1673,8 +1874,11 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
         if (exercise === 'jumpingJack') {
           resetJumpingJackDetector();
         }
-        if (exercise === 'lunge') {
-          resetLungeDetector();
+        if (exercise === 'shoulderPress') {
+          resetShoulderPressDetector();
+        }
+        if (exercise === 'standingKneeRaise') {
+          resetStandingKneeRaiseDetector();
         }
         if (exercise === 'pushup') {
           resetPushupDetector();
@@ -1715,6 +1919,12 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
         elbowAngleRef.current = 0;
         romRef.current = 0;
         repSpeedRef.current = 0;
+        bicepSpeedFeedbackRef.current = 'Controlled';
+        squatSpeedFeedbackRef.current = 'Controlled';
+        pushupSpeedFeedbackRef.current = 'Controlled';
+        lungeSpeedFeedbackRef.current = 'Controlled';
+        jumpingJackSpeedFeedbackRef.current = 'Controlled';
+        kneeRaiseSpeedFeedbackRef.current = 'Controlled';
         accuracyRef.current = 0;
         maxAngleRef.current = 0;
         minAngleRef.current = 0;
@@ -1873,43 +2083,38 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
       <PoseOverlay keypoints={overlayKeypoints} />
 
       {exercise === 'bicepCurl' && (
-        <View style={styles.bicepOverlay} pointerEvents="none">
-          <View style={styles.viewModeSwitchRow}>
-            <TouchableOpacity
-              style={[styles.viewModeButton, bicepViewMode === 'front' && styles.viewModeButtonActive]}
-              onPress={() => setBicepViewMode('front')}
-              activeOpacity={0.8}
+        <View style={styles.bicepOverlay} pointerEvents="box-none">
+          <View style={styles.bicepOverlayPanel}>
+            <View style={styles.viewModeSwitchRow}>
+              <TouchableOpacity
+                style={[styles.viewModeButton, bicepViewMode === 'front' && styles.viewModeButtonActive]}
+                onPress={() => setBicepViewMode('front')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.viewModeText, bicepViewMode === 'front' && styles.viewModeTextActive]}>Front</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.viewModeButton, bicepViewMode === 'side' && styles.viewModeButtonActive]}
+                onPress={() => setBicepViewMode('side')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.viewModeText, bicepViewMode === 'side' && styles.viewModeTextActive]}>Side</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.bicepMeta}>Phase: {phase.toUpperCase()}</Text>
+            <Text
+              style={[
+                styles.bicepForm,
+                bicepFormQuality === 'GOOD'
+                  ? styles.bicepFormGood
+                  : bicepFormQuality === 'OK'
+                    ? styles.bicepFormOk
+                    : styles.bicepFormImprove,
+              ]}
             >
-              <Text style={[styles.viewModeText, bicepViewMode === 'front' && styles.viewModeTextActive]}>Front</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.viewModeButton, bicepViewMode === 'side' && styles.viewModeButtonActive]}
-              onPress={() => setBicepViewMode('side')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.viewModeText, bicepViewMode === 'side' && styles.viewModeTextActive]}>Side</Text>
-            </TouchableOpacity>
+              Form: {bicepFormQuality}
+            </Text>
           </View>
-          <Text style={styles.bicepTitle}>BICEP CURL</Text>
-          <Text style={styles.bicepRep}>Reps: {repCount}</Text>
-          <Text style={styles.bicepMeta}>Phase: {phase.toUpperCase()}</Text>
-          <Text style={styles.bicepAngle}>Angle: {elbowAngle}°</Text>
-          <Text style={styles.bicepMetric}>ROM: {rom}°</Text>
-          <Text style={styles.bicepMetric}>Speed: {repSpeed.toFixed(1)}s</Text>
-          <Text style={styles.bicepMetric}>Accuracy: {bicepAccuracy}%</Text>
-          <Text style={styles.bicepMetric}>Max/Min: {maxAngle}° / {minAngle}°</Text>
-          <Text
-            style={[
-              styles.bicepForm,
-              bicepFormQuality === 'GOOD'
-                ? styles.bicepFormGood
-                : bicepFormQuality === 'OK'
-                  ? styles.bicepFormOk
-                  : styles.bicepFormImprove,
-            ]}
-          >
-            Form: {bicepFormQuality}
-          </Text>
         </View>
       )}
 
@@ -1931,43 +2136,36 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
               <Text style={[styles.viewModeText, squatViewMode === 'side' && styles.viewModeTextActive]}>Side</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.squatTitle}>SQUATS</Text>
-          <Text style={styles.squatRep}>Reps: {squatRepCount}</Text>
           <Text style={styles.squatMetric}>Phase: {squatPhase.toUpperCase()}</Text>
-          <Text style={styles.squatMetric}>Knee Angle: {squatKneeAngle}°</Text>
-          <Text style={styles.squatMetric}>ROM: {squatRom}°</Text>
-          <Text style={styles.squatMetric}>Accuracy: {squatAccuracy}%</Text>
+          <Text style={styles.squatMetric}>Form: {squatFormText}</Text>
         </View>
       )}
 
       {exercise === 'jumpingJack' && (
         <View style={styles.jumpingJackOverlay} pointerEvents="none">
-          <Text style={styles.jumpingJackTitle}>JUMPING JACKS</Text>
-          <Text style={styles.jumpingJackRep}>Reps: {jumpingJackRepCount}</Text>
           <Text style={styles.jumpingJackMetric}>Phase: {jumpingJackPhase.toUpperCase()}</Text>
-          <Text style={styles.jumpingJackMetric}>Ankle Distance: {jumpingJackAnkleDistance.toFixed(3)}</Text>
+          <Text style={styles.jumpingJackMetric}>Form: {genericFormText}</Text>
         </View>
       )}
 
       {exercise === 'pushup' && (
         <View style={styles.pushupOverlay} pointerEvents="none">
-          <Text style={styles.pushupTitle}>PUSH-UPS</Text>
-          <Text style={styles.pushupRep}>Reps: {pushupRepCount}</Text>
           <Text style={styles.pushupMetric}>Phase: {pushupPhase.toUpperCase()}</Text>
-          <Text style={styles.pushupMetric}>Left Elbow: {pushupLeftElbowAngle}°</Text>
-          <Text style={styles.pushupMetric}>Right Elbow: {pushupRightElbowAngle}°</Text>
-          <Text style={styles.pushupMetric}>Avg Elbow: {pushupAvgElbowAngle}°</Text>
+          <Text style={styles.pushupMetric}>Form: {genericFormText}</Text>
         </View>
       )}
 
-      {exercise === 'lunge' && (
+      {exercise === 'shoulderPress' && (
         <View style={styles.lungeOverlay} pointerEvents="none">
-          <Text style={styles.lungeTitle}>LUNGES</Text>
-          <Text style={styles.lungeRep}>Reps: {lungeRepCount}</Text>
           <Text style={styles.lungeMetric}>Phase: {lungePhase.toUpperCase()}</Text>
-          <Text style={styles.lungeMetric}>Left Knee: {lungeLeftKneeAngle}°</Text>
-          <Text style={styles.lungeMetric}>Right Knee: {lungeRightKneeAngle}°</Text>
-          <Text style={styles.lungeMetric}>Hip Drop: {lungeHipDrop.toFixed(3)}</Text>
+          <Text style={styles.lungeMetric}>Form: {genericFormText}</Text>
+        </View>
+      )}
+
+      {exercise === 'standingKneeRaise' && (
+        <View style={styles.lungeOverlay} pointerEvents="none">
+          <Text style={styles.lungeMetric}>Phase: {kneeRaisePhase.toUpperCase()}</Text>
+          <Text style={styles.lungeMetric}>Form: {kneeRaiseAccuracy}%</Text>
         </View>
       )}
 
@@ -1976,7 +2174,9 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
           {/* Top Bar */}
           <View style={styles.topBar}>
             <View>
-              <Text style={styles.exerciseTitle}>{exerciseTitle}</Text>
+              <Text style={[styles.exerciseTitle, styles.exerciseTitleCompact]}>
+                {exerciseTitle}
+              </Text>
               <Text style={styles.timerText}>{formatTime(seconds)}</Text>
             </View>
             <View style={styles.topRight}>
@@ -2125,9 +2325,19 @@ const styles = StyleSheet.create({
   },
   bicepOverlay: {
     position: 'absolute',
-    top: 84,
+    top: 150,
     left: 0,
     right: 0,
+    alignItems: 'center',
+  },
+  bicepOverlayPanel: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderRadius: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    minWidth: 220,
+    maxWidth: 280,
     alignItems: 'center',
   },
   viewModeSwitchRow: {
@@ -2157,33 +2367,33 @@ const styles = StyleSheet.create({
   },
   bicepTitle: {
     color: '#FFFFFF',
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '800',
     letterSpacing: 1,
   },
   bicepRep: {
     color: SOFT_ACCENT,
-    fontSize: 40,
+    fontSize: 30,
     fontWeight: '900',
-    marginTop: 6,
+    marginTop: 4,
   },
   bicepMeta: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '700',
-    marginTop: 4,
+    marginTop: 2,
   },
   bicepAngle: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
   },
   bicepMetric: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    marginTop: 2,
+    marginTop: 1,
   },
   bicepForm: {
     fontSize: 14,
@@ -2201,14 +2411,14 @@ const styles = StyleSheet.create({
   },
   squatOverlay: {
     position: 'absolute',
-    top: 84,
+    top: 150,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   lungeOverlay: {
     position: 'absolute',
-    top: 84,
+    top: 150,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -2233,14 +2443,14 @@ const styles = StyleSheet.create({
   },
   jumpingJackOverlay: {
     position: 'absolute',
-    top: 84,
+    top: 150,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   pushupOverlay: {
     position: 'absolute',
-    top: 84,
+    top: 150,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -2326,6 +2536,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  exerciseTitleCompact: {
+    fontSize: 16,
+  },
   timerText: {
     fontSize: 12,
     color: '#FFFFFF',
@@ -2385,20 +2598,20 @@ const styles = StyleSheet.create({
     backgroundColor: OVERLAY_LIGHT,
     borderWidth: 1,
     borderColor: Colors.whiteA16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderRadius: BORDER_RADIUS,
-    minWidth: 120,
+    minWidth: 96,
   },
   cornerLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#FFFFFF',
   },
   cornerValue: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginTop: 4,
+    marginTop: 2,
   },
 
   // ===== FEEDBACK AREA =====

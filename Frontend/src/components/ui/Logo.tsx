@@ -31,8 +31,8 @@ export const Logo: React.FC<LogoProps> = ({ size = 80, animated = true, style })
       120,
       withRepeat(
         withSequence(
-          withTiming(1, { duration: 900 }),
-          withTiming(0, { duration: 900 })
+          withTiming(1, { duration: 1100 }),
+          withTiming(0, { duration: 1100 })
         ),
         -1,
         false
@@ -52,16 +52,18 @@ export const Logo: React.FC<LogoProps> = ({ size = 80, animated = true, style })
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
+      opacity: 0.95 + pulse.value * 0.05,
       transform: [
-        { translateY: pulse.value * -2.5 },
-        { scale: 1 + pulse.value * 0.04 },
+        { translateY: pulse.value * -2 },
+        { scale: 1 + pulse.value * 0.035 },
+        { rotateZ: `${(pulse.value - 0.5) * 1.2}deg` },
       ] as any,
     };
   });
 
   const sparkStyle = useAnimatedStyle(() => ({
-    opacity: 0.62 + pulse.value * 0.35,
-    transform: [{ scale: 0.9 + pulse.value * 0.2 }],
+    opacity: 0.55 + pulse.value * 0.35,
+    transform: [{ scale: 0.85 + pulse.value * 0.24 }],
   }));
 
   const styles = useMemo(() => createStyles(darkMode), [darkMode]);

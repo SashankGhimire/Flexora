@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, InteractionManager, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/native';
 import Video from 'react-native-video';
 import { HomeStackParamList } from '../types';
 import { useAppData } from '../context/AppDataContext';
+import { useTheme } from '../context/ThemeContext';
 import { startWorkoutSession, saveWorkoutSession } from '../services/sessionService';
 import { resolveExerciseAnimation, resolveExercisePreview, resolveExerciseForWorkout } from '../data/workoutData';
 import { Colors } from '../theme/colors';
@@ -99,6 +100,8 @@ const formatClock = (seconds: number): string => {
 const isMongoObjectId = (value?: string): boolean => !!value && /^[a-f\d]{24}$/i.test(value);
 
 export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { themeMode } = useTheme();
+  const styles = useMemo(() => createStyles(), [themeMode]);
   const { programId } = route.params;
   const isFocused = useIsFocused();
   const { getWorkout, setSessionState } = useAppData();
@@ -244,14 +247,22 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
   };
 
   useEffect(() => {
+    let mounted = true;
+
     const hydrateSession = async () => {
-      setLoadingProgram(true);
+      if (mounted) {
+        setLoadingProgram(true);
+      }
 
       try {
         const workout = await getWorkout(programId);
         if (!workout) {
           Alert.alert('Session Error', 'Could not load workout details. Please try again.');
           navigation.goBack();
+          return;
+        }
+
+        if (!mounted) {
           return;
         }
 
@@ -282,35 +293,52 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
             };
           });
 
-        setExercises(mappedExercises);
+        if (mounted) {
+          setExercises(mappedExercises);
+        }
 
         // Backend session start should not block workout screen rendering.
         if (isMongoObjectId(programId)) {
           try {
             const started = await startWorkoutSession(programId);
-            setSessionId(started?._id || null);
-            setSessionState({ sessionId: started?._id || null, workoutProgramId: programId });
+            if (mounted) {
+              setSessionId(started?._id || null);
+              setSessionState({ sessionId: started?._id || null, workoutProgramId: programId });
+            }
           } catch (sessionStartError) {
             console.warn('[WorkoutSessionScreen] Session start failed, continuing locally', sessionStartError);
+            if (mounted) {
+              setSessionId(null);
+              setSessionState({ sessionId: null, workoutProgramId: programId });
+            }
+          }
+        } else {
+          if (mounted) {
             setSessionId(null);
             setSessionState({ sessionId: null, workoutProgramId: programId });
           }
-        } else {
-          setSessionId(null);
-          setSessionState({ sessionId: null, workoutProgramId: programId });
         }
       } catch (error) {
         console.warn('[WorkoutSessionScreen] Failed to prepare session', error);
         Alert.alert('Session Error', 'Could not load workout session. Please try again.');
         navigation.goBack();
       } finally {
-        setLoadingProgram(false);
+        if (mounted) {
+          setLoadingProgram(false);
+        }
       }
     };
 
-    hydrateSession().catch((error) => {
-      console.warn('[WorkoutSessionScreen] Unhandled hydrateSession error', error);
+    const interactionTask = InteractionManager.runAfterInteractions(() => {
+      hydrateSession().catch((error) => {
+        console.warn('[WorkoutSessionScreen] Unhandled hydrateSession error', error);
+      });
     });
+
+    return () => {
+      mounted = false;
+      interactionTask.cancel();
+    };
   }, [getWorkout, programId, setSessionState, navigation]);
 
   useEffect(() => {
@@ -593,7 +621,7 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
