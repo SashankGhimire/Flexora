@@ -43,18 +43,97 @@ const normalizeExerciseKey = (value: string): string =>
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
 
+const compactExerciseKey = (value: string): string => normalizeExerciseKey(value).replace(/-/g, '');
+
+const EXERCISE_ALIAS_TO_ID: Record<string, string> = {
+  'jumping-jack': 'jumping-jacks',
+  jumpingjack: 'jumping-jacks',
+  jumpingjacks: 'jumping-jacks',
+  'plank-hold': 'plank-hold',
+  plankhold: 'plank-hold',
+  plank: 'plank-hold',
+  'push-up': 'pushups',
+  pushup: 'pushups',
+  pushups: 'pushups',
+  'bodyweight-squat': 'bodyweight-squats',
+  bodyweightsquat: 'bodyweight-squats',
+  bodyweightsquats: 'bodyweight-squats',
+  'shoulder-tap': 'shoulder-taps',
+  shouldertap: 'shoulder-taps',
+  shouldertaps: 'shoulder-taps',
+  'mountain-climber': 'mountain-climbers',
+  mountainclimber: 'mountain-climbers',
+  mountainclimbers: 'mountain-climbers',
+  'reverse-lunge': 'reverse-lunges',
+  reverselunge: 'reverse-lunges',
+  reverselunges: 'reverse-lunges',
+  'triceps-dips': 'tricep-dips',
+  tricepsdips: 'tricep-dips',
+  'arm-circle': 'arm-circles',
+  armcircle: 'arm-circles',
+  armcircles: 'arm-circles',
+  'high-knee': 'high-knees',
+  highknee: 'high-knees',
+  highknees: 'high-knees',
+};
+
+const resolveAliasExerciseId = (value: string): string | undefined => {
+  const normalized = normalizeExerciseKey(value);
+  const compact = compactExerciseKey(value);
+  return EXERCISE_ALIAS_TO_ID[normalized] || EXERCISE_ALIAS_TO_ID[compact];
+};
+
+const findExerciseByFlexibleId = (value: string): WorkoutExercise | undefined => {
+  const normalized = normalizeExerciseKey(value);
+  const compact = compactExerciseKey(value);
+  const aliasId = resolveAliasExerciseId(value);
+
+  if (aliasId) {
+    const aliasMatch = getExerciseById(aliasId);
+    if (aliasMatch) {
+      return aliasMatch;
+    }
+  }
+
+  return EXERCISES.find((exercise) => {
+    const normalizedId = normalizeExerciseKey(exercise.id);
+    return normalizedId === normalized || compactExerciseKey(normalizedId) === compact;
+  });
+};
+
 export const findExerciseByName = (name: string): WorkoutExercise | undefined => {
+  const aliasId = resolveAliasExerciseId(name);
+  if (aliasId) {
+    const aliasMatch = getExerciseById(aliasId);
+    if (aliasMatch) {
+      return aliasMatch;
+    }
+  }
+
   const normalizedName = normalizeExerciseKey(name);
-  return EXERCISES.find((exercise) => normalizeExerciseKey(exercise.name) === normalizedName || exercise.id === normalizedName);
+  const compactName = compactExerciseKey(name);
+
+  return EXERCISES.find((exercise) => {
+    const normalizedExerciseName = normalizeExerciseKey(exercise.name);
+    const compactExerciseName = compactExerciseKey(exercise.name);
+    const compactExerciseId = compactExerciseKey(exercise.id);
+
+    return (
+      normalizedExerciseName === normalizedName ||
+      exercise.id === normalizedName ||
+      compactExerciseName === compactName ||
+      compactExerciseId === compactName
+    );
+  });
 };
 
 export const resolveExerciseAnimation = (idOrName: string): string => {
-  const exercise = getExerciseById(idOrName) || findExerciseByName(idOrName);
+  const exercise = getExerciseById(idOrName) || findExerciseByFlexibleId(idOrName) || findExerciseByName(idOrName);
   return exercise?.animation || 'jumping_jacks.json';
 };
 
 export const resolveExercisePreview = (idOrName: string): WorkoutExercise | undefined => {
-  return getExerciseById(idOrName) || findExerciseByName(idOrName);
+  return getExerciseById(idOrName) || findExerciseByFlexibleId(idOrName) || findExerciseByName(idOrName);
 };
 
 export const getExercisesForProgram = (programId: string): WorkoutExercise[] => {
@@ -95,6 +174,7 @@ export const resolveExerciseForWorkout = (
   orderIndex: number
 ): WorkoutExercise | undefined => {
   return (
+    resolveExercisePreview(exerciseName) ||
     findExerciseByName(exerciseName) ||
     getLocalExercisesForCategory(workoutCategory)[orderIndex] ||
     getExerciseById(exerciseName)

@@ -38,22 +38,48 @@ export const updateProfile = async (data: {
   avatar?: { uri: string; name?: string; type?: string } | null;
 }) => {
   const normalizedName = typeof data.name === 'string' ? data.name.trim() : undefined;
+  const hasAvatar = Boolean(data.avatar?.uri);
 
-  if (!data.avatar?.uri) {
+  // Fast path: no avatar upload required, use standard JSON profile update.
+  if (!hasAvatar) {
     return updateCurrentUser({ ...(normalizedName ? { name: normalizedName } : {}) });
   }
 
-  try {
-    return await updateCurrentUserMultipart({
-      ...(normalizedName ? { name: normalizedName } : {}),
-      avatar: data.avatar,
-    });
-  } catch (error) {
-    if (normalizedName) {
-      return updateCurrentUser({ name: normalizedName });
-    }
+  const multipartPayload = {
+    ...(normalizedName ? { name: normalizedName } : {}),
+    avatar: data.avatar,
+  };
 
-    throw error;
+  const getReadableError = (error: any): string => {
+    const message = error?.message || error?.data?.message || 'Unknown upload error';
+    return String(message).trim();
+  };
+
+  try {
+    return await updateCurrentUserMultipart(multipartPayload);
+  } catch {
+    // Retry once in case ngrok route or transient network caused the first multipart failure.
+    try {
+      return await updateCurrentUserMultipart(multipartPayload);
+    } catch (error: any) {
+      // Keep profile save reliable even when avatar upload fails (e.g. Cloudinary/network timeout).
+      if (normalizedName) {
+        const fallback = await updateCurrentUser({ name: normalizedName });
+
+        // Try avatar-only upload once more after name is safely updated.
+        try {
+          return await updateCurrentUserMultipart({ avatar: data.avatar });
+        } catch (avatarOnlyError: any) {
+          const detail = getReadableError(avatarOnlyError);
+          return {
+            ...fallback,
+            warning: `Profile name was saved, but avatar upload failed (${detail}). Please try a smaller JPG/PNG image and retry.`,
+          };
+        }
+      }
+
+      throw error;
+    }
   }
 };
 

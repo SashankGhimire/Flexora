@@ -40,6 +40,16 @@ const GOAL_OPTIONS = [
   { value: 'stay_active', label: 'Stay Active' },
 ];
 
+const MAX_AVATAR_FILE_BYTES = 4 * 1024 * 1024;
+
+const normalizeAvatarMime = (value?: string): string => {
+  const mime = (value || '').toLowerCase();
+  if (mime === 'image/png' || mime === 'image/webp' || mime === 'image/jpeg' || mime === 'image/jpg') {
+    return mime === 'image/jpg' ? 'image/jpeg' : mime;
+  }
+  return 'image/jpeg';
+};
+
 export const ProfileScreen: React.FC = () => {
   const { user, updateProfile, logout } = useAuth();
   const { getProgressForUser } = useAppData();
@@ -94,7 +104,7 @@ export const ProfileScreen: React.FC = () => {
       if (!profile) {
         try {
           const remote = await getOnboardingProfile(user.id);
-          profile = remote?.profile || remote?.data || null;
+          profile = remote?.profile || null;
         } catch {
           profile = null;
         }
@@ -190,16 +200,34 @@ export const ProfileScreen: React.FC = () => {
   const handlePickAvatar = async () => {
     const result = await launchImageLibrary({
       mediaType: 'photo',
-      quality: 0.8,
+      quality: 0.5,
+      maxWidth: 960,
+      maxHeight: 960,
+      assetRepresentationMode: 'compatible',
+      includeExtra: true,
       selectionLimit: 1,
     });
 
-    if (result.assets && result.assets[0]?.uri) {
-      const asset = result.assets[0];
+    if (result.didCancel) {
+      return;
+    }
+
+    if (result.errorCode) {
+      Alert.alert('Image selection failed', result.errorMessage || 'Unable to select image right now.');
+      return;
+    }
+
+    const asset = result.assets?.[0];
+    if (typeof asset?.fileSize === 'number' && asset.fileSize > MAX_AVATAR_FILE_BYTES) {
+      Alert.alert('Image too large', 'Please select an image under 4MB.');
+      return;
+    }
+
+    if (asset?.uri) {
       setAvatarAsset({
         uri: asset.uri,
-        name: asset.fileName,
-        type: asset.type,
+        name: asset.fileName || `avatar-${Date.now()}.jpg`,
+        type: normalizeAvatarMime(asset.type),
       });
     }
   };
@@ -216,12 +244,15 @@ export const ProfileScreen: React.FC = () => {
         return;
       }
       setSaving(true);
-      await updateProfile({
+      const result = await updateProfile({
         name: trimmedName,
         avatar: avatarAsset,
       });
       setIsEditing(false);
       setAvatarAsset(null);
+      if (result?.warning) {
+        Alert.alert('Saved with warning', result.warning);
+      }
     } catch (error: any) {
       Alert.alert('Update Failed', error?.message || 'Could not update profile');
     } finally {

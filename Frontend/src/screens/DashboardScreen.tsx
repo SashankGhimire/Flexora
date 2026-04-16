@@ -215,13 +215,31 @@ export const DashboardScreen: React.FC = () => {
 
   const featuredPrograms = useMemo(() => {
     if (workouts.length > 0) {
-      return workouts.map((workout) => ({
-        id: workout._id,
-        name: workout.title,
-        focus: mapCategoryToFocus(workout.category),
-        durationMinutes: workout.duration,
-        exerciseIds: workout.exercises.map((item) => item.exercise?._id).filter(Boolean) as string[],
-      }));
+      const byFocus = new Map<string, {
+        id: string;
+        name: string;
+        focus: string;
+        durationMinutes: number;
+        exerciseIds: string[];
+      }>();
+
+      workouts.forEach((workout) => {
+        const focus = mapCategoryToFocus(workout.category);
+        const focusKey = normalizeFocus(focus);
+        if (byFocus.has(focusKey)) {
+          return;
+        }
+
+        byFocus.set(focusKey, {
+          id: workout._id,
+          name: workout.title,
+          focus,
+          durationMinutes: workout.duration,
+          exerciseIds: workout.exercises.map((item) => item.exercise?._id).filter(Boolean) as string[],
+        });
+      });
+
+      return Array.from(byFocus.values());
     }
 
     return BODY_FOCUS

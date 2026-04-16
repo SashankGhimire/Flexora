@@ -14,6 +14,7 @@ const {
 	getUserById,
 	updateUserById,
 	deleteUserById,
+	createUserByAdmin,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -22,7 +23,11 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-	if (file.mimetype && file.mimetype.startsWith('image/')) {
+	if (!file.mimetype) {
+		return cb(null, true);
+	}
+
+	if (file.mimetype.startsWith('image/')) {
 		return cb(null, true);
 	}
 	return cb(new Error('Only image files are allowed'), false);
@@ -31,13 +36,19 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
 	storage,
 	fileFilter,
-	limits: { fileSize: 5 * 1024 * 1024 },
+	limits: { fileSize: 12 * 1024 * 1024 },
 });
 
 const handleAvatarUpload = (req, res, next) => {
 	upload.single('avatar')(req, res, (error) => {
 		if (!error) {
 			return next();
+		}
+
+		if (error.code === 'LIMIT_FILE_SIZE') {
+			return res.status(400).json({
+				message: 'Avatar file is too large. Please choose an image under 12MB.',
+			});
 		}
 
 		return res.status(400).json({
@@ -75,6 +86,11 @@ router.put('/users/:id', updateUserById);
 // Delete User (admin dashboard)
 // DELETE /api/auth/users/:id
 router.delete('/users/:id', deleteUserById);
+
+// Create User By Admin
+// POST /api/auth/admin/create-user
+// body: { name, email, password }
+router.post('/admin/create-user', createUserByAdmin);
 
 /**
  * Protected Routes (require valid JWT token)

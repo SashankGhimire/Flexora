@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SectionCard } from '../components/ui/SectionCard';
 import { DataTable } from '../components/ui/DataTable';
@@ -7,6 +8,7 @@ import {
   fetchUserById,
   updateUserById,
   deleteUserById,
+  createUser,
   type ApiUser,
 } from '../services/usersService';
 import { resolveApiBaseUrl } from '../services/api';
@@ -14,7 +16,6 @@ import {
   UsersIcon,
   CheckCircleIcon,
   AlertIcon,
-  TrendingUpIcon,
   SearchIcon,
   FilterIcon,
   EditIcon,
@@ -29,8 +30,9 @@ export const UsersPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [query, setQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'verified' | 'premium' | 'inactive'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'verified' | 'inactive'>('all');
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState('');
   const [selectedUser, setSelectedUser] = useState<ApiUser | null>(null);
@@ -45,6 +47,22 @@ export const UsersPage = () => {
     email: '',
     completedOnboarding: false,
   });
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [pendingDeleteUser, setPendingDeleteUser] = useState<ApiUser | null>(null);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+  });
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(''), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   useEffect(() => {
     const load = async () => {
@@ -102,7 +120,6 @@ export const UsersPage = () => {
   const getTabs = () => [
     { id: 'all', label: 'All Users', icon: UsersIcon, count: rows.length },
     { id: 'verified', label: 'Verified', icon: CheckCircleIcon, count: rows.filter((u) => u.completedOnboarding).length },
-    { id: 'premium', label: 'Premium', icon: TrendingUpIcon, count: Math.floor(rows.length * 0.3) },
     { id: 'inactive', label: 'Inactive', icon: AlertIcon, count: rows.filter((u) => !u.completedOnboarding).length },
   ] as const;
 
@@ -114,7 +131,6 @@ export const UsersPage = () => {
 
     if (activeTab === 'all') return base;
     if (activeTab === 'verified') return base.filter((u) => u.completedOnboarding);
-    if (activeTab === 'premium') return base.slice(0, Math.floor(base.length * 0.3));
     if (activeTab === 'inactive') return base.filter((u) => !u.completedOnboarding);
     return base;
   }, [rows, query, activeTab]);
@@ -126,6 +142,7 @@ export const UsersPage = () => {
   const total = rows.length;
   const active = rows.filter((u) => u.completedOnboarding).length;
   const inactive = Math.max(total - active, 0);
+  const adminCreated = rows.filter((u) => u.createdByAdmin).length;
 
   const tabs = getTabs();
 
@@ -172,6 +189,7 @@ export const UsersPage = () => {
       setRows((prev) => prev.map((u) => (u._id === updated._id ? updated : u)));
       setSelectedUser(updated);
       setIsEditOpen(false);
+      setSuccessMessage(`User ${updated.name} updated successfully!`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update user.';
       setActionError(message);
@@ -181,11 +199,15 @@ export const UsersPage = () => {
   };
 
   const handleDelete = async (user: ApiUser) => {
-    const confirmed = window.confirm(`Delete user ${user.name}? This action cannot be undone.`);
-    if (!confirmed) return;
+    setPendingDeleteUser(user);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteUser) return;
 
     try {
       setActionError('');
+      const user = pendingDeleteUser;
       await deleteUserById(user._id);
       const updatedRows = rows.filter((u) => u._id !== user._id);
       setRows(updatedRows);
@@ -193,8 +215,38 @@ export const UsersPage = () => {
         const next = updatedRows[0]?._id || '';
         setSelectedId(next);
       }
+      setSuccessMessage(`User ${user.name} deleted successfully!`);
+      setPendingDeleteUser(null);
     } catch (error) {
       setActionError('Failed to delete user.');
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!createForm.name || !createForm.email || !createForm.password) {
+      setActionError('Please fill in all fields');
+      return;
+    }
+
+    try {
+      setIsCreating(true);
+      setActionError('');
+      
+      const newUser = await createUser({
+        name: createForm.name,
+        email: createForm.email,
+        password: createForm.password,
+      });
+
+      setRows((prev) => [newUser, ...prev]);
+      setIsCreateOpen(false);
+      setCreateForm({ name: '', email: '', password: '' });
+      setSuccessMessage(`User ${newUser.name} created successfully! Ready for onboarding.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create user.';
+      setActionError(message);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -212,8 +264,11 @@ export const UsersPage = () => {
     return `${apiBaseUrl}${avatarUrl.startsWith('/') ? avatarUrl : `/${avatarUrl}`}`;
   };
 
+  const hasOpenModal = isEditOpen || isViewOpen || isCreateOpen || !!pendingDeleteUser;
+  const renderModal = (content: React.ReactNode) => createPortal(content, document.body);
+
   return (
-    <div className="h-full space-y-6 overflow-y-auto">
+    <div className={`h-full space-y-6 ${hasOpenModal ? 'overflow-hidden' : 'overflow-y-auto'}`}>
       <PageHeader title="User Control Room" subtitle="Manage all user accounts with real-time insights" />
 
       {/* Stats Grid */}
@@ -238,24 +293,14 @@ export const UsersPage = () => {
             <CheckCircleIcon className="w-8 h-8 text-emerald-500 opacity-30" />
           </div>
         </div>
-        <div className="rounded-2xl border border-brand-border bg-gradient-to-br from-purple-50 to-white p-5 hover:border-purple-300/50 transition">
+        <div className="rounded-2xl border border-brand-border bg-gradient-to-br from-sky-50 to-white p-5 hover:border-sky-300/50 transition">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-brand-muted font-medium">Premium</p>
-              <p className="mt-2 text-3xl font-bold text-purple-600">{Math.floor(total * 0.3).toLocaleString()}</p>
-              <p className="mt-1 text-xs text-purple-600 font-semibold">High value</p>
+              <p className="text-sm text-brand-muted font-medium">Admin Created</p>
+              <p className="mt-2 text-3xl font-bold text-sky-600">{adminCreated.toLocaleString()}</p>
+              <p className="mt-1 text-xs text-sky-600 font-semibold">Created from dashboard</p>
             </div>
-            <TrendingUpIcon className="w-8 h-8 text-purple-500 opacity-30" />
-          </div>
-        </div>
-        <div className="rounded-2xl border border-brand-border bg-gradient-to-br from-amber-50 to-white p-5 hover:border-amber-300/50 transition">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-brand-muted font-medium">Inactive</p>
-              <p className="mt-2 text-3xl font-bold text-amber-600">{inactive.toLocaleString()}</p>
-              <p className="mt-1 text-xs text-amber-600 font-semibold">Need attention</p>
-            </div>
-            <AlertIcon className="w-8 h-8 text-amber-500 opacity-30" />
+            <UsersIcon className="w-8 h-8 text-sky-500 opacity-30" />
           </div>
         </div>
       </div>
@@ -293,6 +338,7 @@ export const UsersPage = () => {
 
       {loadError ? <p className="text-sm text-rose-500 bg-rose-50 border border-rose-200 rounded-lg p-3">{loadError}</p> : null}
       {actionError ? <p className="text-sm text-rose-500 bg-rose-50 border border-rose-200 rounded-lg p-3">{actionError}</p> : null}
+  {successMessage ? <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3">{successMessage}</p> : null}
 
       {/* Main Content */}
       <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
@@ -313,6 +359,17 @@ export const UsersPage = () => {
             <button className="flex items-center gap-2 rounded-lg border border-brand-border bg-white px-3 py-2 text-sm font-semibold text-brand-text hover:bg-brand-panel transition">
               <FilterIcon className="w-4 h-4" />
               Filter
+            </button>
+            <button
+              onClick={() => {
+                setCreateForm({ name: '', email: '', password: '' });
+                setShowPassword(false);
+                setIsCreateOpen(true);
+                setActionError('');
+              }}
+              className="flex items-center gap-2 rounded-lg border border-brand-primary/50 bg-brand-primary/12 px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-brand-primary/20 transition"
+            >
+              + Add User
             </button>
           </div>
 
@@ -462,7 +519,7 @@ export const UsersPage = () => {
 
       {/* Edit Modal */}
       {isEditOpen ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4">
+        renderModal(<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md rounded-2xl border border-brand-border bg-white p-6 shadow-2xl">
             <h3 className="text-lg font-bold text-brand-text">Edit User Profile</h3>
             <p className="mt-1 text-sm text-brand-muted">Update user information and status</p>
@@ -511,12 +568,12 @@ export const UsersPage = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>)
       ) : null}
 
       {/* View Modal */}
       {isViewOpen ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4">
+        renderModal(<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-lg rounded-2xl border border-brand-border bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -608,7 +665,122 @@ export const UsersPage = () => {
               </div>
             )}
           </div>
-        </div>
+        </div>)
+      ) : null}
+
+      {/* Create User Modal */}
+      {isCreateOpen ? (
+        renderModal(<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-brand-border bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-brand-text">Create New User</h3>
+            <p className="mt-1 text-sm text-brand-muted">Add a new user account. User will need to complete onboarding.</p>
+
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-brand-text">Full Name</label>
+                <input
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., John Doe"
+                  className="w-full rounded-lg border border-brand-border bg-brand-bg px-3 py-2.5 text-sm text-brand-text focus:ring-2 focus:ring-brand-primary/30 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-brand-text">Email Address</label>
+                <input
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, email: e.target.value }))}
+                  placeholder="e.g., john.doe@gmail.com"
+                  type="email"
+                  autoComplete="off"
+                  className="w-full rounded-lg border border-brand-border bg-brand-bg px-3 py-2.5 text-sm text-brand-text focus:ring-2 focus:ring-brand-primary/30 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-brand-text">Password</label>
+                <div className="relative">
+                  <input
+                    value={createForm.password}
+                    onChange={(e) => setCreateForm((prev) => ({ ...prev, password: e.target.value }))}
+                    placeholder="Minimum 6 characters"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    className="w-full rounded-lg border border-brand-border bg-brand-bg px-3 py-2.5 pr-10 text-sm text-brand-text focus:ring-2 focus:ring-brand-primary/30 outline-none transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-primary transition"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                        <path d="M15.171 13.576l1.414 1.414A10.016 10.016 0 0020.514 10c-1.274-4.057-5.064-7-9.542-7a9.958 9.958 0 00-2.037.242l1.6 1.6a4 4 0 015.571 5.571z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-brand-muted bg-brand-bg/50 p-3 rounded-lg">
+                ✓ User must be Gmail address<br/>
+                ✓ Password must be at least 6 characters<br/>
+                ✓ User will start with incomplete onboarding
+              </p>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setIsCreateOpen(false);
+                  setShowPassword(false);
+                }}
+                disabled={isCreating}
+                className="rounded-lg border border-brand-border px-4 py-2.5 text-sm font-semibold text-brand-text hover:bg-brand-panel transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateUser}
+                disabled={isCreating || !createForm.name || !createForm.email || !createForm.password}
+                className="rounded-lg border border-brand-primary/50 bg-brand-primary/12 px-4 py-2.5 text-sm font-semibold text-brand-primary hover:bg-brand-primary/20 transition disabled:opacity-50"
+              >
+                {isCreating ? 'Creating...' : 'Create User'}
+              </button>
+            </div>
+          </div>
+        </div>)
+      ) : null}
+
+      {pendingDeleteUser ? (
+        renderModal(<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-brand-border bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-brand-text">Delete user</h3>
+            <p className="mt-2 text-sm text-brand-muted">
+              Are you sure you want to delete {pendingDeleteUser.name}? This action cannot be undone.
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setPendingDeleteUser(null)}
+                className="rounded-lg border border-brand-border px-4 py-2 text-sm font-semibold text-brand-text hover:bg-brand-panel transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="rounded-lg border border-rose-300 bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600 transition"
+              >
+                Delete User
+              </button>
+            </div>
+          </div>
+        </div>)
       ) : null}
     </div>
   );

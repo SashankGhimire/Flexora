@@ -5,6 +5,7 @@ import {
   AnalyticsIcon,
   SettingsIcon,
 } from '../icons/Icons';
+import { BrandLogo } from '../icons/BrandLogo';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
@@ -18,8 +19,13 @@ export const Sidebar = () => {
     <aside className="hidden w-72 shrink-0 border-r border-brand-border/70 bg-white p-6 lg:flex lg:flex-col">
       {/* Logo Section */}
       <div className="rounded-2xl border border-brand-border/70 bg-gradient-to-br from-white to-brand-panel/50 p-4 shadow-soft">
-        <p className="text-lg font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-blue-600">Flexora Admin</p>
-        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-brand-muted font-semibold">Operations Hub</p>
+        <div className="flex items-center gap-3">
+          <BrandLogo />
+          <div>
+            <p className="text-lg font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-blue-600">Flexora Admin</p>
+            <p className="mt-0.5 text-xs uppercase tracking-[0.16em] text-brand-muted font-semibold">Operations Hub</p>
+          </div>
+        </div>
         <div className="mt-3 inline-flex rounded-full border border-brand-primary/35 bg-gradient-to-r from-brand-primary/15 to-blue-500/15 px-3 py-1.5 text-[11px] font-semibold text-brand-light">
           🟢 Live • Connected
         </div>

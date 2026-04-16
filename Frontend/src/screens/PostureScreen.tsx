@@ -827,10 +827,6 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
             lastActivityStatusRef.current = 'Auto: no person|0';
             setActivityStatus({ detected: false, label: 'Auto: no person' });
           }
-          if (repsRef.current !== 0) {
-            repsRef.current = 0;
-            setReps(0);
-          }
           if (repPhaseRef.current !== 'hold') {
             repPhaseRef.current = 'hold';
             setRepPhase('hold');
@@ -1825,7 +1821,7 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
         exercisesPerformed: [
           {
             exercise,
-            reps: Math.max(0, reps),
+            reps: Math.max(0, repsRef.current),
             duration: Math.max(0, seconds),
             accuracy: completedAccuracy,
           },
@@ -1835,7 +1831,7 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
     } catch (error) {
       console.warn('[PostureScreen] Failed to save AI workout session', error);
     }
-  }, [accuracy, exercise, reps, seconds]);
+  }, [accuracy, exercise, seconds]);
 
   const handlePause = () => {
     setIsPaused(!isPaused);
@@ -1845,9 +1841,11 @@ export const PostureScreen: React.FC<PostureScreenProps> = ({ route, navigation 
   };
 
   const handleEndWorkout = () => {
+    const finalRepCount = Math.max(0, repsRef.current);
+
     Alert.alert(
       'End Workout',
-      `You completed ${reps} reps in ${formatTime(seconds)}. Are you sure you want to end?`,
+      `You completed ${finalRepCount} reps in ${formatTime(seconds)}. Are you sure you want to end?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {

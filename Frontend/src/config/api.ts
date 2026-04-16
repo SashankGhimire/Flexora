@@ -21,7 +21,7 @@ export const API_URL_LOCALHOST = 'http://localhost:5000';
 
 const API_PATH = '/api';
 const HEALTH_PATH = '/api/health';
-const PROBE_TIMEOUT_MS = 3500;
+const PROBE_TIMEOUT_MS = 900;
 const normalizeOrigin = (url: string): string => url.replace(/\/$/, '');
 
 const toApiBaseUrl = (origin: string): string => `${normalizeOrigin(origin)}${API_PATH}`;
@@ -49,20 +49,19 @@ const buildLocalPortVariants = (origin: string): string[] => {
 };
 
 const getOriginCandidates = (): string[] => {
-  const preferred = DEMO_MODE
-    ? [API_URL_NGROK, ...buildLocalPortVariants(API_URL_LOCAL)]
-    : [
-        ...buildLocalPortVariants(API_URL_LOCAL),
-        ...buildLocalPortVariants(API_URL_ANDROID_EMULATOR),
-        ...buildLocalPortVariants(API_URL_LOCALHOST),
-      ];
+  if (DEMO_MODE) {
+    return [API_URL_NGROK];
+  }
 
-  const fallback = DEMO_MODE
-    ? [
-        ...buildLocalPortVariants(API_URL_ANDROID_EMULATOR),
-        ...buildLocalPortVariants(API_URL_LOCALHOST),
-      ]
-    : [API_URL_NGROK];
+  const localPreferred = [
+    ...buildLocalPortVariants(API_URL_LOCAL),
+    ...buildLocalPortVariants(API_URL_ANDROID_EMULATOR),
+    ...buildLocalPortVariants(API_URL_LOCALHOST),
+  ];
+
+  const preferred = localPreferred;
+
+  const fallback = [API_URL_NGROK];
 
   return Array.from(new Set([...preferred, ...fallback]));
 };
@@ -125,11 +124,60 @@ export const resolveApiBaseUrl = async (forceRefresh = false): Promise<string> =
 
   const candidates = getOriginCandidates();
 
-  for (const origin of candidates) {
-    if (await isOriginReachable(origin)) {
-      resolvedApiBaseUrl = toApiBaseUrl(origin);
-      return resolvedApiBaseUrl;
+  const probeBatch = async (origins: string[]): Promise<string | null> => {
+    if (!origins.length) {
+      return null;
     }
+
+    return new Promise<string | null>((resolve) => {
+      let settled = false;
+      let pending = origins.length;
+
+      origins.forEach((origin) => {
+        isOriginReachable(origin)
+          .then((reachable) => {
+            if (settled) {
+              return;
+            }
+
+            if (reachable) {
+              settled = true;
+              resolve(origin);
+              return;
+            }
+
+            pending -= 1;
+            if (pending === 0) {
+              settled = true;
+              resolve(null);
+            }
+          })
+          .catch(() => {
+            pending -= 1;
+            if (!settled && pending === 0) {
+              settled = true;
+              resolve(null);
+            }
+          });
+      });
+    });
+  };
+
+  // Keep ordering intent while reducing total wait time: probe top candidates first in parallel.
+  const ngrokCandidate = candidates.find((origin) => normalizeOrigin(origin) === normalizeOrigin(API_URL_NGROK));
+  const firstBatch = Array.from(new Set([...candidates.slice(0, 3), ...(ngrokCandidate ? [ngrokCandidate] : [])]));
+  const secondBatch = candidates.filter((origin) => !firstBatch.includes(origin));
+
+  const firstMatch = await probeBatch(firstBatch);
+  if (firstMatch) {
+    resolvedApiBaseUrl = toApiBaseUrl(firstMatch);
+    return resolvedApiBaseUrl;
+  }
+
+  const secondMatch = await probeBatch(secondBatch);
+  if (secondMatch) {
+    resolvedApiBaseUrl = toApiBaseUrl(secondMatch);
+    return resolvedApiBaseUrl;
   }
 
   throw createServerNotReachableError(
@@ -148,7 +196,9 @@ export const getApiBaseUrlSync = (): string => resolvedApiBaseUrl || API_BASE_UR
 export const getApiServerOrigin = (): string => getApiBaseUrlSync().replace(/\/api$/, '');
 
 export const createServerNotReachableError = (cause?: unknown): Error & { cause?: unknown } => {
-  const error = new Error('Server not reachable. Please check your internet connection and try again.') as Error & {
+  const error = new Error(
+    'Server not reachable. Ensure backend is running on port 5000-5020, and use ngrok (npm run ngrok) or the same WiFi network for device access.'
+  ) as Error & {
     cause?: unknown;
   };
 

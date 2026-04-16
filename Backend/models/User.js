@@ -96,6 +96,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    createdByAdmin: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true } // Adds createdAt and updatedAt fields
 );
@@ -124,8 +128,11 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 userSchema.methods.toSafeObject = function toSafeObject() {
+  const userId = this._id.toString();
+
   return {
-    id: this._id,
+    _id: userId,
+    id: userId,
     name: this.name,
     email: this.email,
     age: this.age,
@@ -135,6 +142,7 @@ userSchema.methods.toSafeObject = function toSafeObject() {
     activityLevel: this.activityLevel,
     avatarUrl: this.avatarUrl,
     completedOnboarding: this.completedOnboarding,
+    createdByAdmin: this.createdByAdmin,
     role: this.role,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,

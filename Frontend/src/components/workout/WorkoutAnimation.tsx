@@ -23,17 +23,36 @@ const WorkoutAnimationComponent: React.FC<WorkoutAnimationProps> = ({
   speed = 1,
 }) => {
   const [failed, setFailed] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const lottieRef = useRef<LottieView>(null);
   const pulse = useSharedValue(0);
   const asset = useMemo(() => resolveAnimationAsset(animation), [animation]);
-  const source = asset?.source;
+  const fallbackAsset = useMemo(() => resolveAnimationAsset('jumping_jacks.json'), []);
+  const activeAsset = useMemo(() => {
+    if (asset?.source) {
+      return asset;
+    }
+
+    return fallbackAsset;
+  }, [asset, fallbackAsset]);
+  const source = activeAsset?.source;
+
+  const handleAssetLoadError = () => {
+    if (retryCount < 1) {
+      setRetryCount((prev) => prev + 1);
+      return;
+    }
+
+    setFailed(true);
+  };
 
   useEffect(() => {
     setFailed(false);
+    setRetryCount(0);
   }, [animation]);
 
   useEffect(() => {
-    if (asset?.kind !== 'lottie' || !source || failed || autoPlay === false) {
+    if (activeAsset?.kind !== 'lottie' || !source || failed || autoPlay === false) {
       return;
     }
 
@@ -43,10 +62,10 @@ const WorkoutAnimationComponent: React.FC<WorkoutAnimationProps> = ({
     }, 60);
 
     return () => clearTimeout(timer);
-  }, [animation, asset?.kind, autoPlay, failed, source]);
+  }, [animation, activeAsset?.kind, autoPlay, failed, source, retryCount]);
 
   useEffect(() => {
-    if (asset?.kind && source && !failed) {
+    if (activeAsset?.kind && source && !failed) {
       return;
     }
 
@@ -55,7 +74,7 @@ const WorkoutAnimationComponent: React.FC<WorkoutAnimationProps> = ({
       loop === false ? 1 : -1,
       true
     );
-  }, [asset?.kind, failed, loop, pulse, source, speed]);
+  }, [activeAsset?.kind, failed, loop, pulse, source, speed]);
 
   const fallbackAnimated = useAnimatedStyle(() =>
     ({
@@ -64,26 +83,26 @@ const WorkoutAnimationComponent: React.FC<WorkoutAnimationProps> = ({
     } as any)
   );
 
-  if (asset?.kind === 'gif' && source && !failed) {
+  if (activeAsset?.kind === 'gif' && source && !failed) {
     return (
       <View style={[styles.frame, styles.mediaFrame, { width: size, height: size }]}>
         <Image
-          key={`${animation}-gif`}
+          key={`${animation}-gif-${retryCount}`}
           source={source}
           resizeMode="contain"
           style={{ width: size * 0.9, height: size * 0.9 }}
-          onError={() => setFailed(true)}
+          onError={handleAssetLoadError}
           fadeDuration={0}
         />
       </View>
     );
   }
 
-  if (asset?.kind === 'mp4' && source && !failed) {
+  if (activeAsset?.kind === 'mp4' && source && !failed) {
     return (
       <View style={[styles.frame, styles.mediaFrame, { width: size, height: size }]}>
         <Video
-          key={`${animation}-mp4`}
+          key={`${animation}-mp4-${retryCount}`}
           source={source}
           paused={autoPlay === false || failed}
           repeat={loop !== false}
@@ -93,25 +112,25 @@ const WorkoutAnimationComponent: React.FC<WorkoutAnimationProps> = ({
           playWhenInactive={false}
           resizeMode="contain"
           style={{ width: size * 0.9, height: size * 0.9 }}
-          onError={() => setFailed(true)}
+          onError={handleAssetLoadError}
         />
       </View>
     );
   }
 
-  if (asset?.kind === 'lottie' && source && !failed) {
+  if (activeAsset?.kind === 'lottie' && source && !failed) {
     return (
       <View style={[styles.frame, styles.lottieFrame, { width: size, height: size }]}>
         <LottieView
           ref={lottieRef}
-          key={animation}
+          key={`${animation}-lottie-${retryCount}`}
           source={source}
           autoPlay={autoPlay !== false}
           loop={loop !== false}
           speed={speed}
           resizeMode="contain"
           style={{ width: size * 0.88, height: size * 0.88 }}
-          onAnimationFailure={() => setFailed(true)}
+          onAnimationFailure={handleAssetLoadError}
         />
       </View>
     );

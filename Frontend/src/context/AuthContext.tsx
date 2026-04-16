@@ -29,7 +29,7 @@ interface AuthContextType {
   updateProfile: (data: {
     name?: string;
     avatar?: { uri: string; name?: string; type?: string } | null;
-  }) => Promise<void>;
+  }) => Promise<{ warning?: string } | void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -113,10 +113,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (data: {
     name?: string;
     avatar?: { uri: string; name?: string; type?: string } | null;
-  }): Promise<void> => {
+  }): Promise<{ warning?: string } | void> => {
     const response = await updateProfileApi(data);
-    const completedOnboarding = await resolveOnboardingStatus(response.user);
-    setUser({ ...response.user, completedOnboarding });
+    let nextUser = response?.user || null;
+
+    try {
+      const refreshed = await getCurrentUser();
+      nextUser = refreshed.user;
+    } catch {
+      // Keep locally returned user when refresh call fails.
+    }
+
+    if (!nextUser) {
+      throw new Error('Profile updated but failed to refresh user data');
+    }
+
+    const completedOnboarding = await resolveOnboardingStatus(nextUser);
+    setUser({ ...nextUser, completedOnboarding });
+
+    if (typeof response?.warning === 'string' && response.warning.trim()) {
+      return { warning: response.warning.trim() };
+    }
   };
 
   const value: AuthContextType = {

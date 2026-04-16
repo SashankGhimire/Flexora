@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BrandLogo } from '../components/icons/BrandLogo';
 import { useAuth } from '../hooks/useAuth';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -57,8 +58,13 @@ export const LoginPage = () => {
         onSubmit={onSubmit}
         className="relative w-full max-w-md rounded-2xl border border-brand-border/80 bg-brand-card/85 p-8 shadow-soft backdrop-blur"
       >
-        <h1 className="text-2xl font-extrabold text-brand-text">Flexora Admin</h1>
-        <p className="mt-1 text-sm text-brand-muted">Sign in to continue</p>
+        <div className="flex items-center gap-3">
+          <BrandLogo className="h-12 w-12" />
+          <div>
+            <h1 className="text-2xl font-extrabold text-brand-text">Flexora Admin</h1>
+            <p className="mt-1 text-sm text-brand-muted">Sign in to continue</p>
+          </div>
+        </div>
 
         <div className="mt-6 space-y-4">
           <div>

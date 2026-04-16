@@ -78,6 +78,17 @@ apiClient.interceptors.request.use(
   async (config) => {
     config.baseURL = await resolveApiBaseUrl();
 
+    // RN uploads can fail if a JSON content-type is forced on FormData.
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData && config.headers) {
+      const headers = config.headers as any;
+      if (typeof headers.delete === 'function') {
+        headers.delete('Content-Type');
+      } else {
+        delete headers['Content-Type'];
+        delete headers['content-type'];
+      }
+    }
+
     if (!authToken) {
       authToken = await AsyncStorage.getItem(TOKEN_KEY);
     }
@@ -231,18 +242,79 @@ export const updateCurrentUserMultipart = async (payload: {
   }
 
   if (payload.avatar?.uri) {
+    const normalizedType =
+      typeof payload.avatar.type === 'string' && payload.avatar.type.startsWith('image/')
+        ? payload.avatar.type
+        : 'image/jpeg';
+    const normalizedName =
+      payload.avatar.name && payload.avatar.name.includes('.')
+        ? payload.avatar.name
+        : `avatar-${Date.now()}.jpg`;
+
     formData.append('avatar', {
       uri: payload.avatar.uri,
-      name: payload.avatar.name || `avatar-${Date.now()}.jpg`,
-      type: payload.avatar.type || 'image/jpeg',
+      name: normalizedName,
+      type: normalizedType,
     } as any);
   }
 
-  return request<{ message: string; user: ApiAuthUser }>(
-    apiClient.put(AUTH_ENDPOINTS.UPDATE_ME, formData, {
-      headers: { Accept: 'application/json' },
-    })
-  );
+  const baseUrl = await resolveApiBaseUrl();
+
+  if (!authToken) {
+    authToken = await AsyncStorage.getItem(TOKEN_KEY);
+  }
+
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
+  const timeoutId = setTimeout(() => {
+    controller?.abort();
+  }, 45000);
+
+  try {
+    const response = await fetch(`${baseUrl}${AUTH_ENDPOINTS.UPDATE_ME}`, {
+      method: 'PUT',
+      headers: {
+        Accept: 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
+      body: formData,
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+
+    const rawBody = await response.text();
+    let payload: any = {};
+
+    if (rawBody) {
+      try {
+        payload = JSON.parse(rawBody);
+      } catch {
+        payload = { message: rawBody };
+      }
+    }
+
+    if (!response.ok) {
+      const normalized = new Error(
+        payload?.message || payload?.error || `Request failed with status ${response.status}`
+      ) as Error & { status?: number; data?: unknown };
+      normalized.status = response.status;
+      normalized.data = payload;
+      throw normalized;
+    }
+
+    return payload as { message: string; user: ApiAuthUser; warning?: string };
+  } catch (error: any) {
+    if (error?.status) {
+      throw error;
+    }
+
+    if (error?.name === 'AbortError') {
+      throw createServerNotReachableError(new Error('Avatar upload request timed out.'));
+    }
+
+    throw createServerNotReachableError(error);
+  } finally {
+    clearTimeout(timeoutId);
+  }
 };
 
 export const fetchUserProfile = () => request<{ message: string; user: ApiAuthUser }>(apiClient.get(USER_ENDPOINTS.PROFILE));

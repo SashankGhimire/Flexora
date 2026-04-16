@@ -20,6 +20,29 @@ type AiWorkout = {
   icon: string;
 };
 
+const normalizeCategory = (category: string): string => {
+  const value = (category || '').trim().toLowerCase();
+
+  if (value === 'arm' || value === 'arms') return 'arms';
+  if (value === 'leg' || value === 'legs') return 'legs';
+  if (value === 'ab' || value === 'abs') return 'abs';
+  if (value === 'fullbody' || value === 'full body') return 'full body';
+  if (value === 'shoulders') return 'shoulder';
+
+  return value;
+};
+
+const categoryToFocusLabel = (category: string): string => {
+  const normalized = normalizeCategory(category);
+
+  if (normalized === 'arms') return 'Arm';
+  if (normalized === 'legs') return 'Leg';
+  if (normalized === 'abs') return 'Abs';
+  if (normalized === 'full body') return 'Full Body';
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
 const AI_WORKOUTS: AiWorkout[] = [
   { key: 'squat', title: 'AI Squat', description: 'Camera-based squat form detection', icon: 'activity' },
   { key: 'pushup', title: 'AI Pushup', description: 'Real-time pushup posture guidance', icon: 'target' },
@@ -59,23 +82,38 @@ export const ExerciseSelectionScreen: React.FC = () => {
   );
 
   const categories = React.useMemo(() => {
-    const values = workouts.map((workout) => workout.category);
+    const values = workouts.map((workout) => normalizeCategory(workout.category));
     return Array.from(new Set(values));
   }, [workouts]);
 
   const displayPrograms = React.useMemo(() => {
     if (workouts.length > 0) {
-      return workouts.map((program) => ({
-        id: program._id,
-        name: program.title,
-        focus: (program.category === 'arms'
-          ? 'Arm'
-          : program.category === 'full body'
-            ? 'Full Body'
-            : program.category.charAt(0).toUpperCase() + program.category.slice(1)) as any,
-        durationMinutes: program.duration,
-        exerciseIds: program.exercises.map((item) => item.exercise?._id).filter(Boolean) as string[],
-      }));
+      const byFocus = new Map<string, {
+        id: string;
+        name: string;
+        focus: string;
+        durationMinutes: number;
+        exerciseIds: string[];
+      }>();
+
+      workouts.forEach((program) => {
+        const normalizedCategory = normalizeCategory(program.category);
+        const focusKey = normalizedCategory || program._id;
+
+        if (!focusKey || byFocus.has(focusKey)) {
+          return;
+        }
+
+        byFocus.set(focusKey, {
+          id: program._id,
+          name: program.title,
+          focus: categoryToFocusLabel(normalizedCategory),
+          durationMinutes: program.duration,
+          exerciseIds: program.exercises.map((item) => item.exercise?._id).filter(Boolean) as string[],
+        });
+      });
+
+      return Array.from(byFocus.values());
     }
 
     return getAllPrograms();
@@ -83,15 +121,6 @@ export const ExerciseSelectionScreen: React.FC = () => {
 
   const handleStartAiWorkout = (exerciseType: ExerciseType) => {
     navigation.navigate('Workout', { exerciseType });
-  };
-
-  const handleStartWorkout = () => {
-    const firstProgram = displayPrograms[0];
-    if (!firstProgram) {
-      return;
-    }
-
-    navigation.navigate('WorkoutProgram', { programId: firstProgram.id });
   };
 
   return (
@@ -189,20 +218,7 @@ export const ExerciseSelectionScreen: React.FC = () => {
           ) : null}
         </View>
 
-        <View style={styles.bottomSpace} />
       </ScrollView>
-
-      <View style={styles.stickyCtaWrap}>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          style={[styles.stickyCtaButton, displayPrograms.length === 0 && styles.stickyCtaButtonDisabled]}
-          onPress={handleStartWorkout}
-          disabled={displayPrograms.length === 0}
-        >
-          <SimpleIcon name="play" size={16} color={Colors.textOnPrimary} />
-          <Text style={styles.stickyCtaText}>Start Workout</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 };
@@ -215,7 +231,7 @@ const createStyles = () => StyleSheet.create({
   content: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.x3 + Spacing.sm,
-    paddingBottom: Spacing.x2,
+    paddingBottom: Spacing.x3 + Spacing.x3 + Spacing.x3,
   },
   heroCard: {
     borderRadius: Radius.xl,
@@ -407,34 +423,6 @@ const createStyles = () => StyleSheet.create({
   retryButtonText: {
     color: Colors.primary,
     fontSize: Typography.caption,
-    fontWeight: FontWeight.bold,
-  },
-  bottomSpace: {
-    height: 140,
-  },
-  stickyCtaWrap: {
-    position: 'absolute',
-    left: Spacing.lg,
-    right: Spacing.lg,
-    bottom: Spacing.lg,
-  },
-  stickyCtaButton: {
-    minHeight: 50,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.primary,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: Spacing.xs,
-  },
-  stickyCtaButtonDisabled: {
-    opacity: 0.5,
-  },
-  stickyCtaText: {
-    color: Colors.textOnPrimary,
-    fontSize: Typography.subtitle,
     fontWeight: FontWeight.bold,
   },
 });

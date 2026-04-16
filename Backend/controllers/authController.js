@@ -4,6 +4,7 @@
  */
 
 const User = require('../models/User');
+const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const { uploadAvatarBuffer } = require('../config/cloudinary');
 
@@ -214,7 +215,6 @@ exports.updateMe = async (req, res) => {
   try {
     const updates = {};
     const { name, age, height, weight, goal, activityLevel } = req.body;
-    let uploadWarning = null;
 
     if (typeof name === 'string') {
       const trimmedName = name.trim();
@@ -244,13 +244,9 @@ exports.updateMe = async (req, res) => {
     }
 
     if (req.file?.buffer) {
-      try {
-        const avatarUrl = await uploadAvatarBuffer(req.file.buffer, req.user.id);
-        if (avatarUrl) {
-          updates.avatarUrl = avatarUrl;
-        }
-      } catch (uploadError) {
-        uploadWarning = 'Avatar upload is unavailable right now. Other profile changes were saved.';
+      const avatarUrl = await uploadAvatarBuffer(req.file.buffer, req.user.id);
+      if (avatarUrl) {
+        updates.avatarUrl = avatarUrl;
       }
     }
 
@@ -273,7 +269,6 @@ exports.updateMe = async (req, res) => {
 
     res.status(200).json({
       message: 'Profile updated successfully',
-      ...(uploadWarning ? { warning: uploadWarning } : {}),
       user: user.toSafeObject(),
     });
   } catch (error) {
@@ -291,7 +286,7 @@ exports.updateMe = async (req, res) => {
 exports.listUsers = async (req, res) => {
   try {
     const users = await User.find({})
-      .select('_id name email avatarUrl completedOnboarding createdAt')
+      .select('_id name email avatarUrl completedOnboarding createdByAdmin createdAt')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -312,7 +307,7 @@ exports.listUsers = async (req, res) => {
  */
 exports.getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('_id name email avatarUrl completedOnboarding createdAt updatedAt');
+    const user = await User.findById(req.params.id).select('_id name email avatarUrl completedOnboarding createdByAdmin createdAt updatedAt');
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -368,7 +363,7 @@ exports.updateUserById = async (req, res) => {
     const user = await User.findByIdAndUpdate(req.params.id, updates, {
       new: true,
       runValidators: true,
-    }).select('_id name email avatarUrl completedOnboarding createdAt updatedAt');
+    }).select('_id name email avatarUrl completedOnboarding createdByAdmin createdAt updatedAt');
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -398,6 +393,12 @@ exports.updateUserById = async (req, res) => {
  */
 exports.deleteUserById = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        message: 'Invalid user id format. Expected a 24-character MongoDB ObjectId.',
+      });
+    }
+
     const user = await User.findByIdAndDelete(req.params.id);
 
     if (!user) {
@@ -410,6 +411,86 @@ exports.deleteUserById = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: 'Error deleting user',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Create User By Admin
+ * POST /api/auth/admin/create-user
+ * body: { name, email, password }
+ */
+exports.createUserByAdmin = async (req, res) => {
+  try {
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const { password } = req.body;
+
+    // Validation - check if all fields are provided
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: 'Please provide all required fields (name, email, password)',
+      });
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({
+        message: 'Please provide a valid email address',
+      });
+    }
+
+    if (!isStrictGmailAddress(email)) {
+      return res.status(400).json({
+        message: 'Only Gmail addresses are allowed',
+      });
+    }
+
+    // Check if user already exists with this email
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        message: 'Email already registered. Please use a different email.',
+      });
+    }
+
+    // Create new user with createdByAdmin flag and completedOnboarding = false
+    const user = new User({
+      name,
+      email,
+      password,
+      createdByAdmin: true,
+      completedOnboarding: false,
+    });
+
+    // Save user to database (password will be hashed in the pre-save middleware)
+    await user.save();
+
+    // Send success response
+    res.status(201).json({
+      message: 'User created successfully by admin. User must complete onboarding.',
+      user: user.toSafeObject(),
+    });
+  } catch (error) {
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({
+        message: 'Validation error',
+        errors: messages,
+      });
+    }
+
+    // Handle duplicate email error
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'Email already exists. Please use a different email.',
+      });
+    }
+
+    // Handle other errors
+    res.status(500).json({
+      message: 'Error creating user',
       error: error.message,
     });
   }

@@ -104,7 +104,7 @@ export const ProgressScreen: React.FC = () => {
       if (!profile) {
         try {
           const remote = await getOnboardingProfile(user.id);
-          profile = remote?.profile || remote?.data || null;
+          profile = remote?.profile || null;
         } catch {
           profile = null;
         }

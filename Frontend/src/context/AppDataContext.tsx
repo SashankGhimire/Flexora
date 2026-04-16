@@ -26,13 +26,29 @@ type AppDataContextValue = {
 
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
 
+const normalizeCategory = (category?: string): string => {
+  const value = (category || '').trim().toLowerCase();
+
+  if (!value) {
+    return '';
+  }
+
+  if (value === 'arm' || value === 'arms') return 'arms';
+  if (value === 'leg' || value === 'legs') return 'legs';
+  if (value === 'ab' || value === 'abs') return 'abs';
+  if (value === 'fullbody' || value === 'full body') return 'full body';
+  if (value === 'shoulders') return 'shoulder';
+
+  return value;
+};
+
 const mapLocalProgramToWorkout = (program: ReturnType<typeof getAllPrograms>[number]): ApiWorkout => {
   const localExercises = getExercisesForProgram(program.id);
 
   return {
     _id: program.id,
     title: program.name,
-    category: program.focus.toLowerCase() as ApiWorkout['category'],
+    category: normalizeCategory(program.focus) as ApiWorkout['category'],
     difficulty: 'beginner',
     duration: program.durationMinutes,
     coverImageUrl: '',
@@ -57,6 +73,32 @@ const mapLocalProgramToWorkout = (program: ReturnType<typeof getAllPrograms>[num
 
 const localWorkoutFallback = getAllPrograms().map(mapLocalProgramToWorkout);
 
+const mergeWorkoutsWithFallback = (remote: ApiWorkout[]): ApiWorkout[] => {
+  if (!Array.isArray(remote) || remote.length === 0) {
+    return localWorkoutFallback;
+  }
+
+  const byCategory = new Map<string, ApiWorkout>();
+
+  // Prefer local data for known categories to keep stable non-AI program mapping.
+  localWorkoutFallback.forEach((workout) => {
+    const key = normalizeCategory(workout.category) || workout._id;
+    if (key) {
+      byCategory.set(key, workout);
+    }
+  });
+
+  // Add backend categories that do not exist in local fallback.
+  remote.forEach((workout) => {
+    const key = normalizeCategory(workout.category) || workout._id;
+    if (key && !byCategory.has(key)) {
+      byCategory.set(key, workout);
+    }
+  });
+
+  return Array.from(byCategory.values());
+};
+
 export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [workouts, setWorkouts] = useState<ApiWorkout[]>([]);
   const [workoutsState, setWorkoutsState] = useState<WorkoutLoadState>({
@@ -72,11 +114,7 @@ export const AppDataProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setWorkoutsState({ loading: true, error: null });
     try {
       const remote = await fetchWorkouts();
-      if (Array.isArray(remote) && remote.length > 0) {
-        setWorkouts(remote);
-      } else {
-        setWorkouts(localWorkoutFallback);
-      }
+      setWorkouts(mergeWorkoutsWithFallback(Array.isArray(remote) ? remote : []));
       setWorkoutsState({ loading: false, error: null });
     } catch (error: any) {
       setWorkouts(localWorkoutFallback);

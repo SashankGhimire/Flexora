@@ -4,6 +4,7 @@ export type ApiUser = {
   email: string;
   avatarUrl?: string;
   completedOnboarding?: boolean;
+  createdByAdmin?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -72,4 +73,22 @@ export async function deleteUserById(id: string): Promise<void> {
   if (!response.ok) {
     throw new Error(`Failed to delete user: ${response.status}`);
   }
+}
+
+export async function createUser(payload: { name: string; email: string; password: string }): Promise<ApiUser> {
+  const response = await apiFetch('/api/auth/admin/create-user', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const message = await parseApiErrorMessage(response, `Failed to create user: ${response.status}`);
+    throw new Error(message);
+  }
+
+  const data = await response.json();
+  return data?.user;
 }

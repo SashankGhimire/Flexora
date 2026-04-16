@@ -7,7 +7,7 @@ import { HomeStackParamList } from '../types';
 import { useAppData } from '../context/AppDataContext';
 import { useTheme } from '../context/ThemeContext';
 import { startWorkoutSession, saveWorkoutSession } from '../services/sessionService';
-import { resolveExerciseAnimation, resolveExercisePreview, resolveExerciseForWorkout } from '../data/workoutData';
+import { resolveExercisePreview, resolveExerciseForWorkout } from '../data/workoutData';
 import { Colors } from '../theme/colors';
 import { FontWeight, Radius, Spacing, Typography } from '../theme/tokens';
 import { PrimaryButton, SimpleIcon } from '../components/ui';
@@ -277,6 +277,8 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
           .sort((a, b) => a.order - b.order)
           .map((item) => {
             const fallbackExercise = resolveExerciseForWorkout(workout.category, item.exercise?.name || '', item.order - 1);
+            const resolvedPreview = resolveExercisePreview(item.exercise?.name || item.exercise?._id || '');
+            const resolvedAnimation = resolvedPreview?.animation || fallbackExercise?.animation || 'jumping_jacks.json';
 
             return {
               id: item.exercise?._id || `${workout._id}-${item.order}`,
@@ -284,7 +286,7 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
               type: item.duration || item.exercise?.duration ? ('timer' as const) : ('reps' as const),
               duration: item.duration ?? item.exercise?.duration ?? fallbackExercise?.duration ?? null,
               reps: item.reps ?? item.exercise?.reps ?? fallbackExercise?.reps ?? null,
-              animation: fallbackExercise?.animation || resolveExerciseAnimation(item.exercise?.name || item.exercise?._id || 'jumping-jacks'),
+              animation: resolvedAnimation,
               focus: item.exercise?.targetMuscle || fallbackExercise?.focus || ['general'],
               instructions:
                 item.exercise?.instructions || fallbackExercise?.instructions || resolveExercisePreview(item.exercise?.name || '')?.instructions || 'Move with control.',
