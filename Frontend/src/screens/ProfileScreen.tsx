@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getApiServerOrigin } from '../services/api';
 import {
@@ -24,6 +24,7 @@ import {
   setNotificationPreference,
   updateProfileGoal,
 } from '../services/profileService';
+import { resetWorkoutProgress } from '../services/progressService';
 import { useAuth } from '../context/AuthContext';
 import { useAppData } from '../context/AppDataContext';
 import { useTheme } from '../context/ThemeContext';
@@ -41,6 +42,43 @@ const GOAL_OPTIONS = [
 ];
 
 const MAX_AVATAR_FILE_BYTES = 4 * 1024 * 1024;
+const DEFAULT_REST_TIMER_SECONDS = 30;
+
+const GENDER_OPTIONS = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'prefer_not', label: 'Prefer not to say' },
+] as const;
+
+const formatDateForInput = (value?: string): string => {
+  if (!value) {
+    return '';
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const directMatch = trimmed.match(/^\d{4}-\d{2}-\d{2}$/);
+  if (directMatch) {
+    return trimmed;
+  }
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+
+  return parsed.toISOString().slice(0, 10);
+};
+
+const formatGenderLabel = (value?: string): string => {
+  const option = GENDER_OPTIONS.find((item) => item.value === value);
+  return option?.label || 'Not set';
+};
+
+const formatRestTimerLabel = (value?: number): string => `${value || DEFAULT_REST_TIMER_SECONDS}s`;
 
 const normalizeAvatarMime = (value?: string): string => {
   const mime = (value || '').toLowerCase();
@@ -79,6 +117,12 @@ export const ProfileScreen: React.FC = () => {
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
   const [privateProfileEnabled, setPrivateProfileEnabled] = useState(true);
   const [biometricLockEnabled, setBiometricLockEnabled] = useState(false);
+  const [workoutSettingsVisible, setWorkoutSettingsVisible] = useState(false);
+  const [workoutGender, setWorkoutGender] = useState<'male' | 'female' | 'prefer_not'>('prefer_not');
+  const [workoutDateOfBirth, setWorkoutDateOfBirth] = useState('');
+  const [restTimerSeconds, setRestTimerSeconds] = useState(String(DEFAULT_REST_TIMER_SECONDS));
+  const [savingWorkoutSettings, setSavingWorkoutSettings] = useState(false);
+  const [resettingProgress, setResettingProgress] = useState(false);
 
   const selectedGoalLabel = GOAL_OPTIONS.find((option) => option.value === selectedGoal)?.label || 'Improve Fitness';
 
@@ -90,6 +134,12 @@ export const ProfileScreen: React.FC = () => {
       setName(user?.name || '');
     }
   }, [user?.name, isEditing]);
+
+  useEffect(() => {
+    setWorkoutGender((user?.gender as 'male' | 'female' | 'prefer_not') || 'prefer_not');
+    setWorkoutDateOfBirth(formatDateForInput(user?.dateOfBirth));
+    setRestTimerSeconds(String(user?.restTimerSeconds || DEFAULT_REST_TIMER_SECONDS));
+  }, [user?.dateOfBirth, user?.gender, user?.restTimerSeconds]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -121,55 +171,65 @@ export const ProfileScreen: React.FC = () => {
     hydrateWeight();
   }, [user?.id]);
 
+  const calculateStreak = (dates: Array<string | Date>): number => {
+    if (!dates.length) {
+      return 0;
+    }
+
+    const uniqueDays = Array.from(
+      new Set(dates.map((date) => new Date(date).toISOString().slice(0, 10)))
+    ).sort((left, right) => (left < right ? 1 : -1));
+
+    let streak = 1;
+    let cursor = new Date(uniqueDays[0]);
+
+    for (let index = 1; index < uniqueDays.length; index += 1) {
+      const current = new Date(uniqueDays[index]);
+      const diffDays = Math.round((cursor.getTime() - current.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        streak += 1;
+        cursor = current;
+      } else if (diffDays > 1) {
+        break;
+      }
+    }
+
+    return streak;
+  };
+
+  const loadProfileProgress = async () => {
+    if (!user?.id) {
+      return;
+    }
+
+    const progress = await getProgressForUser(user.id);
+    if (!progress?.performanceStats) {
+      return;
+    }
+
+    setWorkoutsCompletedLabel(String(progress.performanceStats.totalWorkouts || 0));
+    setTotalTimeLabel(`${Math.round(progress.performanceStats.totalWorkoutMinutes || 0)}m`);
+
+    const workoutHistory = Array.isArray(progress?.workoutHistory) ? progress.workoutHistory : [];
+    const streakDays = calculateStreak(
+      workoutHistory.map((item: { completedAt?: string }) => item.completedAt || new Date().toISOString())
+    );
+    setStreakLabel(`${streakDays}-day streak`);
+  };
+
   useEffect(() => {
     if (!user?.id) {
       return;
     }
 
-    const calculateStreak = (dates: Array<string | Date>): number => {
-      if (!dates.length) {
-        return 0;
-      }
-
-      const uniqueDays = Array.from(
-        new Set(dates.map((date) => new Date(date).toISOString().slice(0, 10)))
-      ).sort((left, right) => (left < right ? 1 : -1));
-
-      let streak = 1;
-      let cursor = new Date(uniqueDays[0]);
-
-      for (let index = 1; index < uniqueDays.length; index += 1) {
-        const current = new Date(uniqueDays[index]);
-        const diffDays = Math.round((cursor.getTime() - current.getTime()) / (1000 * 60 * 60 * 24));
-        if (diffDays === 1) {
-          streak += 1;
-          cursor = current;
-        } else if (diffDays > 1) {
-          break;
-        }
-      }
-
-      return streak;
-    };
-
-    const loadProfileProgress = async () => {
-      const progress = await getProgressForUser(user.id);
-      if (!progress?.performanceStats) {
-        return;
-      }
-
-      setWorkoutsCompletedLabel(String(progress.performanceStats.totalWorkouts || 0));
-      setTotalTimeLabel(`${Math.round(progress.performanceStats.totalWorkoutMinutes || 0)}m`);
-
-      const workoutHistory = Array.isArray(progress?.workoutHistory) ? progress.workoutHistory : [];
-      const streakDays = calculateStreak(
-        workoutHistory.map((item: { completedAt?: string }) => item.completedAt || new Date().toISOString())
-      );
-      setStreakLabel(`${streakDays}-day streak`);
-    };
-
     loadProfileProgress();
   }, [getProgressForUser, user?.id]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadProfileProgress();
+    }, [loadProfileProgress])
+  );
 
   useEffect(() => {
     if (!user?.id) {
@@ -250,9 +310,12 @@ export const ProfileScreen: React.FC = () => {
       });
       setIsEditing(false);
       setAvatarAsset(null);
-      if (result?.warning) {
-        Alert.alert('Saved with warning', result.warning);
-      }
+      Alert.alert(
+        'Profile Updated Successfully',
+        result?.warning
+          ? `Your profile changes were saved.\n\n${result.warning}`
+          : 'Your profile has been saved successfully.'
+      );
     } catch (error: any) {
       Alert.alert('Update Failed', error?.message || 'Could not update profile');
     } finally {
@@ -279,12 +342,77 @@ export const ProfileScreen: React.FC = () => {
     setSavingGoal(true);
     try {
       await updateProfileGoal(selectedGoal);
-      setGoalModalVisible(false);
+      Alert.alert('Goal Updated', `Your fitness goal has been set to ${selectedGoalLabel}.`, [
+        {
+          text: 'OK',
+          onPress: () => setGoalModalVisible(false),
+        },
+      ]);
     } catch (error: any) {
       Alert.alert('Goal update failed', error?.message || 'Unable to save your goal now.');
     } finally {
       setSavingGoal(false);
     }
+  };
+
+  const handleSaveWorkoutSettings = async () => {
+    const normalizedRestTimer = Number(restTimerSeconds);
+
+    if (workoutDateOfBirth && !/^\d{4}-\d{2}-\d{2}$/.test(workoutDateOfBirth.trim())) {
+      Alert.alert('Invalid date', 'Please enter your date of birth as YYYY-MM-DD.');
+      return;
+    }
+
+    if (Number.isNaN(normalizedRestTimer) || normalizedRestTimer < 5 || normalizedRestTimer > 300) {
+      Alert.alert('Invalid rest timer', 'Please choose a rest timer between 5 and 300 seconds.');
+      return;
+    }
+
+    setSavingWorkoutSettings(true);
+
+    try {
+      await updateProfile({
+        gender: workoutGender,
+        dateOfBirth: workoutDateOfBirth.trim(),
+        restTimerSeconds: normalizedRestTimer,
+      });
+
+      setWorkoutSettingsVisible(false);
+      Alert.alert('Workout Settings Updated', 'Your gender, date of birth, and rest timer were saved.');
+    } catch (error: any) {
+      Alert.alert('Update Failed', error?.message || 'Could not save workout settings.');
+    } finally {
+      setSavingWorkoutSettings(false);
+    }
+  };
+
+  const handleResetProgress = async () => {
+    Alert.alert(
+      'Reset Progress?',
+      'This will clear your workout history and stats for this account.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setResettingProgress(true);
+              await resetWorkoutProgress();
+              setWorkoutsCompletedLabel('0');
+              setTotalTimeLabel('0m');
+              setStreakLabel('0-day streak');
+              setWorkoutSettingsVisible(false);
+              Alert.alert('Progress Reset', 'Your workout progress has been restarted.');
+            } catch (error: any) {
+              Alert.alert('Reset Failed', error?.message || 'Could not reset progress right now.');
+            } finally {
+              setResettingProgress(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -428,6 +556,23 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
             <View style={styles.settingDivider} />
 
+            <TouchableOpacity style={styles.settingRow} activeOpacity={0.8} onPress={() => navigation.navigate('WorkoutSettings')}>
+              <View style={styles.settingRowIconWrap}>
+                <SimpleIcon name="settings" size={16} color={Colors.primary} />
+              </View>
+              <View style={styles.settingRowTextWrap}>
+                <Text style={styles.listLabel}>Workout Settings</Text>
+                <Text style={styles.listSubtitle}>
+                  {`${formatGenderLabel(user?.gender)} • ${user?.dateOfBirth ? formatDateForInput(user.dateOfBirth) : 'DOB not set'} • Rest ${formatRestTimerLabel(user?.restTimerSeconds)}`}
+                </Text>
+              </View>
+              <View style={styles.settingTrailingWrap}>
+                <Text style={styles.settingTrailingText}>Adjust</Text>
+                <SimpleIcon name="chevron-right" size={16} color={Colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+            <View style={styles.settingDivider} />
+
             <TouchableOpacity style={styles.settingRow} activeOpacity={0.8} onPress={() => setGoalModalVisible(true)}>
               <View style={styles.settingRowIconWrap}>
                 <SimpleIcon name="target" size={16} color={Colors.primary} />
@@ -559,6 +704,78 @@ export const ProfileScreen: React.FC = () => {
                 <Pressable style={styles.modalBtn} onPress={handleSaveGoal} disabled={savingGoal}>
                   <Text style={styles.modalBtnText}>{savingGoal ? 'Saving...' : 'Save Goal'}</Text>
                 </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={workoutSettingsVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setWorkoutSettingsVisible(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Workout Settings</Text>
+              <Text style={styles.modalSubtitle}>Update your profile details and rest timer for workouts.</Text>
+
+              <Text style={styles.modalSectionLabel}>Gender</Text>
+              <View style={styles.genderOptionRow}>
+                {GENDER_OPTIONS.map((option) => (
+                  <Pressable
+                    key={option.value}
+                    style={[
+                      styles.genderOption,
+                      workoutGender === option.value && styles.genderOptionActive,
+                    ]}
+                    onPress={() => setWorkoutGender(option.value)}
+                  >
+                    <Text style={[styles.genderOptionText, workoutGender === option.value && styles.genderOptionTextActive]}>
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.modalSectionLabel}>Date of Birth</Text>
+              <TextInput
+                value={workoutDateOfBirth}
+                onChangeText={setWorkoutDateOfBirth}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={Colors.textMuted}
+                autoCapitalize="none"
+                style={styles.modalInput}
+              />
+
+              <Text style={styles.modalSectionLabel}>Rest Timer</Text>
+              <TextInput
+                value={restTimerSeconds}
+                onChangeText={(value) => setRestTimerSeconds(value.replace(/[^0-9]/g, ''))}
+                placeholder="30"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="number-pad"
+                style={styles.modalInput}
+              />
+              <Text style={styles.modalHelpText}>This applies to rest periods in non-AI workouts.</Text>
+
+              <View style={styles.modalActionsStacked}>
+                <Pressable
+                  style={[styles.modalBtnDanger, resettingProgress && styles.modalBtnDisabled]}
+                  onPress={handleResetProgress}
+                  disabled={resettingProgress}
+                >
+                  <Text style={styles.modalBtnDangerText}>{resettingProgress ? 'Resetting...' : 'Restart Progress'}</Text>
+                </Pressable>
+
+                <View style={styles.modalActions}>
+                  <Pressable style={styles.modalBtnGhost} onPress={() => setWorkoutSettingsVisible(false)}>
+                    <Text style={styles.modalBtnGhostText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable style={styles.modalBtn} onPress={handleSaveWorkoutSettings} disabled={savingWorkoutSettings}>
+                    <Text style={styles.modalBtnText}>{savingWorkoutSettings ? 'Saving...' : 'Save Settings'}</Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           </View>
@@ -1050,6 +1267,79 @@ const createStyles = (themeMode: 'light' | 'dark') => {
     color: Colors.textSecondary,
     fontSize: Typography.caption,
     marginBottom: Spacing.md,
+  },
+  modalSectionLabel: {
+    marginTop: Spacing.xs,
+    marginBottom: 6,
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.semi,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  genderOptionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  genderOption: {
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+  },
+  genderOptionActive: {
+    borderColor: Colors.primaryA35,
+    backgroundColor: Colors.primaryLightA16,
+  },
+  genderOptionText: {
+    color: Colors.textPrimary,
+    fontSize: Typography.caption,
+    fontWeight: FontWeight.semi,
+  },
+  genderOptionTextActive: {
+    color: Colors.primary,
+  },
+  modalInput: {
+    marginBottom: Spacing.sm,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    color: Colors.textPrimary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    fontSize: Typography.subtitle,
+  },
+  modalHelpText: {
+    marginTop: -2,
+    marginBottom: Spacing.sm,
+    color: Colors.textSecondary,
+    fontSize: Typography.caption,
+  },
+  modalActionsStacked: {
+    marginTop: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  modalBtnDanger: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.errorA35,
+    backgroundColor: Colors.errorA12,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  modalBtnDangerText: {
+    color: Colors.error,
+    fontSize: Typography.subtitle,
+    fontWeight: FontWeight.bold,
+  },
+  modalBtnDisabled: {
+    opacity: 0.65,
   },
   goalOption: {
     borderRadius: Radius.md,

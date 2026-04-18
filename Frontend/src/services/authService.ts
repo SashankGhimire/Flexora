@@ -16,7 +16,10 @@ export const registerUser = async (userData: {
   height?: number;
   weight?: number;
   goal?: string;
+  gender?: string;
+  dateOfBirth?: string;
   activityLevel?: string;
+  restTimerSeconds?: number;
 }) => {
   const response = await register(userData);
   await setAuthToken(response.token);
@@ -36,17 +39,26 @@ export const logout = async () => {
 export const updateProfile = async (data: {
   name?: string;
   avatar?: { uri: string; name?: string; type?: string } | null;
+  gender?: string;
+  dateOfBirth?: string;
+  restTimerSeconds?: number;
 }) => {
   const normalizedName = typeof data.name === 'string' ? data.name.trim() : undefined;
   const hasAvatar = Boolean(data.avatar?.uri);
+  const updatePayload = {
+    ...(normalizedName ? { name: normalizedName } : {}),
+    ...(typeof data.gender === 'string' ? { gender: data.gender } : {}),
+    ...(typeof data.dateOfBirth === 'string' ? { dateOfBirth: data.dateOfBirth } : {}),
+    ...(typeof data.restTimerSeconds === 'number' ? { restTimerSeconds: data.restTimerSeconds } : {}),
+  };
 
   // Fast path: no avatar upload required, use standard JSON profile update.
   if (!hasAvatar) {
-    return updateCurrentUser({ ...(normalizedName ? { name: normalizedName } : {}) });
+    return updateCurrentUser(updatePayload);
   }
 
   const multipartPayload = {
-    ...(normalizedName ? { name: normalizedName } : {}),
+    ...updatePayload,
     avatar: data.avatar,
   };
 

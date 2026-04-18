@@ -78,10 +78,26 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    gender: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    dateOfBirth: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     activityLevel: {
       type: String,
       trim: true,
       default: '',
+    },
+    restTimerSeconds: {
+      type: Number,
+      min: 5,
+      max: 300,
+      default: 30,
     },
     role: {
       type: String,
@@ -139,7 +155,10 @@ userSchema.methods.toSafeObject = function toSafeObject() {
     height: this.height,
     weight: this.weight,
     goal: this.goal,
+    gender: this.gender,
+    dateOfBirth: this.dateOfBirth,
     activityLevel: this.activityLevel,
+    restTimerSeconds: this.restTimerSeconds,
     avatarUrl: this.avatarUrl,
     completedOnboarding: this.completedOnboarding,
     createdByAdmin: this.createdByAdmin,

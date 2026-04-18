@@ -5,6 +5,7 @@ import { useIsFocused } from '@react-navigation/native';
 import Video from 'react-native-video';
 import { HomeStackParamList } from '../types';
 import { useAppData } from '../context/AppDataContext';
+import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { startWorkoutSession, saveWorkoutSession } from '../services/sessionService';
 import { resolveExercisePreview, resolveExerciseForWorkout } from '../data/workoutData';
@@ -105,6 +106,7 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
   const { programId } = route.params;
   const isFocused = useIsFocused();
   const { getWorkout, setSessionState } = useAppData();
+  const { user } = useAuth();
 
   const [loadingProgram, setLoadingProgram] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -125,6 +127,7 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
       focus: string[];
       instructions: string;
       mistakes: string[];
+      sourceType: 'AI' | 'non-AI';
     }>
   >([]);
 
@@ -140,6 +143,12 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
   const previousPhaseRef = React.useRef<SessionPhase>('ready');
 
   const currentExercise = exercises[currentIndex];
+  const configuredRestTimer = user?.restTimerSeconds && user.restTimerSeconds > 0 ? user.restTimerSeconds : REST_DEFAULT;
+
+  const getRestDurationForExercise = useCallback(
+    (exercise?: { sourceType?: 'AI' | 'non-AI' }) => (exercise?.sourceType === 'non-AI' ? configuredRestTimer : REST_DEFAULT),
+    [configuredRestTimer]
+  );
 
   const currentExerciseDisplay = useMemo(() => {
     if (!currentExercise) return '';
@@ -190,12 +199,13 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
       return;
     }
 
+    const nextRestDuration = getRestDurationForExercise(currentExercise);
     setVoiceQueue([]);
-    setRestTimeLeft(REST_DEFAULT);
-    setRestTotal(REST_DEFAULT);
+    setRestTimeLeft(nextRestDuration);
+    setRestTotal(nextRestDuration);
     setPaused(false);
     setPhase('rest');
-  }, [completeWorkout, currentIndex, exercises.length]);
+  }, [completeWorkout, currentExercise, currentIndex, exercises.length, getRestDurationForExercise]);
 
   const moveToNextExercise = useCallback(() => {
     if (currentIndex >= exercises.length - 1) {
@@ -286,6 +296,7 @@ export const WorkoutSessionScreen: React.FC<Props> = ({ route, navigation }) => 
               type: item.duration || item.exercise?.duration ? ('timer' as const) : ('reps' as const),
               duration: item.duration ?? item.exercise?.duration ?? fallbackExercise?.duration ?? null,
               reps: item.reps ?? item.exercise?.reps ?? fallbackExercise?.reps ?? null,
+              sourceType: (item.exercise?.type || (String(item.exercise?._id || '').toLowerCase().includes('ai') ? 'AI' : 'non-AI')) as 'AI' | 'non-AI',
               animation: resolvedAnimation,
               focus: item.exercise?.targetMuscle || fallbackExercise?.focus || ['general'],
               instructions:

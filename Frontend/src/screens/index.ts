@@ -4,6 +4,7 @@ export { ProgressScreen } from './ProgressScreen';
 export { ProfileScreen } from './ProfileScreen';
 export { ExerciseSelectionScreen } from './ExerciseSelectionScreen';
 export { HelpCenterScreen } from './HelpCenterScreen';
+export { WorkoutSettingsScreen } from './WorkoutSettingsScreen';
 export { WorkoutProgramScreen } from './WorkoutProgramScreen';
 export { WorkoutSessionScreen } from './WorkoutSessionScreen';
 export { WorkoutCompleteScreen } from './WorkoutCompleteScreen';

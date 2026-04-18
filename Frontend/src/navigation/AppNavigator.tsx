@@ -16,6 +16,7 @@ import {
   WorkoutCompleteScreen,
   WorkoutProgramScreen,
   WorkoutSessionScreen,
+  WorkoutSettingsScreen,
 } from '../screens';
 import {
   ActivityScreen,
@@ -174,6 +175,7 @@ export const HomeStackNavigator: React.FC = () => {
       <HomeStack.Screen name="HomeTabs" component={HomeTabs} />
       <HomeStack.Screen name="ExerciseSelection" component={ExerciseSelectionScreen} />
       <HomeStack.Screen name="HelpCenter" component={HelpCenterScreen} />
+      <HomeStack.Screen name="WorkoutSettings" component={WorkoutSettingsScreen} />
       <HomeStack.Screen name="Workout" component={PostureScreen} />
       <HomeStack.Screen name="WorkoutProgram" component={WorkoutProgramScreen} />
       <HomeStack.Screen name="WorkoutSession" component={WorkoutSessionScreen} />

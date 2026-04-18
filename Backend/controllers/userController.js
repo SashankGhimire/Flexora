@@ -24,7 +24,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
 });
 
 const updateUserProfile = asyncHandler(async (req, res) => {
-  const allowedFields = ['name', 'age', 'height', 'weight', 'goal', 'activityLevel'];
+  const allowedFields = ['name', 'age', 'height', 'weight', 'goal', 'gender', 'dateOfBirth', 'activityLevel', 'restTimerSeconds'];
   const updates = {};
 
   for (const field of allowedFields) {
@@ -41,6 +41,14 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     updates.goal = updates.goal.trim();
   }
 
+  if (typeof updates.gender === 'string') {
+    updates.gender = updates.gender.trim();
+  }
+
+  if (typeof updates.dateOfBirth === 'string') {
+    updates.dateOfBirth = updates.dateOfBirth.trim();
+  }
+
   if (typeof updates.activityLevel === 'string') {
     updates.activityLevel = updates.activityLevel.trim();
   }
@@ -55,6 +63,10 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
   if (updates.weight !== undefined) {
     updates.weight = Number(updates.weight);
+  }
+
+  if (updates.restTimerSeconds !== undefined) {
+    updates.restTimerSeconds = Number(updates.restTimerSeconds);
   }
 
   const user = await User.findByIdAndUpdate(req.user.id, updates, {

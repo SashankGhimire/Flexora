@@ -16,6 +16,9 @@ type AuthUser = {
   name: string;
   email: string;
   avatarUrl?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  restTimerSeconds?: number;
   completedOnboarding?: boolean;
 };
 
@@ -29,6 +32,9 @@ interface AuthContextType {
   updateProfile: (data: {
     name?: string;
     avatar?: { uri: string; name?: string; type?: string } | null;
+    gender?: string;
+    dateOfBirth?: string;
+    restTimerSeconds?: number;
   }) => Promise<{ warning?: string } | void>;
 }
 
@@ -113,6 +119,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (data: {
     name?: string;
     avatar?: { uri: string; name?: string; type?: string } | null;
+    gender?: string;
+    dateOfBirth?: string;
+    restTimerSeconds?: number;
   }): Promise<{ warning?: string } | void> => {
     const response = await updateProfileApi(data);
     let nextUser = response?.user || null;

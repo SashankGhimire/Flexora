@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Card, SectionHeader, SimpleIcon, StatCard } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
@@ -70,6 +71,7 @@ const getBmiCategoryTheme = (category: string) => {
 export const ProgressScreen: React.FC = () => {
   const { user } = useAuth();
   const { getProgressForUser } = useAppData();
+  const isFocused = useIsFocused();
   const { themeMode } = useTheme();
   const styles = useMemo(() => createStyles(), [themeMode]);
   const { width } = useWindowDimensions();
@@ -93,7 +95,7 @@ export const ProgressScreen: React.FC = () => {
   const [progressError, setProgressError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!isFocused || !user?.id) {
       return;
     }
 
@@ -130,7 +132,7 @@ export const ProgressScreen: React.FC = () => {
     };
 
     hydrateProfile();
-  }, [user?.id]);
+  }, [isFocused, user?.id]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -190,7 +192,7 @@ export const ProgressScreen: React.FC = () => {
     };
 
     loadProgress();
-  }, [getProgressForUser, user?.id]);
+  }, [getProgressForUser, isFocused, user?.id]);
 
   const normalizeWeightInput = (next: string): string => {
     const cleaned = next.replace(',', '.').replace(/[^0-9.]/g, '');

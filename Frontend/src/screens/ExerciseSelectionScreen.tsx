@@ -231,6 +231,7 @@ const createStyles = () => StyleSheet.create({
   content: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.x3 + Spacing.sm,
+    marginTop: Spacing.sm,
     paddingBottom: Spacing.x3 + Spacing.x3 + Spacing.x3,
   },
   heroCard: {

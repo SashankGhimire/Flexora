@@ -12,6 +12,19 @@ const calculateBmi = (weightKg, heightCm) => {
   return Number(bmi.toFixed(1));
 };
 
+const resetCurrentUserProgress = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user.id).select('weight height');
+  if (!user) {
+    return sendError(res, 404, 'User not found');
+  }
+
+  await Progress.deleteOne({ userId: req.user.id });
+
+  return res.status(200).json({
+    message: 'Progress reset successfully',
+  });
+});
+
 const getProgressByUserId = asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
@@ -51,4 +64,5 @@ const getProgressByUserId = asyncHandler(async (req, res) => {
 
 module.exports = {
   getProgressByUserId,
+  resetCurrentUserProgress,
 };

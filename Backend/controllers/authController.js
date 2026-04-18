@@ -54,7 +54,10 @@ exports.register = async (req, res) => {
     const height = req.body?.height !== undefined ? Number(req.body.height) : undefined;
     const weight = req.body?.weight !== undefined ? Number(req.body.weight) : undefined;
     const goal = typeof req.body?.goal === 'string' ? req.body.goal.trim() : '';
+    const gender = typeof req.body?.gender === 'string' ? req.body.gender.trim() : '';
+    const dateOfBirth = typeof req.body?.dateOfBirth === 'string' ? req.body.dateOfBirth.trim() : '';
     const activityLevel = typeof req.body?.activityLevel === 'string' ? req.body.activityLevel.trim() : '';
+    const restTimerSeconds = req.body?.restTimerSeconds !== undefined ? Number(req.body.restTimerSeconds) : undefined;
 
     // Validation - check if all fields are provided
     if (!name || !email || !password) {
@@ -92,7 +95,10 @@ exports.register = async (req, res) => {
       height,
       weight,
       goal,
+      gender,
+      dateOfBirth,
       activityLevel,
+      restTimerSeconds,
     });
 
     // Save user to database (password will be hashed in the pre-save middleware)
@@ -214,7 +220,7 @@ exports.getMe = async (req, res) => {
 exports.updateMe = async (req, res) => {
   try {
     const updates = {};
-    const { name, age, height, weight, goal, activityLevel } = req.body;
+    const { name, age, height, weight, goal, gender, dateOfBirth, activityLevel, restTimerSeconds } = req.body;
 
     if (typeof name === 'string') {
       const trimmedName = name.trim();
@@ -239,8 +245,20 @@ exports.updateMe = async (req, res) => {
       updates.goal = goal.trim();
     }
 
+    if (typeof gender === 'string') {
+      updates.gender = gender.trim();
+    }
+
+    if (typeof dateOfBirth === 'string') {
+      updates.dateOfBirth = dateOfBirth.trim();
+    }
+
     if (typeof activityLevel === 'string') {
       updates.activityLevel = activityLevel.trim();
+    }
+
+    if (restTimerSeconds !== undefined) {
+      updates.restTimerSeconds = Number(restTimerSeconds);
     }
 
     if (req.file?.buffer) {
@@ -286,7 +304,7 @@ exports.updateMe = async (req, res) => {
 exports.listUsers = async (req, res) => {
   try {
     const users = await User.find({})
-      .select('_id name email avatarUrl completedOnboarding createdByAdmin createdAt')
+      .select('_id name email avatarUrl gender dateOfBirth restTimerSeconds completedOnboarding createdByAdmin createdAt')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -307,7 +325,9 @@ exports.listUsers = async (req, res) => {
  */
 exports.getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('_id name email avatarUrl completedOnboarding createdByAdmin createdAt updatedAt');
+    const user = await User.findById(req.params.id).select(
+      '_id name email avatarUrl gender dateOfBirth restTimerSeconds completedOnboarding createdByAdmin createdAt updatedAt'
+    );
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -331,7 +351,7 @@ exports.getUserById = async (req, res) => {
  */
 exports.updateUserById = async (req, res) => {
   try {
-    const { name, email, completedOnboarding } = req.body;
+    const { name, email, completedOnboarding, gender, dateOfBirth, restTimerSeconds } = req.body;
     const updates = {};
 
     if (typeof name === 'string') {
@@ -354,6 +374,18 @@ exports.updateUserById = async (req, res) => {
       updates.completedOnboarding = completedOnboarding;
     }
 
+    if (typeof gender === 'string') {
+      updates.gender = gender.trim();
+    }
+
+    if (typeof dateOfBirth === 'string') {
+      updates.dateOfBirth = dateOfBirth.trim();
+    }
+
+    if (restTimerSeconds !== undefined) {
+      updates.restTimerSeconds = Number(restTimerSeconds);
+    }
+
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({
         message: 'No valid fields provided for update',
@@ -363,7 +395,7 @@ exports.updateUserById = async (req, res) => {
     const user = await User.findByIdAndUpdate(req.params.id, updates, {
       new: true,
       runValidators: true,
-    }).select('_id name email avatarUrl completedOnboarding createdByAdmin createdAt updatedAt');
+    }).select('_id name email avatarUrl gender dateOfBirth restTimerSeconds completedOnboarding createdByAdmin createdAt updatedAt');
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -426,6 +458,8 @@ exports.createUserByAdmin = async (req, res) => {
     const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     const { password } = req.body;
+    const gender = typeof req.body?.gender === 'string' ? req.body.gender.trim() : '';
+    const dateOfBirth = typeof req.body?.dateOfBirth === 'string' ? req.body.dateOfBirth.trim() : '';
 
     // Validation - check if all fields are provided
     if (!name || !email || !password) {
@@ -461,6 +495,8 @@ exports.createUserByAdmin = async (req, res) => {
       password,
       createdByAdmin: true,
       completedOnboarding: false,
+      gender,
+      dateOfBirth,
     });
 
     // Save user to database (password will be hashed in the pre-save middleware)

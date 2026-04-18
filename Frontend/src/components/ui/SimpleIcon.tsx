@@ -41,6 +41,9 @@ const ICON_MAP: Record<string, string> = {
   cpu: 'cpu',
   sun: 'sun',
   moon: 'moon',
+  music: 'music',
+  'refresh-cw': 'refresh-cw',
+  'refresh-ccw': 'refresh-ccw',
   
   // Data icons
   clock: 'clock',

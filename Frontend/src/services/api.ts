@@ -56,6 +56,7 @@ export const SESSION_ENDPOINTS = {
 
 export const PROGRESS_ENDPOINTS = {
   BY_USER: (userId: string) => `/progress/${userId}`,
+  RESET: '/progress/me/reset',
 };
 
 export const ADMIN_ENDPOINTS = {
@@ -169,7 +170,10 @@ export type ApiAuthUser = {
   height?: number;
   weight?: number;
   goal?: string;
+  gender?: string;
+  dateOfBirth?: string;
   activityLevel?: string;
+  restTimerSeconds?: number;
   avatarUrl?: string;
   completedOnboarding?: boolean;
   role?: 'user' | 'admin';
@@ -215,7 +219,10 @@ export const register = (payload: {
   height?: number;
   weight?: number;
   goal?: string;
+  gender?: string;
+  dateOfBirth?: string;
   activityLevel?: string;
+  restTimerSeconds?: number;
 }) => request<{ message: string; token: string; user: ApiAuthUser }>(apiClient.post(AUTH_ENDPOINTS.REGISTER, payload));
 
 export const login = (payload: { email: string; password: string }) =>
@@ -229,16 +236,34 @@ export const updateCurrentUser = (payload: {
   height?: number;
   weight?: number;
   goal?: string;
+  gender?: string;
+  dateOfBirth?: string;
   activityLevel?: string;
+  restTimerSeconds?: number;
 }) => request<{ message: string; user: ApiAuthUser }>(apiClient.put(USER_ENDPOINTS.UPDATE, payload));
 
 export const updateCurrentUserMultipart = async (payload: {
   name?: string;
   avatar?: { uri: string; name?: string; type?: string } | null;
+  gender?: string;
+  dateOfBirth?: string;
+  restTimerSeconds?: number;
 }) => {
   const formData = new FormData();
   if (payload.name) {
     formData.append('name', payload.name);
+  }
+
+  if (typeof payload.gender === 'string') {
+    formData.append('gender', payload.gender);
+  }
+
+  if (typeof payload.dateOfBirth === 'string') {
+    formData.append('dateOfBirth', payload.dateOfBirth);
+  }
+
+  if (typeof payload.restTimerSeconds === 'number') {
+    formData.append('restTimerSeconds', String(payload.restTimerSeconds));
   }
 
   if (payload.avatar?.uri) {
@@ -351,6 +376,9 @@ export const saveSession = (payload: {
 
 export const getProgress = (userId: string) =>
   request<{ message: string; progress: Record<string, any> }>(apiClient.get(PROGRESS_ENDPOINTS.BY_USER(userId)));
+
+export const resetProgress = () =>
+  request<{ message: string }>(apiClient.delete(PROGRESS_ENDPOINTS.RESET));
 
 export const addWorkoutAdmin = (payload: Record<string, unknown>) =>
   request<{ message: string; workout: Record<string, any> }>(apiClient.post(ADMIN_ENDPOINTS.ADD_WORKOUT, payload));
