@@ -18,6 +18,7 @@ type CounterResult = {
   phase: RepPhase;
 };
 
+// Keep a separate counter state for each exercise so one workout does not affect another.
 const states: Record<ExerciseType, CounterState> = {
   squat: { phase: 'hold', repCount: 0, pendingPhase: null, pendingFrames: 0 },
   pushup: { phase: 'hold', repCount: 0, pendingPhase: null, pendingFrames: 0 },
@@ -117,6 +118,7 @@ const getDesiredPhase = (
   angles: JointAngles,
   keypoints: PoseKeypoint[]
 ): RepPhase => {
+  // Convert raw joint angles and pose positions into a simple movement phase.
   const elbowAvg = averagePair(angles.leftElbow, angles.rightElbow);
   const kneeAvg = averagePair(angles.leftKnee, angles.rightKnee);
 
@@ -169,6 +171,7 @@ const applyPhaseStateMachine = (
 ): CounterResult => {
   const state = states[exerciseType];
 
+  // Ignore tiny frame-to-frame noise unless the same phase is seen for enough frames.
   if (desiredPhase === state.phase) {
     state.pendingPhase = null;
     state.pendingFrames = 0;
@@ -205,11 +208,13 @@ export const updateRepCounter = (
   angles: JointAngles,
   keypoints: PoseKeypoint[]
 ): CounterResult => {
+  // This is the main entry point: detect the current phase, then decide whether a rep completed.
   const desiredPhase = getDesiredPhase(exerciseType, angles, keypoints);
   return applyPhaseStateMachine(exerciseType, desiredPhase);
 };
 
 export const resetRepCounter = (exerciseType?: ExerciseType): void => {
+  // Reset one exercise or all exercises when a new workout/session starts.
   if (exerciseType) {
     states[exerciseType] = { phase: 'hold', repCount: 0, pendingPhase: null, pendingFrames: 0 };
     return;

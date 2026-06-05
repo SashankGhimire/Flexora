@@ -189,7 +189,7 @@ const EXERCISE_MOTION_CONFIG: Record<
     handThreshold: 0.008,
     hipThreshold: 0.006,
     rawDeltaThreshold: 0.004,
-    kneeBentThreshold: 145,
+    kneeBentThreshold: 150,
     elbowBentThreshold: 130,
   },
   bicepCurl: {

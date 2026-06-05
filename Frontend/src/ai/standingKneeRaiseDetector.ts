@@ -150,8 +150,8 @@ export const updateStandingKneeRaise = (keypoints: PoseKeypoint[]): StandingKnee
     }
 
     // Need to go above threshold to switch to 'up'
-    const dynamicUpThreshold = state.downBaselineLift + (liftVelocity > FAST_MOVEMENT_VELOCITY ? 0.03 : 0.04);
-    const minimumAbsoluteUpThreshold = liftVelocity > FAST_MOVEMENT_VELOCITY ? 0.06 : 0.08;
+    const dynamicUpThreshold = state.downBaselineLift + (liftVelocity > FAST_MOVEMENT_VELOCITY ? 0.025 : 0.035);
+    const minimumAbsoluteUpThreshold = liftVelocity > FAST_MOVEMENT_VELOCITY ? 0.05 : 0.065;
     const upThreshold = Math.max(minimumAbsoluteUpThreshold, dynamicUpThreshold);
 
     if (state.smoothedLift >= upThreshold) {
@@ -159,7 +159,7 @@ export const updateStandingKneeRaise = (keypoints: PoseKeypoint[]): StandingKnee
     }
   } else {
     // Need to go below threshold to switch to 'down'
-    const downThreshold = liftVelocity < -FAST_MOVEMENT_VELOCITY ? 0.055 : 0.045;
+    const downThreshold = liftVelocity < -FAST_MOVEMENT_VELOCITY ? 0.05 : 0.04;
     if (state.smoothedLift <= downThreshold) {
       nextPhase = 'down';
     }

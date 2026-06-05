@@ -53,22 +53,22 @@ const MIN_CONFIDENCE = 0.25;
 const PHASE_CONFIRMATION_FRAMES = 1;
 const ANALYSIS_INTERVAL_MS = 120;
 const KNEE_SMOOTHING_WINDOW = 5;
-const HIP_DEPTH_DOWN_THRESHOLD = 0.06;
-const HIP_DEPTH_UP_THRESHOLD = 0.02;
+const HIP_DEPTH_DOWN_THRESHOLD = 0.025;
+const HIP_DEPTH_UP_THRESHOLD = 0.008;
 const SQUAT_PROFILES: Record<SquatViewMode, SquatProfile> = {
   side: {
     goodRomThreshold: 70,
     goodHipDrop: 0.06,
     maxKneeSymmetryDelta: 20,
-    strict: { minAngle: 75, rom: 70 },
-    assisted: { minAngle: 95, rom: 50 },
+    strict: { minAngle: 125, rom: 70 },
+    assisted: { minAngle: 135, rom: 50 },
   },
   front: {
     goodRomThreshold: 60,
     goodHipDrop: 0.045,
     maxKneeSymmetryDelta: 28,
-    strict: { minAngle: 80, rom: 65 },
-    assisted: { minAngle: 100, rom: 48 },
+    strict: { minAngle: 130, rom: 65 },
+    assisted: { minAngle: 140, rom: 48 },
   },
 };
 

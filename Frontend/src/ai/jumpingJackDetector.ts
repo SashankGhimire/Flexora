@@ -40,6 +40,7 @@ const PHASE_CONFIRMATION_FRAMES = 1;
 const ANKLE_SMOOTHING_WINDOW = 3;
 const ARM_UP_OFFSET = 0.035;
 const ARM_DOWN_OFFSET = 0.005;
+const ACCURACY_FLOOR = 55;
 
 const MOVENET = {
   LEFT_SHOULDER: 5,
@@ -136,26 +137,29 @@ const getSpeedFeedback = (repSpeedSec: number): { score: number; feedback: RepSp
   if (repSpeedSec <= 0) {
     return { score: 0, feedback: 'Controlled' };
   }
-  if (repSpeedSec < 0.8) {
+  if (repSpeedSec < 0.7) {
     return { score: 40, feedback: 'Too fast' };
   }
-  if (repSpeedSec > 3.5) {
+  if (repSpeedSec > 4.0) {
     return { score: 45, feedback: 'Too slow' };
   }
-  if (repSpeedSec >= 1.2 && repSpeedSec <= 2.8) {
+  if (repSpeedSec >= 1.0 && repSpeedSec <= 3.2) {
     return { score: 100, feedback: 'Controlled' };
   }
-  const score = repSpeedSec < 1.2 ? 75 + ((repSpeedSec - 0.8) / 0.4) * 25 : 75 + ((3.5 - repSpeedSec) / 0.7) * 25;
+  const score = repSpeedSec < 1.0
+    ? 75 + ((repSpeedSec - 0.7) / 0.3) * 25
+    : 75 + ((4.0 - repSpeedSec) / 0.8) * 25;
   return { score: Math.min(100, score), feedback: 'Controlled' };
 };
 
 const getAccuracyScore = (ankleRange: number, repSpeed: number, profile: JumpingJackProfile): number => {
-  const targetRange = Math.max(0.1, profile.assisted.maxOpen - profile.assisted.minClose);
+  const targetRange = Math.max(0.08, profile.assisted.maxOpen - profile.assisted.minClose);
   const rangeScore = ankleRange >= targetRange
     ? 100
     : Math.max(0, Math.min(100, (ankleRange / targetRange) * 100));
   const speedResult = getSpeedFeedback(repSpeed);
-  return rangeScore * 0.6 + speedResult.score * 0.4;
+  const blendedScore = rangeScore * 0.7 + speedResult.score * 0.3;
+  return Math.max(ACCURACY_FLOOR, blendedScore);
 };
 
 const toResult = (): JumpingJackResult => ({

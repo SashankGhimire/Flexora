@@ -51,12 +51,12 @@ const FAST_CONFIRMATION_DEG = 130;
 const STABILITY_DELTA_THRESHOLD = 18;
 
 const PROFILE: ShoulderPressProfile = {
-  upEnter: 156,
-  upExit: 150,
-  downEnter: 102,
-  downExit: 108,
+  upEnter: 145,
+  upExit: 139,
+  downEnter: 120,
+  downExit: 126,
   strict: { maxAngle: 162, minAngle: 92, rom: 58 },
-  assisted: { maxAngle: 152, minAngle: 105, rom: 42 },
+  assisted: { maxAngle: 145, minAngle: 120, rom: 20 },
 };
 
 const MOVENET = {

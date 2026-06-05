@@ -199,7 +199,10 @@ const computeArmAngle = (
   }
 
   const angle = calculateAngle(shoulder, elbow, wrist);
-  const confidence = (shoulder.score + elbow.score + wrist.score) / 3;
+  const shoulderScore = shoulder.score ?? 0;
+  const elbowScore = elbow.score ?? 0;
+  const wristScore = wrist.score ?? 0;
+  const confidence = (shoulderScore + elbowScore + wristScore) / 3;
 
   return {
     side,
@@ -515,7 +518,9 @@ const getBestArmAngle = (keypoints: PoseKeypoint[]): ArmObservation | null => {
   state.activeArmLostFrames = 0;
 
   if (!rightArm) {
-    state.activeArm = leftArm.side;
+    if (leftArm) {
+      state.activeArm = leftArm.side;
+    }
     return leftArm;
   }
 

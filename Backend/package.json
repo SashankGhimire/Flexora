@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "ngrok": "ngrok http 5000 --pooling-enabled",
+    "ngrok": "node scripts/start-ngrok.js",
     "ngrok:sync": "node scripts/sync-ngrok-url.js",
     "ngrok:auto": "node scripts/sync-ngrok-url.js --watch",
     "dev:tunnel": "concurrently -k \"npm:dev\" \"npm:ngrok\" \"npm:ngrok:auto\""
